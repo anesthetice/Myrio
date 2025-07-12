@@ -7,6 +7,10 @@ readme = "README.md"
 categories = ["command-line-utilities"]
 
 [dependencies]
+# internal
+myrio-core = { workspace = true }
+# external
+clap = { version = "4.5" }
 
 [[bin]]
 name = "myrio"

@@ -7,10 +7,13 @@ readme = "README.md"
 default-run = "myrio-exp"
 
 [dependencies]
+# internal
 myrio-core = { workspace = true }
+# external
 anyhow = { workspace = true }
 bio = { workspace = true }
 bio-seq = { workspace = true }
+itertools = { workspace = true }
 
 [[bin]]
 name = "myrio-exp"

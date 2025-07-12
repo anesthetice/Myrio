@@ -1,0 +1,8 @@
+max_width = 110
+indent_style = "Block"
+use_small_heuristics = "Max"
+fn_params_layout = "Vertical"
+trailing_comma = "Vertical"
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+reorder_impl_items = true

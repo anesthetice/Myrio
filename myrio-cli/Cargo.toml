@@ -1,0 +1,13 @@
+[package]
+name = "myrio-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+readme = "README.md"
+categories = ["command-line-utilities"]
+
+[dependencies]
+
+[[bin]]
+name = "myrio"
+path = "src/main.rs"

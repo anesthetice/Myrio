@@ -1,0 +1,17 @@
+[package]
+name = "myrio-exp"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+readme = "README.md"
+default-run = "myrio-exp"
+
+[dependencies]
+myrio-core = { workspace = true }
+anyhow = { workspace = true }
+bio = { workspace = true }
+bio-seq = { workspace = true }
+
+[[bin]]
+name = "myrio-exp"
+path = "src/main.rs"

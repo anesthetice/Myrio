@@ -1,0 +1,10 @@
+[package]
+name = "myrio-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+readme = "README.md"
+
+[dependencies]
+bio = { workspace = true }
+bio-seq = { workspace = true }

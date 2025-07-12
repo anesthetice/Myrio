@@ -1,0 +1,29 @@
+# rustflags = ["-Ctarget-cpu=native"]
+[workspace]
+members = [
+    "myrio-core",
+    "myrio-cli",
+    "myrio-exp",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["Elliot Currat <elliot.currat@epfl.ch>"]
+description = "Myrio is a command-line application designed to identify the taxonomy of a plant from specific amplified DNA sequences."
+edition = "2024"
+readme = true
+version = "0.1.0"
+
+[workspace.dependencies]
+myrio-core = { version = "0.1.0", path = "myrio-core" }
+
+anyhow = { version = "1" }
+bio = { version = "2.3" }
+bio-seq = { version = "0.14" }
+
+[profile.release]
+opt-level = 3
+lto = true
+panic = "abort"
+strip = "symbols"
+codegen-units = 1

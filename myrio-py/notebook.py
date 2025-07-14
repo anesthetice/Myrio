@@ -51,19 +51,27 @@ def _(SeqIO, data_df, np, pl, plt):
             ):  # fastq is equivalent to fastq-sanger → Phred quality score
                 counts += np.bincount(record.letter_annotations["phred_quality"], minlength=128)
         freqs = counts / np.sum(counts)
-    
+
         fig, ax1 = plt.subplots(1, 1, figsize=(9, 5))
         ax: plt.Axes = ax1
         ax.set_xlabel("Q-score")
         ax.set_ylabel("frequency")
         ax.set_xlim(0, 70)
-    
+
         ax.bar(np.arange(128), freqs)
+
+
+        return freqs, fig
+
+    Q_score_freqs, _fig = _()
+    _fig
+    return
+
+
+@app.cell
+def _():
+
     
-
-        return fig
-
-    _()
     return
 
 

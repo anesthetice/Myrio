@@ -42,13 +42,11 @@ def _(mo):
 def _(SeqIO, data_df, np, pl, plt):
     def _():
         df = data_df.filter(pl.col("filepath").str.ends_with(".fastq"))
-        filepath = df.row(0)[6]
 
         counts = np.zeros(128)  # Phred quality score goes from 0 to 40
         for filepath in df["filepath"]:
-            for record in SeqIO.parse(
-                filepath, "fastq"
-            ):  # fastq is equivalent to fastq-sanger → Phred quality score
+            # fastq is equivalent to fastq-sanger → Phred quality score
+            for record in SeqIO.parse(filepath, "fastq"):
                 counts += np.bincount(record.letter_annotations["phred_quality"], minlength=128)
         freqs = counts / np.sum(counts)
 
@@ -60,8 +58,8 @@ def _(SeqIO, data_df, np, pl, plt):
 
         ax.bar(np.arange(128), freqs)
 
-
         return freqs, fig
+
 
     Q_score_freqs, _fig = _()
     _fig
@@ -69,9 +67,24 @@ def _(SeqIO, data_df, np, pl, plt):
 
 
 @app.cell
-def _():
+def _(SeqIO, data_df, np, plt):
+    def _():
+        filepath = data_df.row(0)[6]
+        records = list(SeqIO.parse(filepath, "fastq"))
+        record = records[2]
+        qual = record.letter_annotations["phred_quality"]
 
-    
+        fig, ax1 = plt.subplots(1, 1, figsize=(20, 5))
+        ax: plt.Axes = ax1
+        ax.set_xlabel("idx")
+        ax.set_ylabel("Q-score")
+
+        ax.plot(np.arange(len(qual)), qual, ls="--", color="grey", mfc="blue", mec="blue", marker=".")
+
+        return fig
+
+
+    _()
     return
 
 

@@ -1,17 +1,18 @@
 // Modules
 mod clustering;
-
-use std::hash::{DefaultHasher, Hash, Hasher};
+mod misc;
+mod simseq;
 
 // Imports
 use bio::io::fastq;
 use bio_seq::prelude::*;
 use itertools::Itertools;
 use myrio_core::MyrSeq;
-
-const K_VEC_HASHMAP_LIMIT: usize = 11;
+use rand::{RngCore, SeedableRng, rngs::SmallRng};
+use rand_distr::{Distribution, Poisson};
 
 fn main() -> anyhow::Result<()> {
+    /*
     let myrseqs: Vec<MyrSeq> =
         fastq::Reader::from_file("./ignore/Cymbopogon_Citrus_Qiagen_matk_rbcL_psbA-trnH_ITS_barcode3.fastq")?
             .records()
@@ -20,29 +21,9 @@ fn main() -> anyhow::Result<()> {
     println!("{}", myrseqs.len());
 
     clustering::method_1(myrseqs)
-}
-
-const K: usize = 5;
-const W: usize = 9;
-fn get_minimizers(myrseqs: &[MyrSeq]) -> Vec<Vec<(Kmer<Dna, K>, u64)>> {
-    myrseqs
-        .iter()
-        .map(|myrseq| {
-            myrseq
-                .sequence
-                .kmers::<K>()
-                .chunks(W)
-                .into_iter()
-                .map(|chunk| {
-                    chunk.into_iter().map(|kmer| (kmer, hash(kmer))).min_by_key(|&(_, hash)| hash).unwrap()
-                })
-                .collect_vec()
-        })
-        .collect_vec()
-}
-
-fn hash<T: Hash>(seq: T) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    seq.hash(&mut hasher);
-    hasher.finish()
+    */
+    //let mut rng = SmallRng::seed_from_u64(0);
+    //simseq::generate_pseudo_amplicon(&mut rng, 300, 100);
+    println!("{}", 2.5_f64.round() as usize);
+    Ok(())
 }

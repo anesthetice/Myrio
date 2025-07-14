@@ -12,10 +12,11 @@ use myrio_core::MyrSeq;
 const K_VEC_HASHMAP_LIMIT: usize = 11;
 
 fn main() -> anyhow::Result<()> {
-    let myrseqs: Vec<MyrSeq> = fastq::Reader::from_file("./ignore/Allium_Ursinum_ITS_barcode82.fastq")?
-        .records()
-        .filter_map(|record| record.ok().as_ref().map(Into::<MyrSeq>::into))
-        .collect();
+    let myrseqs: Vec<MyrSeq> =
+        fastq::Reader::from_file("./ignore/Cymbopogon_Citrus_Qiagen_matk_rbcL_psbA-trnH_ITS_barcode3.fastq")?
+            .records()
+            .filter_map(|record| record.ok().as_ref().map(Into::<MyrSeq>::into))
+            .collect();
     println!("{}", myrseqs.len());
 
     clustering::method_1(myrseqs)

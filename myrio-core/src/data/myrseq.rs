@@ -26,7 +26,16 @@ impl From<&fastq::Record> for MyrSeq {
 }
 
 impl MyrSeq {
-    fn from_fastq_record_minimal(value: &fastq::Record) -> Self {
+    pub fn new(
+        sequence: Seq<DnaCodec>,
+        quality: Vec<u8>,
+        id: Option<String>,
+        description: Option<String>,
+    ) -> Self {
+        Self { sequence, quality, id, description }
+    }
+
+    pub fn from_fastq_record_minimal(value: &fastq::Record) -> Self {
         Self {
             sequence: value.seq().try_into().unwrap(),
             quality: value.qual().iter().map(|a| a.saturating_sub(33)).collect(),

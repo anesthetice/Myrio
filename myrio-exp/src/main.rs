@@ -4,7 +4,7 @@ mod misc;
 mod simseq;
 
 // Imports
-use bio::io::fastq;
+use bio::{io::fastq, pattern_matching::myers::BitVec};
 use bio_seq::prelude::*;
 use itertools::Itertools;
 use myrio_core::MyrSeq;
@@ -22,8 +22,17 @@ fn main() -> anyhow::Result<()> {
 
     clustering::method_1(myrseqs)
     */
-    //let mut rng = SmallRng::seed_from_u64(0);
-    //simseq::generate_pseudo_amplicon(&mut rng, 300, 100);
-    println!("{}", 2.5_f64.round() as usize);
+
+    let mut rng = SmallRng::seed_from_u64(2);
+    //let mut rng = SmallRng::from_os_rng();
+
+    let myrseqs: Vec<MyrSeq> = [
+        simseq::generate_pseudo_amplicon(&mut rng, 759, 210, "1"),
+        simseq::generate_pseudo_amplicon(&mut rng, 410, 502, "2"),
+    ]
+    .concat();
+
+    clustering::method_1(myrseqs)?;
+
     Ok(())
 }

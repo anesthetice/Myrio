@@ -11,10 +11,12 @@ default-run = "myrio-exp"
 myrio-core = { workspace = true }
 # external
 anyhow = { workspace = true }
+argmin = { version = "0.10" }
 bio = { workspace = true }
 bio-seq = { workspace = true }
 bytemuck = { version = "1.23" }
 itertools = { workspace = true }
+ndarray = { version = "0.16" }
 rand = { version = "0.9" }
 rand_distr = { version = "0.5" }
 

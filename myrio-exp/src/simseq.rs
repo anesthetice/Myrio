@@ -8,7 +8,7 @@ use rand::seq::IndexedRandom;
 use rand_distr::{Distribution, Poisson};
 
 pub fn generate_pseudo_amplicon(
-    mut rng: &mut impl rand::Rng,
+    rng: &mut impl rand::Rng,
     length: usize,
     amount: usize,
     id: &str,
@@ -69,7 +69,7 @@ pub fn generate_pseudo_amplicon(
                 }
             }
 
-            MyrSeq::new(seq, q_scores, Some(id.to_string()), None)
+            MyrSeq::new(id.to_string(), None, seq, q_scores)
         })
         .collect_vec()
 }

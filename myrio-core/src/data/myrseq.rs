@@ -1,7 +1,11 @@
 // Imports
 use bio::io::fastq;
-use bio_seq::{codec::dna::Dna as DnaCodec, seq::Seq};
+use bio_seq::{
+    codec::dna::Dna as DnaCodec,
+    seq::{Seq, SeqSlice},
+};
 
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Clone)]
 pub struct MyrSeq {
     /// Sequence identifier
@@ -33,6 +37,20 @@ impl MyrSeq {
         qual: Vec<u8>,
     ) -> Self {
         Self { id, description: desc, sequence: seq, quality: qual }
+    }
+
+    pub fn create(
+        id: &str,
+        desc: Option<&str>,
+        seq: &SeqSlice<DnaCodec>,
+        qual: &[u8],
+    ) -> Self {
+        Self {
+            id: id.to_string(),
+            description: desc.map(str::to_string),
+            sequence: seq.to_owned(),
+            quality: qual.to_vec(),
+        }
     }
 
     pub fn from_fastq_record_ignore_desc(value: &fastq::Record) -> Self {

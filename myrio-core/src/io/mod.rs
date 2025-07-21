@@ -7,7 +7,6 @@ use std::{
 };
 
 use bio_seq::prelude::*;
-use flate2::Compress;
 use itertools::Itertools;
 use thiserror::Error;
 

@@ -4,55 +4,26 @@ pub mod testing;
 // Imports
 use std::{collections::HashMap, ops::AddAssign};
 
-use bio_seq::ReverseComplement;
+use anyhow::bail;
+use bio_seq::{ReverseComplement, seq::SeqSlice};
 use itertools::Itertools;
 use myrio_core::{MyrSeq, constants::Q_TO_BP_CALL_CORRECT_PROB_MAP};
 
 /// Inspired by isONclust3's method, with quite a few differences, notably we use k-mers instead of minimizers as our expected amplicon length isn't very high (~300-1000 bp). Also we do not neglect `low quality seeds`, we instead assign a quality score to each k-mer that defines its 'strength'.
 pub fn method_one(
     myrseqs: Vec<MyrSeq>,
-    similarity_function: impl Fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
-) -> Vec<Vec<MyrSeq>> {
-    const K: usize = 5;
-
+    k: usize,
+    similarity_function: fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
+) -> anyhow::Result<Vec<Vec<MyrSeq>>> {
+    if !MyrSeq::K_VALID_RANGE.contains(&k) {
+        bail!("Only k ∈ {{2, ..., 42}} is currently supported")
+    }
     // Step 1
     const T1_CUTOFF: f64 = 0.8;
     let mut myrseqs_extra = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let seq = &myrseq.sequence;
-            let seq_rc = seq.to_revcomp();
-
-            let conf_score_per_kmer = myrseq
-                .quality
-                .iter()
-                .map(|q| Q_TO_BP_CALL_CORRECT_PROB_MAP[*q as usize])
-                .collect_vec()
-                .windows(K)
-                .map(|vals| vals.iter().product::<f64>())
-                .collect_vec();
-
-            let nb_kmers = seq.len() - K + 1;
-
-            #[allow(non_snake_case)]
-            let mut nb_HCS_weighted: f64 = 0.0;
-            let mut map: HashMap<usize, f64> = HashMap::new();
-
-            for (idx, (kmer, kmer_rc)) in seq.kmers::<K>().zip_eq(seq_rc.kmers::<K>()).enumerate() {
-                // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
-                let conf_score = conf_score_per_kmer[idx];
-                if conf_score > T1_CUTOFF {
-                    let val_ref = map.entry(usize::from(&kmer)).or_default();
-                    nb_HCS_weighted += conf_score;
-                    val_ref.add_assign(conf_score)
-                }
-                let conf_score = conf_score_per_kmer[nb_kmers - 1 - idx];
-                if conf_score > T1_CUTOFF {
-                    let val_ref = map.entry(usize::from(&kmer_rc)).or_default();
-                    nb_HCS_weighted += conf_score;
-                    val_ref.add_assign(conf_score)
-                }
-            }
+            let (map, nb_HCS_weighted) = myrseq.get_kmer_map_or_panic(k, T1_CUTOFF);
             (myrseq, map, nb_HCS_weighted)
         })
         .sorted_by(|(.., a), (.., b)| a.total_cmp(b)) // ascending order
@@ -80,15 +51,18 @@ pub fn method_one(
         };
     }
 
-    clusters.into_iter().map(|cluster| cluster.elements).collect_vec()
+    Ok(clusters.into_iter().map(|cluster| cluster.elements).collect_vec())
 }
 
 /// More classical approach to clustering, every sequence becomes a cluster and we progressively merge these
 pub fn method_two(
     myrseqs: Vec<MyrSeq>,
-    similarity_function: impl Fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
-) -> Vec<Vec<MyrSeq>> {
-    const K: usize = 5;
+    k: usize,
+    similarity_function: fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
+) -> anyhow::Result<Vec<Vec<MyrSeq>>> {
+    if !MyrSeq::K_VALID_RANGE.contains(&k) {
+        bail!("Only k ∈ {{2, ..., 42}} is currently supported")
+    }
 
     struct Cluster {
         seeds: HashMap<usize, f64>,
@@ -114,34 +88,7 @@ pub fn method_two(
     let mut clusters: Vec<Cluster> = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let seq = &myrseq.sequence;
-            let seq_rc = seq.to_revcomp();
-
-            let conf_score_per_kmer = myrseq
-                .quality
-                .iter()
-                .map(|q| Q_TO_BP_CALL_CORRECT_PROB_MAP[*q as usize])
-                .collect_vec()
-                .windows(K)
-                .map(|vals| vals.iter().product::<f64>())
-                .collect_vec();
-
-            let nb_kmers = seq.len() - K + 1;
-            let mut map: HashMap<usize, f64> = HashMap::new();
-
-            for (idx, (kmer, kmer_rc)) in seq.kmers::<K>().zip_eq(seq_rc.kmers::<K>()).enumerate() {
-                // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
-                let conf_score = conf_score_per_kmer[idx];
-                if conf_score > T1_CUTOFF {
-                    let val_ref = map.entry(usize::from(&kmer)).or_default();
-                    val_ref.add_assign(conf_score)
-                }
-                let conf_score = conf_score_per_kmer[nb_kmers - 1 - idx];
-                if conf_score > T1_CUTOFF {
-                    let val_ref = map.entry(usize::from(&kmer_rc)).or_default();
-                    val_ref.add_assign(conf_score)
-                }
-            }
+            let (map, _) = myrseq.get_kmer_map_or_panic(k, T1_CUTOFF);
             Cluster { seeds: map, elements: vec![myrseq] }
         })
         .collect_vec();
@@ -166,7 +113,7 @@ pub fn method_two(
         }
     }
 
-    clusters.into_iter().map(|cluster| cluster.elements).collect_vec()
+    Ok(clusters.into_iter().map(|cluster| cluster.elements).collect_vec())
 }
 
 pub fn cosine_similarity(

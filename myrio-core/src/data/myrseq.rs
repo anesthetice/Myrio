@@ -1,9 +1,19 @@
 // Imports
+use std::{
+    collections::HashMap,
+    ops::{AddAssign, Range},
+};
+
 use bio::io::fastq;
 use bio_seq::{
     codec::dna::Dna as DnaCodec,
+    prelude::*,
     seq::{Seq, SeqSlice},
 };
+use itertools::Itertools;
+use thiserror::Error;
+
+use crate::constants::Q_TO_BP_CALL_CORRECT_PROB_MAP;
 
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Clone)]
@@ -30,6 +40,8 @@ impl From<&fastq::Record> for MyrSeq {
 }
 
 impl MyrSeq {
+    pub const K_VALID_RANGE: Range<usize> = 2..43;
+
     pub fn new(
         id: String,
         desc: Option<String>,
@@ -51,6 +63,101 @@ impl MyrSeq {
             sequence: seq.to_owned(),
             quality: qual.to_vec(),
         }
+    }
+
+    pub fn get_kmer_map(
+        &self,
+        k: usize,
+        cutoff: f64,
+    ) -> Result<(HashMap<usize, f64>, f64), Error> {
+        let conf_score_per_kmer = self
+            .quality
+            .iter()
+            .map(|q| Q_TO_BP_CALL_CORRECT_PROB_MAP[*q as usize])
+            .collect_vec()
+            .windows(k)
+            .map(|vals| vals.iter().product::<f64>())
+            .collect_vec();
+
+        macro_rules! body {
+            ($seq:expr, $K:expr) => {{
+                let nb_kmers = $seq.len() - $K + 1;
+
+                #[allow(non_snake_case)]
+                let mut nb_HCS_weighted: f64 = 0.0;
+                let mut map: HashMap<usize, f64> = HashMap::new();
+
+                for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
+                    // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
+                    let conf_score = conf_score_per_kmer[idx];
+                    if conf_score > cutoff {
+                        let val_ref = map.entry(usize::from(&kmer)).or_default();
+                        nb_HCS_weighted += conf_score;
+                        val_ref.add_assign(conf_score)
+                    }
+                    let conf_score = conf_score_per_kmer[nb_kmers - 1 - idx];
+                    if conf_score > cutoff {
+                        let val_ref = map.entry(usize::from(&kmer_rc)).or_default();
+                        nb_HCS_weighted += conf_score;
+                        val_ref.add_assign(conf_score)
+                    }
+                }
+                Ok((map, nb_HCS_weighted))
+            }};
+        }
+
+        match k {
+            2 => body!(self.sequence, 2),
+            3 => body!(self.sequence, 3),
+            4 => body!(self.sequence, 4),
+            5 => body!(self.sequence, 5),
+            6 => body!(self.sequence, 6),
+            7 => body!(self.sequence, 7),
+            8 => body!(self.sequence, 8),
+            9 => body!(self.sequence, 9),
+            10 => body!(self.sequence, 10),
+            11 => body!(self.sequence, 11),
+            12 => body!(self.sequence, 12),
+            13 => body!(self.sequence, 13),
+            14 => body!(self.sequence, 14),
+            15 => body!(self.sequence, 15),
+            16 => body!(self.sequence, 16),
+            17 => body!(self.sequence, 17),
+            18 => body!(self.sequence, 18),
+            19 => body!(self.sequence, 19),
+            20 => body!(self.sequence, 20),
+            21 => body!(self.sequence, 21),
+            22 => body!(self.sequence, 22),
+            23 => body!(self.sequence, 23),
+            24 => body!(self.sequence, 24),
+            25 => body!(self.sequence, 25),
+            26 => body!(self.sequence, 26),
+            27 => body!(self.sequence, 27),
+            28 => body!(self.sequence, 28),
+            29 => body!(self.sequence, 29),
+            30 => body!(self.sequence, 30),
+            31 => body!(self.sequence, 31),
+            32 => body!(self.sequence, 32),
+            33 => body!(self.sequence, 33),
+            34 => body!(self.sequence, 34),
+            35 => body!(self.sequence, 35),
+            36 => body!(self.sequence, 36),
+            37 => body!(self.sequence, 37),
+            38 => body!(self.sequence, 38),
+            39 => body!(self.sequence, 39),
+            40 => body!(self.sequence, 40),
+            41 => body!(self.sequence, 41),
+            42 => body!(self.sequence, 42),
+            _ => Err(Error::InvalidKmerSize),
+        }
+    }
+
+    pub fn get_kmer_map_or_panic(
+        &self,
+        k: usize,
+        cutoff: f64,
+    ) -> (HashMap<usize, f64>, f64) {
+        self.get_kmer_map(k, cutoff).expect("Only k ∈ {{2, ..., 42}} is currently supported")
     }
 
     pub fn from_fastq_record_ignore_desc(value: &fastq::Record) -> Self {
@@ -82,6 +189,12 @@ impl core::fmt::Debug for MyrSeq {
             )
         }
     }
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Only k ∈ {{2, ..., 42}} is currently supported")]
+    InvalidKmerSize,
 }
 
 #[cfg(test)]

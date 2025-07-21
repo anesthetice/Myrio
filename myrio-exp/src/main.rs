@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
     ]
     .concat();
 
-    let clusters = clustering::method_one(myrseqs.clone(), clustering::cosine_similarity);
+    let clusters = clustering::method_one(myrseqs.clone(), 5, clustering::cosine_similarity)?;
 
     for (idx, cluster) in clusters.iter().enumerate() {
         ///*
@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
     std::thread::sleep(std::time::Duration::from_micros(3000));
     println!("\n\n");
 
-    let clusters = clustering::method_two(myrseqs, clustering::cosine_similarity);
+    let clusters = clustering::method_two(myrseqs, 5, clustering::cosine_similarity)?;
 
     for (idx, cluster) in clusters.iter().enumerate() {
         //*/

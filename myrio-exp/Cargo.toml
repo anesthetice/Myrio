@@ -11,7 +11,7 @@ default-run = "myrio-exp"
 myrio-core = { workspace = true }
 # external
 anyhow = { workspace = true }
-argmin = { version = "0.10" }
+argmin = { version = "0.10", features = ["rayon"] }
 bio = { workspace = true }
 bio-seq = { workspace = true }
 bytemuck = { version = "1.23" }

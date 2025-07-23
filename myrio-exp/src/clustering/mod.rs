@@ -2,28 +2,28 @@
 pub mod testing;
 
 // Imports
-use std::{collections::HashMap, ops::AddAssign};
+use std::collections::HashMap;
 
 use anyhow::bail;
-use bio_seq::{ReverseComplement, seq::SeqSlice};
 use itertools::Itertools;
-use myrio_core::{MyrSeq, constants::Q_TO_BP_CALL_CORRECT_PROB_MAP};
+use myrio_core::MyrSeq;
 
 /// Inspired by isONclust3's method, with quite a few differences, notably we use k-mers instead of minimizers as our expected amplicon length isn't very high (~300-1000 bp). Also we do not neglect `low quality seeds`, we instead assign a quality score to each k-mer that defines its 'strength'.
 pub fn method_one(
     myrseqs: Vec<MyrSeq>,
     k: usize,
+    t1_cutoff: f64,
+    t2_cutoff: f64,
     similarity_function: fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
 ) -> anyhow::Result<Vec<Vec<MyrSeq>>> {
     if !MyrSeq::K_VALID_RANGE.contains(&k) {
-        bail!("Only k ∈ {{2, ..., 42}} is currently supported")
+        bail!(MyrSeq::K_VALID_RANGE_ERROR_MSG);
     }
     // Step 1
-    const T1_CUTOFF: f64 = 0.8;
     let mut myrseqs_extra = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let (map, nb_HCS_weighted) = myrseq.get_kmer_map_or_panic(k, T1_CUTOFF);
+            let (map, nb_HCS_weighted) = myrseq.get_kmer_map_or_panic(k, t1_cutoff);
             (myrseq, map, nb_HCS_weighted)
         })
         .sorted_by(|(.., a), (.., b)| a.total_cmp(b)) // ascending order
@@ -44,7 +44,7 @@ pub fn method_one(
     while let Some((myrseq, seeds, _)) = myrseqs_extra.pop() {
         match clusters
             .iter_mut()
-            .find(|cluster| similarity_function(&seeds, &cluster.reference_seeds) > T2_CUTOFF)
+            .find(|cluster| similarity_function(&seeds, &cluster.reference_seeds) > t2_cutoff)
         {
             Some(cluster) => cluster.elements.push(myrseq),
             None => clusters.push(Cluster { reference_seeds: seeds, elements: vec![myrseq] }),
@@ -58,10 +58,12 @@ pub fn method_one(
 pub fn method_two(
     myrseqs: Vec<MyrSeq>,
     k: usize,
+    t1_cutoff: f64,
+    t2_cutoff: f64,
     similarity_function: fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
 ) -> anyhow::Result<Vec<Vec<MyrSeq>>> {
     if !MyrSeq::K_VALID_RANGE.contains(&k) {
-        bail!("Only k ∈ {{2, ..., 42}} is currently supported")
+        bail!(MyrSeq::K_VALID_RANGE_ERROR_MSG);
     }
 
     struct Cluster {
@@ -84,17 +86,15 @@ pub fn method_two(
     }
 
     // Step 1
-    const T1_CUTOFF: f64 = 0.7;
     let mut clusters: Vec<Cluster> = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let (map, _) = myrseq.get_kmer_map_or_panic(k, T1_CUTOFF);
+            let (map, _) = myrseq.get_kmer_map_or_panic(k, t1_cutoff);
             Cluster { seeds: map, elements: vec![myrseq] }
         })
         .collect_vec();
 
     // Step 2
-    const T2_CUTOFF: f64 = 0.65;
     let mut halt = false;
     while !halt {
         halt = true;
@@ -102,7 +102,7 @@ pub fn method_two(
         while i < clusters.len() {
             let mut j = i + 1;
             while j < clusters.len() {
-                if similarity_function(&clusters[i].seeds, &clusters[j].seeds) > T2_CUTOFF {
+                if similarity_function(&clusters[i].seeds, &clusters[j].seeds) > t2_cutoff {
                     halt = false;
                     let cluster_to_be_merged = clusters.remove(j);
                     clusters[i].merge(cluster_to_be_merged);

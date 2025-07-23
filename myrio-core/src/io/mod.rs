@@ -1,5 +1,3 @@
-// TODO: add line index to FastqParsingError
-
 // Imports
 use std::{
     io::{Read, Write},
@@ -68,8 +66,7 @@ pub fn write_fastq_to_file<Q: AsRef<Path>>(
         myrseqs,
         compression,
     )?;
-    file.sync_all()?;
-    Ok(())
+    file.sync_all().map_err(Error::from)
 }
 
 pub fn write_fastq<W: Write>(
@@ -243,7 +240,7 @@ mod test {
     }
 
     #[test]
-    fn read_write_fastq_round_trip() {
+    fn read_write_fastq_round_trip_test() {
         let myrseqs = [
             MyrSeq::create("1", None, dna!("ACCTTTGGGCCC"), &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
             MyrSeq::create("2", Some("test"), dna!("ACCTTTGGGC"), &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),

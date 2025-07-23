@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.14.10"
+__generated_with = "0.14.12"
 app = marimo.App(width="medium")
 
 
@@ -11,6 +11,7 @@ def _():
     import matplotlib.pyplot as plt
     import numpy as np
     import polars as pl
+    import pymsaviz
     import scipy as sp
     from scipy import stats
     import seaborn as sns
@@ -22,7 +23,7 @@ def _():
     plt.rcParams["xtick.labelsize"] = 9
     plt.rcParams["ytick.labelsize"] = 9
     plt.rcParams["legend.fontsize"] = 10
-    return SeqIO, mo, np, pl, plt
+    return SeqIO, mo, np, pl, plt, pymsaviz
 
 
 @app.cell
@@ -58,7 +59,7 @@ def _(SeqIO, data_df, np, pl, plt):
 
         ax.bar(np.arange(128), freqs)
 
-        ax: plt.Axes = ax
+        ax: plt.Axes = ax2
         ax.set_xlabel("Q-score clean")
         ax.set_ylabel("frequency")
         ax.set_xlim(0, 41)
@@ -197,7 +198,19 @@ def _(b, np, plt):
 
 
 @app.cell
-def _():
+def _(pymsaviz):
+    def _():
+        msa_file = open("data/3.fasta", "r")
+        mv = pymsaviz.MsaViz(msa_file, show_consensus=True, show_count=True)
+        return mv.savefig("out2.png")
+
+    _()
+    return
+
+
+@app.cell
+def _(y8):
+    y8
     return
 
 

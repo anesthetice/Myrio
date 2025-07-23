@@ -2,6 +2,7 @@
 use std::{
     collections::HashMap,
     ops::{AddAssign, Range},
+    path::Path,
 };
 
 use bio::io::fastq;
@@ -15,8 +16,9 @@ use thiserror::Error;
 
 use crate::constants::Q_TO_BP_CALL_CORRECT_PROB_MAP;
 
+/// The main data structure used by Myrio
 #[cfg_attr(test, derive(PartialEq))]
-#[derive(Clone)]
+#[derive(Clone, bincode::Encode, bincode::Decode)]
 pub struct MyrSeq {
     /// Sequence identifier
     pub id: String,
@@ -24,7 +26,7 @@ pub struct MyrSeq {
     pub description: Option<String>,
     /// Bitpacked sequence of nucleotides
     pub sequence: Seq<DnaCodec>,
-    /// Associated 'Phred Quality Score' of each nucleotide
+    /// Associated 'Quality Score' of each nucleotide
     pub quality: Vec<u8>,
 }
 
@@ -41,6 +43,7 @@ impl From<&fastq::Record> for MyrSeq {
 
 impl MyrSeq {
     pub const K_VALID_RANGE: Range<usize> = 2..43;
+    pub const K_VALID_RANGE_ERROR_MSG: &'static str = "Only k ∈ {{2, ..., 42}} is currently supported";
 
     pub fn new(
         id: String,
@@ -157,7 +160,7 @@ impl MyrSeq {
         k: usize,
         cutoff: f64,
     ) -> (HashMap<usize, f64>, f64) {
-        self.get_kmer_map(k, cutoff).expect("Only k ∈ {{2, ..., 42}} is currently supported")
+        self.get_kmer_map(k, cutoff).expect(Self::K_VALID_RANGE_ERROR_MSG)
     }
 
     pub fn from_fastq_record_ignore_desc(value: &fastq::Record) -> Self {
@@ -167,6 +170,44 @@ impl MyrSeq {
             sequence: value.seq().try_into().unwrap(),
             quality: value.qual().iter().map(|a| a.saturating_sub(33)).collect(),
         }
+    }
+
+    pub fn encode_vec<W: std::io::Write>(
+        myrseqs: &[MyrSeq],
+        compression_level: i32,
+        output: W,
+    ) -> Result<W, Error> {
+        let config = bincode::config::standard();
+        let mut encoder = zstd::Encoder::new(output, compression_level)?;
+        bincode::encode_into_std_write(myrseqs, &mut encoder, config)?;
+        encoder.finish().map_err(Error::from)
+    }
+
+    pub fn encode_vec_to_file<Q: AsRef<Path>>(
+        filepath: Q,
+        myrseqs: &[MyrSeq],
+        compression_level: i32,
+    ) -> Result<(), Error> {
+        let filepath = filepath.as_ref();
+
+        let file = Self::encode_vec(
+            myrseqs,
+            compression_level,
+            std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(filepath)?,
+        )?;
+
+        file.sync_all().map_err(Error::from)
+    }
+
+    pub fn decode_vec<R: std::io::Read>(input: R) -> Result<Vec<MyrSeq>, Error> {
+        let config = bincode::config::standard();
+        let mut decoder = zstd::Decoder::new(input)?;
+        bincode::decode_from_std_read(&mut decoder, config).map_err(Error::from)
+    }
+
+    pub fn decode_vec_from_file<Q: AsRef<Path>>(filepath: Q) -> Result<Vec<MyrSeq>, Error> {
+        let filepath: &Path = filepath.as_ref();
+        Self::decode_vec(std::fs::OpenOptions::new().read(true).open(filepath)?)
     }
 }
 
@@ -193,7 +234,13 @@ impl core::fmt::Debug for MyrSeq {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Only k ∈ {{2, ..., 42}} is currently supported")]
+    #[error(transparent)]
+    BincodeDecodeError(#[from] bincode::error::DecodeError),
+    #[error(transparent)]
+    BincodeEncodeError(#[from] bincode::error::EncodeError),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error("{}", MyrSeq::K_VALID_RANGE_ERROR_MSG)]
     InvalidKmerSize,
 }
 
@@ -221,5 +268,20 @@ mod test {
         assert_eq!(myrseq.quality.as_slice(), &[0, 15, 25, 40]);
         assert_eq!(myrseq.id.as_str(), "1");
         assert_eq!(myrseq.description, None);
+    }
+
+    #[test]
+    pub fn encode_decode_round_trip_test() {
+        let myrseqs = [
+            MyrSeq::create("1", None, dna!("ACCTTTGGGCCC"), &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+            MyrSeq::create("2", Some("test"), dna!("ACCTTTGGGC"), &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        ];
+
+        let reconstructed_myrseqs = {
+            let data = MyrSeq::encode_vec(&myrseqs, 3, Vec::new()).unwrap();
+            MyrSeq::decode_vec(data.as_slice()).unwrap()
+        };
+
+        assert_eq!(myrseqs, reconstructed_myrseqs.as_slice())
     }
 }

@@ -23,14 +23,13 @@ pub fn method_one(
     let mut myrseqs_extra = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let (map, nb_HCS_weighted) = myrseq.get_kmer_map_or_panic(k, t1_cutoff);
+            let (map, nb_HCS_weighted) = myrseq.compute_kmer_map_or_panic(k, t1_cutoff);
             (myrseq, map, nb_HCS_weighted)
         })
         .sorted_by(|(.., a), (.., b)| a.total_cmp(b)) // ascending order
         .collect_vec();
 
     // Step 2
-    const T2_CUTOFF: f64 = 0.55;
     struct Cluster {
         reference_seeds: HashMap<usize, f64>,
         elements: Vec<MyrSeq>,
@@ -89,7 +88,7 @@ pub fn method_two(
     let mut clusters: Vec<Cluster> = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let (map, _) = myrseq.get_kmer_map_or_panic(k, t1_cutoff);
+            let (map, _) = myrseq.compute_kmer_map_or_panic(k, t1_cutoff);
             Cluster { seeds: map, elements: vec![myrseq] }
         })
         .collect_vec();

@@ -6,6 +6,9 @@ edition.workspace = true
 readme = "README.md"
 
 [dependencies]
+# internal
+myrio-proc = { workspace = true }
+# external
 bio = { workspace = true }
 bio-seq = { workspace = true }
 bincode = { version = "2.0" }

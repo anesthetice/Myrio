@@ -4,6 +4,7 @@ members = [
     "myrio-core",
     "myrio-cli",
     "myrio-exp",
+    "myrio-proc",
 ]
 resolver = "2"
 
@@ -16,8 +17,9 @@ version = "0.1.0"
 
 [workspace.dependencies]
 myrio-core = { version = "0.1.0", path = "myrio-core" }
+myrio-proc = { version = "0.1.0", path = "myrio-proc" }
 
-anyhow = { version = "1" }
+anyhow = { version = "1.0" }
 bio = { version = "2.3" }
 bio-seq = { git = "https://github.com/anesthetice/bio-seq.git" }
 itertools = { version = "0.14" }

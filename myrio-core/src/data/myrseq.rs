@@ -7,16 +7,17 @@ use std::{
 
 use bio::io::fastq;
 use bio_seq::{
+    ReverseComplement,
     codec::dna::Dna as DnaCodec,
-    prelude::*,
     seq::{Seq, SeqSlice},
 };
 use itertools::Itertools;
+use myrio_proc::match_k;
 use thiserror::Error;
 
 use crate::constants::Q_TO_BP_CALL_CORRECT_PROB_MAP;
 
-/// The main data structure used by Myrio
+/// The main data structure used by Myrio, an efficient representation of an FASTQ record
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Clone, bincode::Encode, bincode::Decode)]
 pub struct MyrSeq {
@@ -45,6 +46,7 @@ impl MyrSeq {
     pub const K_VALID_RANGE: Range<usize> = 2..43;
     pub const K_VALID_RANGE_ERROR_MSG: &'static str = "Only k ∈ {{2, ..., 42}} is currently supported";
 
+    /// Create a new MyrSeq from owned parameters
     pub fn new(
         id: String,
         desc: Option<String>,
@@ -54,6 +56,7 @@ impl MyrSeq {
         Self { id, description: desc, sequence: seq, quality: qual }
     }
 
+    /// Create a new MyrSeq from borrowed parameters, useful for creating tests
     pub fn create(
         id: &str,
         desc: Option<&str>,
@@ -68,7 +71,8 @@ impl MyrSeq {
         }
     }
 
-    pub fn get_kmer_map(
+    /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `f64` values which correspond to the weighted number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are counted, and these are weighted by the quality score.
+    pub fn compute_kmer_map(
         &self,
         k: usize,
         cutoff: f64,
@@ -109,58 +113,15 @@ impl MyrSeq {
             }};
         }
 
-        match k {
-            2 => body!(self.sequence, 2),
-            3 => body!(self.sequence, 3),
-            4 => body!(self.sequence, 4),
-            5 => body!(self.sequence, 5),
-            6 => body!(self.sequence, 6),
-            7 => body!(self.sequence, 7),
-            8 => body!(self.sequence, 8),
-            9 => body!(self.sequence, 9),
-            10 => body!(self.sequence, 10),
-            11 => body!(self.sequence, 11),
-            12 => body!(self.sequence, 12),
-            13 => body!(self.sequence, 13),
-            14 => body!(self.sequence, 14),
-            15 => body!(self.sequence, 15),
-            16 => body!(self.sequence, 16),
-            17 => body!(self.sequence, 17),
-            18 => body!(self.sequence, 18),
-            19 => body!(self.sequence, 19),
-            20 => body!(self.sequence, 20),
-            21 => body!(self.sequence, 21),
-            22 => body!(self.sequence, 22),
-            23 => body!(self.sequence, 23),
-            24 => body!(self.sequence, 24),
-            25 => body!(self.sequence, 25),
-            26 => body!(self.sequence, 26),
-            27 => body!(self.sequence, 27),
-            28 => body!(self.sequence, 28),
-            29 => body!(self.sequence, 29),
-            30 => body!(self.sequence, 30),
-            31 => body!(self.sequence, 31),
-            32 => body!(self.sequence, 32),
-            33 => body!(self.sequence, 33),
-            34 => body!(self.sequence, 34),
-            35 => body!(self.sequence, 35),
-            36 => body!(self.sequence, 36),
-            37 => body!(self.sequence, 37),
-            38 => body!(self.sequence, 38),
-            39 => body!(self.sequence, 39),
-            40 => body!(self.sequence, 40),
-            41 => body!(self.sequence, 41),
-            42 => body!(self.sequence, 42),
-            _ => Err(Error::InvalidKmerSize),
-        }
+        match_k!(self.sequence)
     }
 
-    pub fn get_kmer_map_or_panic(
+    pub fn compute_kmer_map_or_panic(
         &self,
         k: usize,
         cutoff: f64,
     ) -> (HashMap<usize, f64>, f64) {
-        self.get_kmer_map(k, cutoff).expect(Self::K_VALID_RANGE_ERROR_MSG)
+        self.compute_kmer_map(k, cutoff).expect(Self::K_VALID_RANGE_ERROR_MSG)
     }
 
     pub fn from_fastq_record_ignore_desc(value: &fastq::Record) -> Self {

@@ -5,11 +5,9 @@ use argmin::{
     solver::{linesearch::MoreThuenteLineSearch, quasinewton::LBFGS},
 };
 use itertools::Itertools;
-use myrio_core::MyrSeq;
+use myrio_core::{MyrSeq, simseq::Generator};
 use ndarray::{Array1, array};
 use rand::SeedableRng;
-
-use crate::simseq::generate_pseudo_amplicon;
 
 const EPS_GRAD: f64 = 1e-2;
 
@@ -113,16 +111,17 @@ pub fn run() -> anyhow::Result<()> {
 
 pub fn _generate_and_save_random_sequences_for_cluster_testing() {
     let mut rng = rand::rngs::StdRng::from_os_rng();
+    let generator = Generator::default();
 
     let myrseqs: Vec<MyrSeq> = [
         // ITS
-        generate_pseudo_amplicon(&mut rng, 588, 150, "1"),
+        generator.generate_pseudo_amplicon(588, 150, "1", &mut rng),
         // matK
-        generate_pseudo_amplicon(&mut rng, 1500, 150, "2"),
+        generator.generate_pseudo_amplicon(1500, 150, "2", &mut rng),
         // rbcL
-        generate_pseudo_amplicon(&mut rng, 1431, 150, "3"),
+        generator.generate_pseudo_amplicon(1431, 150, "3", &mut rng),
         // trnH-psbA
-        generate_pseudo_amplicon(&mut rng, 1058, 150, "4"),
+        generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
     ]
     .concat();
 

@@ -8,7 +8,7 @@ use anyhow::bail;
 use itertools::Itertools;
 use myrio_core::MyrSeq;
 
-/// Inspired by isONclust3's method, with quite a few differences, notably we use k-mers instead of minimizers as our expected amplicon length isn't very high (~300-1000 bp). Also we do not neglect `low quality seeds`, we instead assign a quality score to each k-mer that defines its 'strength'.
+/// Based off the clustering method used by `isONclust3`; notably, we use k-mers instead of minimizers as our expected amplicon length isn't very high (<2000 bp).
 pub fn method_one(
     myrseqs: Vec<MyrSeq>,
     k: usize,
@@ -23,10 +23,10 @@ pub fn method_one(
     let mut myrseqs_extra = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let (map, nb_HCS_weighted) = myrseq.compute_kmer_map_or_panic(k, t1_cutoff);
-            (myrseq, map, nb_HCS_weighted)
+            let (map, nb_hck) = myrseq.compute_kmer_map_or_panic(k, t1_cutoff);
+            (myrseq, map, nb_hck)
         })
-        .sorted_by(|(.., a), (.., b)| a.total_cmp(b)) // ascending order
+        .sorted_by(|(.., a), (.., b)| a.cmp(b)) // ascending order
         .collect_vec();
 
     // Step 2

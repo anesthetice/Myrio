@@ -71,12 +71,12 @@ impl MyrSeq {
         }
     }
 
-    /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `f64` values which correspond to the weighted number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are counted, and these are weighted by the quality score.
+    /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `f64` values which correspond to the weighted number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are used.
     pub fn compute_kmer_map(
         &self,
         k: usize,
         cutoff: f64,
-    ) -> Result<(HashMap<usize, f64>, f64), Error> {
+    ) -> Result<(HashMap<usize, f64>, usize), Error> {
         let conf_score_per_kmer = self
             .quality
             .iter()
@@ -89,9 +89,7 @@ impl MyrSeq {
         macro_rules! body {
             ($seq:expr, $K:expr) => {{
                 let nb_kmers = $seq.len() - $K + 1;
-
-                #[allow(non_snake_case)]
-                let mut nb_HCS_weighted: f64 = 0.0;
+                let mut nb_hck: usize = 0; // number of high-quality k-mers
                 let mut map: HashMap<usize, f64> = HashMap::new();
 
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
@@ -99,17 +97,17 @@ impl MyrSeq {
                     let conf_score = conf_score_per_kmer[idx];
                     if conf_score > cutoff {
                         let val_ref = map.entry(usize::from(&kmer)).or_default();
-                        nb_HCS_weighted += conf_score;
+                        nb_hck += 1;
                         val_ref.add_assign(conf_score)
                     }
                     let conf_score = conf_score_per_kmer[nb_kmers - 1 - idx];
                     if conf_score > cutoff {
                         let val_ref = map.entry(usize::from(&kmer_rc)).or_default();
-                        nb_HCS_weighted += conf_score;
+                        nb_hck += 1;
                         val_ref.add_assign(conf_score)
                     }
                 }
-                Ok((map, nb_HCS_weighted))
+                Ok((map, nb_hck))
             }};
         }
 
@@ -120,7 +118,7 @@ impl MyrSeq {
         &self,
         k: usize,
         cutoff: f64,
-    ) -> (HashMap<usize, f64>, f64) {
+    ) -> (HashMap<usize, f64>, usize) {
         self.compute_kmer_map(k, cutoff).expect(Self::K_VALID_RANGE_ERROR_MSG)
     }
 

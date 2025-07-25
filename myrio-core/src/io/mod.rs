@@ -260,4 +260,37 @@ mod test {
         };
         assert_eq!(myrseqs, myrseqs_zstd.as_slice());
     }
+
+    #[test]
+    fn read_fastq_error_test() {
+        let input_1 = indoc! {"
+            1
+            ACCTTTGGGCCC
+            +
+            !\"#$%&'()*+,
+        "};
+        let error_1 = read_fastq(input_1.as_bytes(), &CompressionMethod::None).unwrap_err();
+
+        assert!(match error_1 {
+            Error::Parse(FastqParsingError::MissingAt(val)) => val == 1,
+            _ => false,
+        });
+
+        let input_2 = indoc! {"
+            @1
+            ACCTTTGGGCCC
+            +
+            !\"#$%&'()*+,
+            @2
+            ACGT
+            +
+            !\"#$%&'()*+,
+        "};
+        let error_2 = read_fastq(input_2.as_bytes(), &CompressionMethod::None).unwrap_err();
+
+        assert!(match error_2 {
+            Error::Parse(FastqParsingError::SeqQualLengthMismatch(val)) => val == 5,
+            _ => false,
+        });
+    }
 }

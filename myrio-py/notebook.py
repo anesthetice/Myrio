@@ -46,9 +46,12 @@ def _(SeqIO, data_df, np, pl, plt):
 
         counts = np.zeros(128)  # Phred quality score goes from 0 to 40
         for filepath in df["filepath"]:
+            file_counts = np.zeros(128)
             # fastq is equivalent to fastq-sanger → Phred quality score
             for record in SeqIO.parse(filepath, "fastq"):
-                counts += np.bincount(record.letter_annotations["phred_quality"], minlength=128)
+                file_counts += np.bincount(record.letter_annotations["phred_quality"], minlength=128)
+            counts += file_counts
+            print(f"{filepath} : {np.sum(file_counts * np.arange(128))/np.sum(file_counts)}")
         freqs = counts / np.sum(counts)
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 5))
@@ -203,6 +206,7 @@ def _(pymsaviz):
         msa_file = open("data/3.fasta", "r")
         mv = pymsaviz.MsaViz(msa_file, show_consensus=True, show_count=True)
         return mv.savefig("out2.png")
+
 
     _()
     return

@@ -57,6 +57,7 @@ impl NegativeBinomial {
 
         Ok(NegativeBinomial { r, p })
     }
+
     pub fn p(&self) -> f64 {
         self.p
     }

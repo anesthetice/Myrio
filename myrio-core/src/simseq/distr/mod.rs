@@ -5,10 +5,8 @@ pub mod poisson;
 
 // Imports
 use itertools::Itertools;
-use nbin::NegativeBinomial as NBinDistr;
-use nbin::NegativeBinomialError;
-use poisson::Poisson as PoissonDistr;
-use poisson::PoissonError;
+use nbin::{NegativeBinomial as NBinDistr, NegativeBinomialError};
+use poisson::{Poisson as PoissonDistr, PoissonError};
 use rand::distr::Distribution;
 
 #[derive(Debug, Clone)]

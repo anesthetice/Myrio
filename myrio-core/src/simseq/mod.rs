@@ -2,17 +2,17 @@
 pub mod distr;
 
 // Imports
-use bio_seq::prelude::*;
-use itertools::Itertools;
-use rand::distr::Distribution;
-use rand::seq::IndexedRandom;
 use std::ops::SubAssign;
+
+use bio_seq::prelude::*;
+use distr::{DiscreteDistribution, sample_multiple};
+use itertools::Itertools;
+use rand::{distr::Distribution, seq::IndexedRandom};
 
 use crate::{
     MyrSeq,
     constants::{MAX_Q_SCORE, MIN_Q_SCORE},
 };
-use distr::{DiscreteDistribution, sample_multiple};
 
 #[derive(Debug)]
 pub struct Generator {
@@ -34,12 +34,11 @@ impl Default for Generator {
 }
 
 impl Generator {
+    /// `x = 0` is at index `3`
+    const ADJUSTMENT: usize = 3;
     /// Represents a simple distribution of how q-scores are offset within a block of q-scores from the main q-score
     const Q_SCORE_INNER_BLOCK_OFFSET_DISTR: DiscreteDistribution =
         DiscreteDistribution::new_cdf(&[0.05, 0.15, 0.30, 0.70, 0.85, 0.95, 1.0]);
-
-    /// `x = 0` is at index `3`
-    const ADJUSTMENT: usize = 3;
 
     pub fn with_coding_to_template_ratio_bounds(
         self,

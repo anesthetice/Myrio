@@ -23,7 +23,7 @@ def _():
     plt.rcParams["xtick.labelsize"] = 9
     plt.rcParams["ytick.labelsize"] = 9
     plt.rcParams["legend.fontsize"] = 10
-    return SeqIO, mo, np, pl, plt, pymsaviz
+    return SeqIO, mo, np, pl, plt, pymsaviz, stats
 
 
 @app.cell
@@ -80,6 +80,47 @@ def _(SeqIO, data_df, np, pl, plt):
     print(Q_score_freqs_cummul_clean)
 
     _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## Read Length Histogram""")
+    return
+
+
+@app.cell
+def _(SeqIO, data_df, np, pl, plt, stats):
+    def _():
+        df = data_df.filter(pl.col("filepath").str.ends_with(".fastq"))
+
+        rl_counts = np.zeros(2001)
+        for filepath in df["filepath"]:
+            # fastq is equivalent to fastq-sanger → Phred quality score
+            counts = np.bincount(
+                [len(record.seq) for record in SeqIO.parse(filepath, "fastq")], minlength=2001
+            )
+            if len(counts) > 2001:
+                counts[2000] += np.sum(counts[2001:])
+                counts = counts[0:2001]
+            rl_counts += counts
+
+        freqs = rl_counts / np.sum(rl_counts)
+
+        fig, ax1 = plt.subplots(1, 1, figsize=(12, 5))
+        ax: plt.Axes = ax1
+        ax.set_xlabel("Read length (bp)")
+        ax.set_ylabel("$f$")
+        ax.set_xlim(0, 2000)
+        ax.bar(np.arange(2001), freqs)
+
+        ax.plot(np.arange(2001), stats.nbinom.pmf(np.arange(2001), 40, 0.1))
+
+        fig.tight_layout()
+        return fig
+
+
+    _()
     return
 
 
@@ -201,6 +242,11 @@ def _(b, np, plt):
 
 
 @app.cell
+def _():
+    return
+
+
+@app.cell(disabled=True)
 def _(pymsaviz):
     def _():
         msa_file = open("data/3.fasta", "r")
@@ -209,12 +255,6 @@ def _(pymsaviz):
 
 
     _()
-    return
-
-
-@app.cell
-def _(y8):
-    y8
     return
 
 

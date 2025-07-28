@@ -12,30 +12,56 @@ use crate::{
     MyrSeq,
     constants::{MAX_Q_SCORE, MIN_Q_SCORE},
 };
-use distr::{FloatDistribution, UsizeDistribution, sample_multiple};
+use distr::{DiscreteDistribution, sample_multiple};
 
 #[derive(Debug)]
 pub struct Generator {
     pub coding_to_template_ratio_bounds: (f64, f64),
-    pub q_score_distr: UsizeDistribution,
-    pub q_score_block_size_distr: UsizeDistribution,
-    pub q_score_block_inner_std_dev: f64,
+    pub q_score_distr: DiscreteDistribution,
+    pub q_score_block_size_distr: DiscreteDistribution,
 }
 
 impl Default for Generator {
     fn default() -> Self {
         Self {
-            coding_to_template_ratio_bounds: (0.3, 0.7),
-            q_score_distr: UsizeDistribution::new_cdf(&crate::constants::Q_SCORE_CUMMUL_FREQ),
-            q_score_block_size_distr: UsizeDistribution::new_cdf(
-                &crate::constants::Q_SCORE_BLOCK_SIZE_CUMMUL_FREQ,
+            coding_to_template_ratio_bounds: (0.35, 0.65),
+            q_score_distr: DiscreteDistribution::new_cdf(&crate::constants::OBSERVED_Q_SCORE_CUMMUL_FREQ),
+            q_score_block_size_distr: DiscreteDistribution::new_cdf(
+                &crate::constants::OBSERVED_Q_SCORE_BLOCK_SIZE_CUMMUL_FREQ,
             ),
-            q_score_block_inner_std_dev: 2.0,
         }
     }
 }
 
 impl Generator {
+    /// Represents a simple distribution of how q-scores are offset within a block of q-scores from the main q-score
+    const Q_SCORE_INNER_BLOCK_OFFSET_DISTR: DiscreteDistribution =
+        DiscreteDistribution::new_cdf(&[0.05, 0.15, 0.30, 0.70, 0.85, 0.95, 1.0]);
+
+    /// `x = 0` is at index `3`
+    const ADJUSTMENT: usize = 3;
+
+    pub fn with_coding_to_template_ratio_bounds(
+        self,
+        bounds: (f64, f64),
+    ) -> Self {
+        Self { coding_to_template_ratio_bounds: bounds, ..self }
+    }
+
+    pub fn with_q_score_distr(
+        self,
+        distr: DiscreteDistribution,
+    ) -> Self {
+        Self { q_score_distr: distr, ..self }
+    }
+
+    pub fn with_q_score_block_size_distr(
+        self,
+        distr: DiscreteDistribution,
+    ) -> Self {
+        Self { q_score_block_size_distr: distr, ..self }
+    }
+
     pub fn generate_pseudo_amplicon(
         &self,
         length: usize,
@@ -79,17 +105,13 @@ impl Generator {
                 for block_size in block_sizes.into_iter() {
                     let central_q_score = self.q_score_distr.sample_single(rng);
                     q_scores.extend(
-                        sample_multiple::<f64>(
-                            block_size,
-                            &rand_distr::Normal::new(
-                                central_q_score as f64,
-                                self.q_score_block_inner_std_dev,
-                            )
-                            .unwrap(),
-                            rng,
-                        )
-                        .into_iter()
-                        .map(|val| (val.round() as u8).clamp(MIN_Q_SCORE, MAX_Q_SCORE)),
+                        Self::Q_SCORE_INNER_BLOCK_OFFSET_DISTR
+                            .sample_multiple(block_size, rng)
+                            .into_iter()
+                            .map(|val| {
+                                ((val + central_q_score).saturating_sub(Self::ADJUSTMENT) as u8)
+                                    .clamp(MIN_Q_SCORE, MAX_Q_SCORE)
+                            }),
                     )
                 }
 

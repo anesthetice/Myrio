@@ -21,7 +21,6 @@ pub struct Generator {
     pub q_score_distr: DiscreteDistribution,
     pub q_score_block_size_distr: DiscreteDistribution,
     pub indel_insertion_snp_error_weights: (f64, f64, f64),
-    pub window_length_distr: DiscreteDistribution,
 }
 
 impl Default for Generator {
@@ -113,11 +112,27 @@ impl Generator {
         .unwrap()
         .sample(&mut *rng);
 
+        let w_size_distr =
+            DiscreteDistribution::new_nbin_from_mean_and_std(0.6 * length as f64, 0.15 * length as f64)
+                .unwrap();
+
         // Main generation step
         sample_multiple(amount, &rand::distr::Bernoulli::new(forward_seq_ratio).unwrap(), rng)
             .into_iter()
             .map(|is_forward| {
-                let mut seq = if is_forward { core_seq.clone() } else { core_seq_rc.clone() };
+                let window_range: std::ops::Range<usize> = {
+                    // generate window size
+                    let window_size = w_size_distr.sample_single(rng).clamp(10, length);
+                    // generate window starting index
+                    let idx = rng.random_range(0..=length - window_size);
+                    idx..idx + window_size
+                };
+
+                let mut seq = if is_forward {
+                    core_seq[window_range.clone()].to_owned()
+                } else {
+                    core_seq_rc[window_range.clone()].to_owned()
+                };
 
                 // generate the block sizes of the quality scores
                 let mut sum: usize = 0;
@@ -207,7 +222,7 @@ impl Generator {
 
                 MyrSeq::new(
                     id.to_string(),
-                    Some(format!("ind={nb_indel_errors},ins={nb_insertion_errors},snp={nb_snp_errors}")),
+                    Some(format!("len={},wrange={window_range:?},ind={nb_indel_errors},ins={nb_insertion_errors},snp={nb_snp_errors}", seq.len())),
                     seq,
                     q_scores,
                 )

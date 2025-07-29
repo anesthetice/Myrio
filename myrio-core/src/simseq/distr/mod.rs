@@ -38,6 +38,15 @@ impl DiscreteDistribution {
         Ok(Self::NBin { inner: NBinDistr::new(r, p)? })
     }
 
+    pub fn new_nbin_from_mean_and_std(
+        mean: f64,
+        std: f64,
+    ) -> Result<Self, NegativeBinomialError> {
+        let r = mean * mean / (std * std - mean);
+        let p = mean / (std * std);
+        Ok(Self::NBin { inner: NBinDistr::new(r, p)? })
+    }
+
     pub fn sample_single(
         &self,
         rng: &mut impl rand::Rng,

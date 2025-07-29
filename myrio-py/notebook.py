@@ -195,25 +195,22 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    The Negative Binomial distribution can be parameterized in terms of:  
+    Let a discrete random variable $X$, distributed by a negative binomial, we can write $X \sim NBin(r, p)$
 
-    - $\mu$ (mean count)
-    - $\alpha$ (overdispersion, with $\alpha = 0$ reducing to Poisson)
+    This $(r, p)$ parametrization is quite common, if $r$ is an integer, then the negative binomial distribution can be thought of as the distribution of the number of failures in a sequence of Bernoulli trials that continue until `r` successes occur, where `p` is the probability of success in a single Bernoulli trial.
 
-    The variance is given by:
-    $\sigma^2 = \mu + \alpha \mu^2$
+    With the above parametrization, the negative log-likelihood function is:  
+    $$\ln L(r, p | y) = \sum_{i} \left\{ \ln \Gamma(y_i + r) - \ln \Gamma(r) - \ln \Gamma(y_i + 1) + r \ln(p) + y_i \ln(1 - p) \right\}$$
 
-    For a sample $x = (x_1, ..., x_n)$, the log-likelihood function is:
-    $\ln L(\mu, \alpha | x) = \sum_{i} \left[ \ln \Gamma(x_i + r) - \ln \Gamma(r) - \ln \Gamma(x_i + 1) + r \ln(p) + x_i \ln(1 - p) \right]$
+    We can also parametrize using the mean $\mu$, and the variance $\sigma^2 \:$:
 
-    where $\Gamma(\cdot)$ is the Gamma function, and:
-    $r = \frac{1}{\alpha}, \quad p = \frac{1}{1 + \alpha \mu}$
+    $$p=\frac{\mu}{\sigma^2} \quad r=\frac{\mu^2}{\sigma^2 - \mu}$$
     """
     )
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(SeqIO, data_df, np, pl, plt, stats):
     def _():
         from scipy.special import gammaln
@@ -226,7 +223,7 @@ def _(SeqIO, data_df, np, pl, plt, stats):
             Parameters
             ----------
             params : tuple
-                tuple containing μ and α
+                tuple containing r and p
             counts : np.ndarray
                 array of shape (N,) containing counts.
 
@@ -235,11 +232,9 @@ def _(SeqIO, data_df, np, pl, plt, stats):
             float
                 Negative log-likelihood
             """
-            mu, alpha = params
-            if mu <= 0 or alpha <= 0:  # Parameter constraints
+            r, p = params
+            if r <= 0 or p <= 0 or p >= 1.0:  # Parameter constraints
                 return np.inf
-            r = 1 / alpha
-            p = 1 / (1 + mu * alpha)
             x = counts
             return -np.sum(gammaln(x + r) - gammaln(r) - gammaln(x + 1) + r * ln(p) + x * ln(1 - p))
 
@@ -253,9 +248,7 @@ def _(SeqIO, data_df, np, pl, plt, stats):
                 ],
                 axis=0,
             )
-            mu_mle, alpha_mle = minimize(fun=nbin_nll, x0=[10, 0.5], args=(data,)).x
-
-            r_mle, p_mle = 1 / alpha_mle, 1 / (1 + mu_mle * alpha_mle)
+            r_mle, p_mle = minimize(fun=nbin_nll, x0=[1, 0.5], args=(data,)).x
 
             x = np.arange(1500)
             data_bincount = np.bincount(data, minlength=1500)[:1500]
@@ -394,7 +387,26 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
+def _(np, plt, stats):
+    def vis_nbin(r, p):
+        rv = stats.nbinom(r, p)
+        fig, ax1 = plt.subplots(1, 1, figsize=(12, 4))
+
+        ax: plt.Axes = ax1
+        ax.set_title(f"$X \\sim NBin({r:.3E}, {p:.3E})$")
+        x = np.arange(0, rv.ppf(0.99))
+        y = rv.pmf(x)
+
+        ax.vlines(x, 0, y, colors="k", linestyles="-", lw=1)
+        ax.plot(x, y, "bo", ms=2)
+
+        fig.tight_layout()
+        return fig
+    return (vis_nbin,)
+
+
+@app.cell(hide_code=True)
 def _(mo):
     r_slider = mo.ui.slider(start=0.5, stop=100, step=0.5, show_value=True, label="r")
     p_slider = mo.ui.slider(start=0.0, stop=1, step=0.001, show_value=True, label="p")
@@ -404,27 +416,59 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, p_slider, plt, r_slider, stats):
+def _(p_slider, r_slider, vis_nbin):
     def _():
         r, p = r_slider.value, p_slider.value
-        rv = stats.nbinom(r, p)
-
-        fig, ax1 = plt.subplots(1, 1, figsize=(12, 4))
-
-        ax: plt.Axes = ax1
-        ax.set_title(f"$X \\sim NBin({r}, {p})$")
-
-        x = np.arange(rv.ppf(0.01), rv.ppf(0.99))
-        y = rv.pmf(x)
-
-        ax.vlines(x, 0, y, colors="k", linestyles="-", lw=1)
-        ax.plot(x, y, "bo", ms=2)
-
-        fig.tight_layout()
-        return fig
+        return vis_nbin(r, p)
 
 
     _()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mean_slider = mo.ui.slider(start=1, stop=1001, step=5, show_value=True, label="mean")
+    std_slider = mo.ui.slider(start=1, stop=2001, step=5, show_value=True, label="std")
+
+    mean_slider, std_slider
+    return mean_slider, std_slider
+
+
+@app.cell(hide_code=True)
+def _(mean_slider, std_slider, vis_nbin):
+    def _():
+        mean, std = mean_slider.value, std_slider.value
+        r = mean * mean / (std * std - mean)
+        p = mean / (std * std)
+        return vis_nbin(r, p)
+
+
+    _()
+    return
+
+
+@app.cell
+def _(mo):
+    val_slider = mo.ui.slider(start=200, stop=2000, step=10, show_value=True, label="length")
+    val_to_mean = 0.4
+    val_to_std = 1
+
+    val_slider
+    return val_slider, val_to_mean, val_to_std
+
+
+@app.cell(hide_code=True)
+def _(val_slider, val_to_mean, val_to_std, vis_nbin):
+    def _():
+        val = val_slider.value
+        mean = val_to_mean * val
+        std = val_to_std * val
+        r = mean * mean / (std * std - mean)
+        p = mean / (std * std)
+        return vis_nbin(r, p)
+
+    _() 
     return
 
 

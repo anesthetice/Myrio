@@ -23,7 +23,7 @@ def _():
     plt.rcParams["xtick.labelsize"] = 9
     plt.rcParams["ytick.labelsize"] = 9
     plt.rcParams["legend.fontsize"] = 10
-    return SeqIO, mo, np, pl, plt, pymsaviz, stats
+    return SeqIO, mo, np, pl, plt, pymsaviz, sns, stats
 
 
 @app.cell
@@ -39,22 +39,40 @@ def _(mo):
     return
 
 
-@app.cell
-def _(SeqIO, data_df, np, pl, plt):
+@app.cell(hide_code=True)
+def _(SeqIO, data_df, mo, np, pl, plt):
     def _():
         df = data_df.filter(pl.col("filepath").str.ends_with(".fastq"))
 
-        counts = np.zeros(128)  # Phred quality score goes from 0 to 40
-        for filepath in df["filepath"]:
-            file_counts = np.zeros(128)
+        qs_counts = np.zeros(128)  # Phred quality score goes from 0 to 40
+        file_qs_avg_seq_mean = []
+        file_qs_lowest_seq_mean = []
+
+        for idx, filepath in enumerate(df["filepath"]):
+            filestem = df["filestem"][idx]
+            file_qs_seq_means = []
             # fastq is equivalent to fastq-sanger → Phred quality score
             for record in SeqIO.parse(filepath, "fastq"):
-                file_counts += np.bincount(record.letter_annotations["phred_quality"], minlength=128)
-            counts += file_counts
-            print(f"{filepath} : {np.sum(file_counts * np.arange(128))/np.sum(file_counts)}")
-        freqs = counts / np.sum(counts)
+                q_scores = np.array(record.letter_annotations["phred_quality"])
+                file_qs_seq_means.append(np.mean(q_scores))
+                qs_counts += np.bincount(q_scores, minlength=128)
+
+            file_qs_avg_seq_mean.append(np.mean(file_qs_seq_means))
+            file_qs_lowest_seq_mean.append(np.min(file_qs_seq_means))
+
+        info_df = pl.DataFrame(
+            data={
+                "filestem": df["filestem"],
+                "avg mean seq Q-score": file_qs_avg_seq_mean,
+                "min mean seq Q-score": file_qs_lowest_seq_mean,
+            }
+        )
+
+        freqs = qs_counts / np.sum(qs_counts)
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 5))
+        fig.suptitle("Q-score distribution")
+
         ax: plt.Axes = ax1
         ax.set_xlabel("Q-score")
         ax.set_ylabel("frequency")
@@ -63,23 +81,22 @@ def _(SeqIO, data_df, np, pl, plt):
         ax.bar(np.arange(128), freqs)
 
         ax: plt.Axes = ax2
-        ax.set_xlabel("Q-score clean")
+        ax.set_xlabel("Q-score (∈ {0,...,40} and normalized)")
         ax.set_ylabel("frequency")
         ax.set_xlim(0, 41)
 
         freqs_clean = freqs[0:41] / np.sum(freqs[0:41])
         ax.bar(np.arange(41), freqs_clean)
 
-        return freqs, freqs_clean, fig
+        return freqs_clean, info_df, fig
 
 
-    Q_score_freqs, Q_score_freqs_clean, _fig = _()
-    Q_score_freqs_cummul_clean = np.cumulative_sum(Q_score_freqs_clean)
+    Q_score_freqs, _info_df, _fig = _()
+    Q_score_freqs_cummul = np.cumulative_sum(Q_score_freqs)
+    print("## Cumulative sum of Q-score frequences (where Q-score ∈ {0,...,40} and normalized)")
+    print(Q_score_freqs_cummul)
 
-    print(Q_score_freqs_clean)
-    print(Q_score_freqs_cummul_clean)
-
-    _fig
+    mo.vstack([_fig, _info_df])
     return
 
 
@@ -89,32 +106,76 @@ def _(mo):
     return
 
 
-@app.cell
-def _(SeqIO, data_df, np, pl, plt, stats):
+@app.cell(hide_code=True)
+def _(SeqIO, data_df, np, pl, plt, sns):
     def _():
         df = data_df.filter(pl.col("filepath").str.ends_with(".fastq"))
 
-        rl_counts = np.zeros(2001)
-        for filepath in df["filepath"]:
-            # fastq is equivalent to fastq-sanger → Phred quality score
-            counts = np.bincount(
-                [len(record.seq) for record in SeqIO.parse(filepath, "fastq")], minlength=2001
+        def gen_tdf(filepaths) -> pl.DataFrame:
+            max_count = 1500
+            rl_counts = np.zeros(max_count + 1)
+            for filepath in filepaths:
+                # fastq is equivalent to fastq-sanger → Phred quality score
+                counts = np.bincount(
+                    [
+                        len(record.seq) if len(record.seq) < max_count else max_count
+                        for record in SeqIO.parse(filepath, "fastq")
+                    ],
+                    minlength=max_count + 1,
+                )
+                rl_counts += counts
+
+            freqs = rl_counts / np.sum(rl_counts)
+
+            return pl.DataFrame(
+                data={
+                    "Read length (bp)": np.arange(max_count + 1),
+                    "freq": freqs,
+                }
             )
-            if len(counts) > 2001:
-                counts[2000] += np.sum(counts[2001:])
-                counts = counts[0:2001]
-            rl_counts += counts
 
-        freqs = rl_counts / np.sum(rl_counts)
+        fig, axes = plt.subplots(2, 2, figsize=(17, 7))
 
-        fig, ax1 = plt.subplots(1, 1, figsize=(12, 5))
-        ax: plt.Axes = ax1
-        ax.set_xlabel("Read length (bp)")
-        ax.set_ylabel("$f$")
-        ax.set_xlim(0, 2000)
-        ax.bar(np.arange(2001), freqs)
+        ax: plt.Axes = axes[0][0]
+        ax.set_title("All (Any combination)")
+        tdf = gen_tdf(df["filepath"])
+        sns.lineplot(data=tdf, x="Read length (bp)", y="freq", ax=ax)
 
-        ax.plot(np.arange(2001), stats.nbinom.pmf(np.arange(2001), 40, 0.1))
+        ax: plt.Axes = axes[0][1]
+        ax.set_title("rbcL only")
+        tdf = gen_tdf(
+            df.filter(
+                pl.col("matk") == False,
+                pl.col("rbcL") == True,
+                pl.col("psbA-trnH") == False,
+                pl.col("ITS") == False,
+            )["filepath"]
+        )
+        sns.lineplot(data=tdf, x="Read length (bp)", y="freq", ax=ax)
+
+        ax: plt.Axes = axes[1][0]
+        ax.set_title("psbA-trnH only")
+        tdf = gen_tdf(
+            df.filter(
+                pl.col("matk") == False,
+                pl.col("rbcL") == False,
+                pl.col("psbA-trnH") == True,
+                pl.col("ITS") == False,
+            )["filepath"]
+        )
+        sns.lineplot(data=tdf, x="Read length (bp)", y="freq", ax=ax)
+
+        ax: plt.Axes = axes[1][1]
+        ax.set_title("ITS only")
+        tdf = gen_tdf(
+            df.filter(
+                pl.col("matk") == False,
+                pl.col("rbcL") == False,
+                pl.col("psbA-trnH") == False,
+                pl.col("ITS") == True,
+            )["filepath"]
+        )
+        sns.lineplot(data=tdf, x="Read length (bp)", y="freq", ax=ax)
 
         fig.tight_layout()
         return fig
@@ -124,7 +185,144 @@ def _(SeqIO, data_df, np, pl, plt, stats):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## Read Length Fit""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    The Negative Binomial distribution can be parameterized in terms of:  
+
+    - $\mu$ (mean count)
+    - $\alpha$ (overdispersion, with $\alpha = 0$ reducing to Poisson)
+
+    The variance is given by:
+    $\sigma^2 = \mu + \alpha \mu^2$
+
+    For a sample $x = (x_1, ..., x_n)$, the log-likelihood function is:
+    $\ln L(\mu, \alpha | x) = \sum_{i} \left[ \ln \Gamma(x_i + r) - \ln \Gamma(r) - \ln \Gamma(x_i + 1) + r \ln(p) + x_i \ln(1 - p) \right]$
+
+    where $\Gamma(\cdot)$ is the Gamma function, and:
+    $r = \frac{1}{\alpha}, \quad p = \frac{1}{1 + \alpha \mu}$
+    """
+    )
+    return
+
+
 @app.cell
+def _(SeqIO, data_df, np, pl, plt, stats):
+    def _():
+        from scipy.special import gammaln
+        from numpy import log as ln
+        from scipy.optimize import minimize
+
+        def nbin_nll(params, counts):
+            """
+            Negative log-likelihood for negative binomial distribution
+            Parameters
+            ----------
+            params : tuple
+                tuple containing μ and α
+            counts : np.ndarray
+                array of shape (N,) containing counts.
+
+            Returns
+            -------
+            float
+                Negative log-likelihood
+            """
+            mu, alpha = params
+            if mu <= 0 or alpha <= 0:  # Parameter constraints
+                return np.inf
+            r = 1 / alpha
+            p = 1 / (1 + mu * alpha)
+            x = counts
+            return -np.sum(gammaln(x + r) - gammaln(r) - gammaln(x + 1) + r * ln(p) + x * ln(1 - p))
+
+        df = data_df.filter(pl.col("filepath").str.ends_with(".fastq"))
+
+        def fit_and_vis(filepaths, ax: plt.Axes):
+            data = np.concat(
+                [
+                    np.array([len(record.seq) for record in SeqIO.parse(filepath, "fastq")])
+                    for filepath in filepaths
+                ],
+                axis=0,
+            )
+            mu_mle, alpha_mle = minimize(fun=nbin_nll, x0=[10, 0.5], args=(data,)).x
+
+            r_mle, p_mle = 1 / alpha_mle, 1 / (1 + mu_mle * alpha_mle)
+
+            x = np.arange(1500)
+            data_bincount = np.bincount(data, minlength=1500)[:1500]
+            y_act = data_bincount / np.sum(data_bincount)
+            y_fit = stats.nbinom.pmf(x, r_mle, p_mle)
+
+            ax.plot(x, y_act, label="Actual")
+            ax.plot(x, y_fit, label=f"PMF of $NBin(r={r_mle:.3E}, p={p_mle:.3E})$")
+            ax.legend(loc="upper right")
+
+        fig, axes = plt.subplots(2, 2, figsize=(17, 7))
+
+        ax: plt.Axes = axes[0][0]
+        ax.set_title("All (Any combination)")
+        fit_and_vis(df["filepath"], ax)
+
+        ax: plt.Axes = axes[0][1]
+        ax.set_title("rbcL only")
+        fit_and_vis(
+            df.filter(
+                pl.col("matk") == False,
+                pl.col("rbcL") == True,
+                pl.col("psbA-trnH") == False,
+                pl.col("ITS") == False,
+            )["filepath"],
+            ax,
+        )
+
+        ax: plt.Axes = axes[1][0]
+        ax.set_title("psbA-trnH only")
+        fit_and_vis(
+            df.filter(
+                pl.col("matk") == False,
+                pl.col("rbcL") == False,
+                pl.col("psbA-trnH") == True,
+                pl.col("ITS") == False,
+            )["filepath"],
+            ax,
+        )
+
+        ax: plt.Axes = axes[1][1]
+        ax.set_title("ITS only")
+        fit_and_vis(
+            df.filter(
+                pl.col("matk") == False,
+                pl.col("rbcL") == False,
+                pl.col("psbA-trnH") == False,
+                pl.col("ITS") == True,
+            )["filepath"],
+            ax,
+        )
+
+        fig.tight_layout()
+        return fig
+
+
+    _()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## Q-score block visualization""")
+    return
+
+
+@app.cell(hide_code=True)
 def _(SeqIO, data_df, np, plt):
     def _():
         filepath = data_df.row(0)[6]
@@ -141,6 +339,7 @@ def _(SeqIO, data_df, np, plt):
         ax.set_ylim(0, 40)
         ax.set_xlim(0, 856)
 
+        fig.tight_layout()
         return fig
 
 
@@ -148,7 +347,7 @@ def _(SeqIO, data_df, np, plt):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(SeqIO, data_df, np, pl, plt):
     def _():
         df = data_df.filter(pl.col("filepath").str.ends_with(".fastq"))
@@ -169,7 +368,7 @@ def _(SeqIO, data_df, np, pl, plt):
                         block_idx += 1
                 counts += np.bincount(blocks, minlength=128)[0:128]
 
-        fig, ax1 = plt.subplots(1, 1, figsize=(9, 4))
+        fig, ax1 = plt.subplots(1, 1, figsize=(8, 3))
         ax: plt.Axes = ax1
         ax.set_xlabel("frequency")
         ax.set_ylabel("block size")
@@ -181,30 +380,6 @@ def _(SeqIO, data_df, np, pl, plt):
         freqs_safe_cummul = np.cumulative_sum(freqs_safe)
         print(freqs_safe_cummul)
 
-        return fig
-
-
-    _()
-    return
-
-
-@app.cell
-def _():
-    a = [1, 2, 3]  # todo: read from file
-    return (a,)
-
-
-@app.cell
-def _(a, np, plt):
-    def _():
-        fig, ax1 = plt.subplots(1, 1, figsize=(9, 5))
-        ax: plt.Axes = ax1
-        ax.set_xlabel("Q-score")
-        ax.set_ylabel("frequency")
-        ax.set_xlim(0, 70)
-
-        ax.bar(np.arange(41), np.bincount(a, minlength=41))
-
         fig.tight_layout()
         return fig
 
@@ -214,35 +389,42 @@ def _(a, np, plt):
 
 
 @app.cell(hide_code=True)
-def _():
-    # fmt: off
-    b = [27, 27, 29, 25, 27, 10, 11, 11, 7, 8, 10, 10, 14, 19, 26, 26, 29, 26, 9, 9, 14, 13, 19, 17, 15, 14, 20, 20, 3, 6, 1, 4, 31, 28, 1, 3, 2, 3, 3, 4, 11, 9, 4, 22, 23, 23, 21, 6, 7, 6, 26, 19, 24, 24, 28, 24, 14, 25, 22, 21, 21, 31, 16, 23, 21, 22, 21, 20, 32, 17, 21, 11, 13, 14, 24, 24, 22, 23, 24, 22, 25, 20, 19, 22, 26, 24, 20, 19, 28, 24, 23, 22, 12, 7, 11, 7, 16, 15, 4, 5, 1, 5, 11, 14, 27, 24, 24, 21, 21, 18, 22, 13, 7, 15, 4, 6, 12, 9, 10, 12, 8, 9, 25, 23, 24, 19, 20, 17, 30, 30, 27, 23, 28, 7, 3, 8, 9, 15, 31, 12, 14, 14, 17, 16, 18, 20, 18, 24, 21, 20, 22, 26, 21, 29, 5, 5, 5, 3, 8, 6, 9, 9, 5, 9, 14, 13, 8, 10, 10, 28, 28, 25, 27, 26, 9, 8, 8, 8, 6, 11, 30, 25, 28, 27, 27, 1, 3, 25, 23, 26, 25, 21, 22, 19, 19, 29, 17, 20, 13, 14, 13, 16, 8, 12, 9, 17, 14, 18, 13, 10, 22, 23, 23, 3, 2, 7, 1, 16, 17, 21, 17, 7, 6, 6, 2, 2, 8, 9, 17, 21, 17, 14, 19, 17, 23, 7, 23, 26, 30, 22, 18, 6, 4, 6, 4, 4, 6, 5, 30, 11, 10, 8, 9, 12, 12, 9, 8, 8, 11, 21, 14, 17, 27, 7, 14, 12, 14, 18, 11, 12, 9, 10, 9, 10, 7, 8, 18, 16, 18, 25, 25, 31, 7, 4, 7, 7, 10, 8, 14, 17, 21, 19, 29, 18, 18, 30, 29, 29, 18, 20, 10, 15, 10, 13, 14, 6, 7, 12, 9, 11, 26, 27, 31, 25, 25, 31, 28, 27, 30, 28, 13, 32, 28, 9, 12, 15, 13, 8, 17, 21, 15, 14, 15, 15, 27, 29, 27, 23, 14, 9, 16, 18, 28, 26, 29, 29, 26, 8, 26, 30, 12, 24, 26, 24, 4, 6, 23, 23, 17, 18, 22, 20, 25, 35, 11, 16, 11, 4, 4, 6, 6, 9, 4, 3, 9, 32, 26, 29, 24, 22, 8, 22, 12, 18, 16, 18, 18, 16, 2, 6, 22, 9, 20, 24, 20, 20, 21, 18, 4, 8, 2, 5, 5, 8, 15, 18, 15, 17, 13, 13, 8, 6, 12, 14, 16, 13, 27, 20, 24, 21, 26, 21, 20, 23, 18, 17, 14, 7, 8, 12, 8, 7, 16, 22, 22, 24, 19, 20, 25, 24, 21, 22, 22, 19, 20, 25, 27, 27, 24, 24, 23, 25, 23, 22, 23, 27, 25, 23, 27, 19, 19, 15, 19, 24, 24, 21, 25, 27, 24, 21, 26, 24, 25, 25, 24, 25, 23, 28, 35, 28, 28, 30, 8, 11, 7, 6, 9, 22, 19, 21, 24, 19, 24, 27, 25, 25, 13, 18, 12, 18, 5, 7, 8, 7, 22, 26, 27, 23, 24, 11, 12, 7, 27, 30, 31, 15, 7, 6, 4, 7, 27, 25, 25, 23, 25, 17, 7, 4, 18, 18, 16, 17, 18, 15, 18, 30, 30, 27, 28, 16, 11, 14, 28, 15, 12, 10, 14, 12, 28, 23, 28, 28, 7, 10, 26, 26, 26, 22, 25, 3, 12, 9, 14, 6, 9, 6, 22, 23, 11, 10, 13, 11, 13, 13, 11, 17, 11, 14, 13, 11, 12, 13, 22, 22, 22, 21, 35, 13, 21, 22, 20, 16, 18, 8, 7, 2, 6, 7, 9, 8, 9, 13, 14, 14, 17, 9, 11, 11, 5, 8, 8, 24, 21, 29, 22, 24, 28, 27, 23, 27, 23, 26, 28, 14, 13, 12, 7, 11, 21, 19, 28, 28, 28, 9, 7, 10, 7, 10, 9, 20, 22, 21, 19, 22, 22, 15, 20, 19, 23, 24, 21, 19, 22, 24, 24, 24, 28, 27, 25, 7, 7, 26, 25, 22, 35, 37, 35, 31, 11, 9, 10, 12, 19, 21, 19, 21, 7, 3, 5, 9, 11, 14, 13, 13, 15, 15, 13, 12, 21, 19, 20, 19, 19, 26, 26, 24, 22, 26, 3, 35, 19, 22, 21, 20, 20, 10, 6, 5, 6, 6, 5, 27, 25, 24, 1, 3, 14, 12, 10, 19, 16, 16, 16, 14, 4, 6, 6, 2, 7, 24, 22, 5, 9, 11, 8, 18, 20, 22, 24, 27, 29, 26, 27, 19, 16, 28, 32, 33, 18, 16, 23, 20, 22, 20, 18, 7, 6, 22, 32, 28, 30, 31, 6, 4, 4, 23, 23, 17, 17, 20, 19, 19, 32, 32, 1, 6, 3, 34, 33, 30, 6, 17, 17, 4, 5, 4, 24, 24, 33, 32, 31, 24, 25, 27, 24, 6, 8, 4, 27, 16, 18, 6, 9, 24, 22, 25, 23, 5, 4, 5, 12, 4, 4, 7, 7, 4, 5, 10, 11, 13, 12, 3, 8, 6, 7, 15, 13, 20, 5, 2, 19, 21, 24, 21, 38, 18, 21, 31, 32, 7, 4, 22, 19, 30, 28, 13, 25, 4, 17, 15, 15, 28, 8, 7, 8, 9]
-    # fmt: on
-    return (b,)
+def _(mo):
+    mo.md(r"""## Negative binomial distribution visualization""")
+    return
 
 
 @app.cell
-def _(b, np, plt):
-    def _():
-        fig, ax1 = plt.subplots(1, 1, figsize=(20, 5))
-        ax: plt.Axes = ax1
-        ax.set_xlabel("idx")
-        ax.set_ylabel("Q-score")
+def _(mo):
+    r_slider = mo.ui.slider(start=0.5, stop=100, step=0.5, show_value=True, label="r")
+    p_slider = mo.ui.slider(start=0.0, stop=1, step=0.001, show_value=True, label="p")
 
-        ax.plot(np.arange(len(b)), b, ls="--", color="grey", mfc="blue", mec="blue", marker=".")
-        ax.set_ylim(0, 40)
-        ax.set_xlim(0, 856)
+    r_slider, p_slider
+    return p_slider, r_slider
+
+
+@app.cell(hide_code=True)
+def _(np, p_slider, plt, r_slider, stats):
+    def _():
+        r, p = r_slider.value, p_slider.value
+        rv = stats.nbinom(r, p)
+
+        fig, ax1 = plt.subplots(1, 1, figsize=(12, 4))
+
+        ax: plt.Axes = ax1
+        ax.set_title(f"$X \\sim NBin({r}, {p})$")
+
+        x = np.arange(rv.ppf(0.01), rv.ppf(0.99))
+        y = rv.pmf(x)
+
+        ax.vlines(x, 0, y, colors="k", linestyles="-", lw=1)
+        ax.plot(x, y, "bo", ms=2)
 
         fig.tight_layout()
         return fig
 
 
     _()
-    return
-
-
-@app.cell
-def _():
     return
 
 

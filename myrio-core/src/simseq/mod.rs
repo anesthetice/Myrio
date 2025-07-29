@@ -8,6 +8,7 @@ use bio_seq::prelude::*;
 use distr::{DiscreteDistribution, sample_multiple};
 use itertools::Itertools;
 use rand::{distr::Distribution, seq::IndexedRandom};
+use thiserror::Error;
 
 use crate::{
     MyrSeq,
@@ -19,6 +20,8 @@ pub struct Generator {
     pub coding_to_template_ratio_bounds: (f64, f64),
     pub q_score_distr: DiscreteDistribution,
     pub q_score_block_size_distr: DiscreteDistribution,
+    pub indel_insertion_snp_error_weights: (f64, f64, f64),
+    pub window_length_distr: DiscreteDistribution,
 }
 
 impl Default for Generator {
@@ -29,6 +32,7 @@ impl Default for Generator {
             q_score_block_size_distr: DiscreteDistribution::new_cdf(
                 &crate::constants::OBSERVED_Q_SCORE_BLOCK_SIZE_CUMMUL_FREQ,
             ),
+            indel_insertion_snp_error_weights: (0.3, 0.3, 0.4),
         }
     }
 }
@@ -40,11 +44,19 @@ impl Generator {
     const Q_SCORE_INNER_BLOCK_OFFSET_DISTR: DiscreteDistribution =
         DiscreteDistribution::new_cdf(&[0.05, 0.15, 0.30, 0.70, 0.85, 0.95, 1.0]);
 
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn with_coding_to_template_ratio_bounds(
         self,
         bounds: (f64, f64),
-    ) -> Self {
-        Self { coding_to_template_ratio_bounds: bounds, ..self }
+    ) -> Result<Self, Error> {
+        if bounds.0 > bounds.1 || bounds.0 < 0.0 || bounds.0 > 1.0 || bounds.1 < 0.0 || bounds.1 > 1.0 {
+            Err(Error::InvalidCTRBounds)
+        } else {
+            Ok(Self { coding_to_template_ratio_bounds: bounds, ..self })
+        }
     }
 
     pub fn with_q_score_distr(
@@ -59,6 +71,23 @@ impl Generator {
         distr: DiscreteDistribution,
     ) -> Self {
         Self { q_score_block_size_distr: distr, ..self }
+    }
+
+    pub fn with_indel_insertion_snp_error_weights(
+        self,
+        weights: (f64, f64, f64),
+    ) -> Result<Self, Error> {
+        if weights.0.is_sign_negative()
+            || !weights.0.is_finite()
+            || weights.1.is_sign_negative()
+            || !weights.1.is_finite()
+            || weights.2.is_sign_negative()
+            || !weights.2.is_finite()
+        {
+            Err(Error::InvalidSequencingErrorWeights)
+        } else {
+            Ok(Self { indel_insertion_snp_error_weights: weights, ..self })
+        }
     }
 
     pub fn generate_pseudo_amplicon(
@@ -114,15 +143,83 @@ impl Generator {
                     )
                 }
 
-                for (idx, q_score) in q_scores.iter().enumerate() {
-                    let p_error = crate::constants::Q_TO_BP_CALL_ERROR_PROB_MAP[*q_score as usize];
-                    if rng.sample(rand::distr::Bernoulli::new(p_error).unwrap()) {
-                        seq.set(idx, *[Dna::A, Dna::C, Dna::G, Dna::T].choose(rng).unwrap())
-                    }
+                let mut nb_indel_errors = 0;
+                let mut nb_insertion_errors = 0;
+                let mut nb_snp_errors = 0;
+
+                enum ErrorType {
+                    Indel,
+                    Insertion,
+                    Snp,
                 }
 
-                MyrSeq::new(id.to_string(), None, seq, q_scores)
+                let (indel_weight, insertion_weight, snp_weight) = self.indel_insertion_snp_error_weights;
+                let error_type_to_weight = |etype: &ErrorType| -> f64 {
+                    match etype {
+                        ErrorType::Indel => indel_weight,
+                        ErrorType::Insertion => insertion_weight,
+                        ErrorType::Snp => snp_weight,
+                    }
+                };
+
+                let mut idx = 0;
+                while idx < seq.len() {
+                    let p_error = crate::constants::Q_TO_BP_CALL_ERROR_PROB_MAP[q_scores[idx] as usize];
+                    if rng.sample(rand::distr::Bernoulli::new(p_error).unwrap()) {
+                        // An error has "occurred", now we determine which type
+                        match [ErrorType::Indel, ErrorType::Insertion, ErrorType::Snp]
+                            .choose_weighted(rng, error_type_to_weight)
+                            .unwrap()
+                        {
+                            ErrorType::Indel => {
+                                seq.remove(idx..idx + 1);
+                                q_scores.remove(idx);
+                                nb_indel_errors += 1;
+                            }
+                            ErrorType::Insertion => {
+                                seq.insert(
+                                    idx,
+                                    *[dna!["A"], dna!["C"], dna!["G"], dna!["T"]].choose(rng).unwrap(),
+                                );
+                                q_scores.insert(idx, q_scores[idx]);
+                                nb_insertion_errors += 1;
+                                idx += 1; // ignore the next one
+                            }
+                            ErrorType::Snp => {
+                                let new_base = match seq.get(idx).unwrap() {
+                                    Dna::A => [Dna::C, Dna::G, Dna::T],
+                                    Dna::C => [Dna::A, Dna::G, Dna::T],
+                                    Dna::G => [Dna::A, Dna::C, Dna::T],
+                                    Dna::T => [Dna::A, Dna::C, Dna::G],
+                                }
+                                .choose(rng)
+                                .unwrap()
+                                .to_owned();
+
+                                seq.set(idx, new_base);
+                                q_scores[idx] = q_scores[idx].saturating_sub(2);
+                                nb_snp_errors += 1;
+                            }
+                        }
+                    }
+                    idx += 1;
+                }
+
+                MyrSeq::new(
+                    id.to_string(),
+                    Some(format!("ind={nb_indel_errors},ins={nb_insertion_errors},snp={nb_snp_errors}")),
+                    seq,
+                    q_scores,
+                )
             })
             .collect_vec()
     }
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Invalid coding to template strand ratio bounds, expected (a, b) such that 0 <= a <= b <= 1")]
+    InvalidCTRBounds,
+    #[error("Invalid error weights for ")]
+    InvalidSequencingErrorWeights,
 }

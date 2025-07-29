@@ -26,6 +26,11 @@ impl DiscreteDistribution {
         Ok(Self::Poisson { inner: PoissonDistr::new(lambda)? })
     }
 
+    /// The negative binomial distribution is a discrete distribution with two
+    /// parameters, `r` and `p`. When `r` is an integer, the negative binomial
+    /// distribution can be interpreted as the distribution of the number of
+    /// failures in a sequence of Bernoulli trials that continue until `r`
+    /// successes occur. `p` is the probability of success in a single Bernoulli trial.
     pub fn new_nbin(
         r: f64,
         p: f64,

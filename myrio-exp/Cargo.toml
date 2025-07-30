@@ -22,6 +22,13 @@ rand = { version = "0.9" }
 rand_distr = { version = "0.5" }
 rayon = { version = "1.10" }
 
+[dev-dependencies]
+divan = { version = "0.1" }
+
 [[bin]]
 name = "myrio-exp"
 path = "src/main.rs"
+
+[[bench]]
+name = "misc"
+harness = false

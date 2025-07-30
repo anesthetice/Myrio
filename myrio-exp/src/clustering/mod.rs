@@ -1,5 +1,6 @@
 // Modules
 pub mod optim;
+pub mod sparse;
 
 // Imports
 use std::collections::HashMap;

@@ -8,12 +8,18 @@ use itertools::Itertools;
 use myrio_core::{MyrSeq, simseq::Generator};
 use ndarray::{Array1, array};
 use rand::SeedableRng;
+use rayon::iter::ParallelIterator;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator};
 
-const EPS_GRAD: f64 = 1e-2;
+use crate::clustering::{ClusterMethod, SimFunc};
+
+const EPS_GRAD: f64 = 2e-2;
 
 struct ClusterAlgorithm {
     k: usize,
     myrseqs: Vec<MyrSeq>,
+    method: ClusterMethod,
+    sim_func: SimFunc,
 }
 
 impl ClusterAlgorithm {
@@ -22,8 +28,7 @@ impl ClusterAlgorithm {
         t1_cutoff: f64,
         t2_cutoff: f64,
     ) -> Vec<Vec<MyrSeq>> {
-        super::method_one(self.myrseqs.clone(), self.k, t1_cutoff, t2_cutoff, super::cosine_similarity)
-            .unwrap()
+        (self.method)(self.myrseqs.clone(), self.k, t1_cutoff, t2_cutoff, self.sim_func).unwrap()
     }
 }
 
@@ -34,10 +39,15 @@ impl ClusterAlgorithm {
         t2_cutoff: f64,
     ) -> f64 {
         let mut cost: f64 = 0.0;
+
+        if !(0_f64..1_f64).contains(&t1_cutoff) || !(0_f64..1_f64).contains(&t2_cutoff) {
+            return 1e10; // f64::MAX breaks `MoreThuenteLineSearch`
+        }
+
         let clusters = self.cluster(t1_cutoff, t2_cutoff);
 
         for (idx, cluster) in clusters.into_iter().enumerate() {
-            cost += idx as f64; // so that having many clusters get exceedingly worst
+            cost += idx as f64; // so that having many clusters gets exceedingly worst
             let mut id_count_map: HashMap<&str, usize> = HashMap::new();
             for myrseq in cluster.iter() {
                 let count_ref = id_count_map.entry(myrseq.id.as_str()).or_default();
@@ -45,9 +55,9 @@ impl ClusterAlgorithm {
             }
             let counts = id_count_map.values().copied().collect_vec();
             let max_count = *counts.iter().max().unwrap();
-            cost += ((counts.iter().sum::<usize>() - max_count) as f64) * 3.0;
+            let diff = (counts.iter().sum::<usize>() - max_count) as f64;
+            cost += diff * diff * 2.0;
         }
-
         cost
     }
 }
@@ -84,28 +94,58 @@ impl Gradient for ClusterAlgorithm {
     }
 }
 
-pub fn run() -> anyhow::Result<()> {
-    // Define cost function
-    let cost = ClusterAlgorithm {
-        myrseqs: MyrSeq::decode_vec_from_file("./ignore/argmin_myrseqs.bin").unwrap(),
-        k: 5,
-    };
+pub fn run_all(k: usize) -> anyhow::Result<()> {
+    let myrseqs = MyrSeq::decode_vec_from_file("./ignore/argmin_myrseqs.bin")?;
 
-    let init_param: Array1<f64> = array![0.66, 0.66];
+    let costs = [
+        ClusterAlgorithm {
+            k,
+            myrseqs: myrseqs.clone(),
+            method: super::method_one,
+            sim_func: super::cosine_similarity,
+        },
+        ClusterAlgorithm {
+            k,
+            myrseqs: myrseqs.clone(),
+            method: super::method_one,
+            sim_func: super::overlap_similarity,
+        },
+        ClusterAlgorithm {
+            k,
+            myrseqs: myrseqs.clone(),
+            method: super::method_two,
+            sim_func: super::cosine_similarity,
+        },
+        ClusterAlgorithm {
+            k,
+            myrseqs: myrseqs.clone(),
+            method: super::method_two,
+            sim_func: super::overlap_similarity,
+        },
+    ];
 
-    let init_grad = cost.gradient(&init_param)?;
-    println!("Initial gradient: {init_grad:?}");
+    let output = costs
+        .into_par_iter()
+        .map(|cost| {
+            let init_param: Array1<f64> = array![0.7, 0.7];
 
-    let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9)?;
+            let init_grad = cost.gradient(&init_param)?;
+            println!("Initial gradient: {init_grad:?}");
 
-    let solver = LBFGS::new(linesearch, 10); // 10 is memory size
+            let linesearch = MoreThuenteLineSearch::new().with_c(1e-4, 0.9)?;
 
-    let res = Executor::new(cost, solver)
-        .configure(|state| state.param(init_param.clone()).max_iters(100))
-        .run()?;
+            let solver = LBFGS::new(linesearch, 6);
 
-    // Print result
-    println!("{res}");
+            let res = Executor::new(cost, solver)
+                .configure(|state| state.param(init_param.clone()).max_iters(100))
+                .run()?;
+
+            // Print result
+            Ok(res.to_string())
+        })
+        .collect::<anyhow::Result<Vec<String>>>()?;
+
+    println!("{}", output.iter().join("\n"));
     Ok(())
 }
 

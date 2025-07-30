@@ -21,6 +21,7 @@ pub struct Generator {
     pub q_score_distr: DiscreteDistribution,
     pub q_score_block_size_distr: DiscreteDistribution,
     pub indel_insertion_snp_error_weights: (f64, f64, f64),
+    pub min_window_size: usize,
 }
 
 impl Default for Generator {
@@ -32,6 +33,7 @@ impl Default for Generator {
                 &crate::constants::OBSERVED_Q_SCORE_BLOCK_SIZE_CUMMUL_FREQ,
             ),
             indel_insertion_snp_error_weights: (0.3, 0.3, 0.4),
+            min_window_size: 150,
         }
     }
 }
@@ -89,6 +91,13 @@ impl Generator {
         }
     }
 
+    pub fn with_min_window_size(
+        self,
+        size: usize,
+    ) -> Self {
+        Self { min_window_size: size, ..self }
+    }
+
     pub fn generate_pseudo_amplicon(
         &self,
         length: usize,
@@ -122,7 +131,7 @@ impl Generator {
             .map(|is_forward| {
                 let window_range: std::ops::Range<usize> = {
                     // generate window size
-                    let window_size = w_size_distr.sample_single(rng).clamp(10, length);
+                    let window_size = w_size_distr.sample_single(rng).clamp(self.min_window_size, length);
                     // generate window starting index
                     let idx = rng.random_range(0..=length - window_size);
                     idx..idx + window_size

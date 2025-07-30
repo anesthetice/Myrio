@@ -1,5 +1,5 @@
 // Modules
-pub mod testing;
+pub mod optim;
 
 // Imports
 use std::collections::HashMap;
@@ -8,16 +8,26 @@ use anyhow::bail;
 use itertools::Itertools;
 use myrio_core::MyrSeq;
 
+pub type ClusterMethod = fn(
+    Vec<MyrSeq>,
+    usize,
+    f64,
+    f64,
+    for<'a, 'b> fn(&'a HashMap<usize, f64>, &'b HashMap<usize, f64>) -> f64,
+) -> Result<Vec<Vec<MyrSeq>>, anyhow::Error>;
+
+pub type SimFunc = fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64;
+
 /// Based off the clustering method used by `isONclust3`; notably, we use k-mers instead of minimizers as our expected amplicon length isn't very high (<2000 bp).
 pub fn method_one(
     myrseqs: Vec<MyrSeq>,
     k: usize,
     t1_cutoff: f64,
     t2_cutoff: f64,
-    similarity_function: fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
+    similarity_function: SimFunc,
 ) -> anyhow::Result<Vec<Vec<MyrSeq>>> {
-    if !MyrSeq::K_VALID_RANGE.contains(&k) {
-        bail!(MyrSeq::K_VALID_RANGE_ERROR_MSG);
+    if !MyrSeq::K_SPARSE_VALID_RANGE.contains(&k) {
+        bail!(MyrSeq::K_SPARSE_VALID_RANGE_ERROR_MSG);
     }
     // Step 1
     let mut myrseqs_extra = myrseqs
@@ -59,10 +69,10 @@ pub fn method_two(
     k: usize,
     t1_cutoff: f64,
     t2_cutoff: f64,
-    similarity_function: fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64,
+    similarity_function: SimFunc,
 ) -> anyhow::Result<Vec<Vec<MyrSeq>>> {
-    if !MyrSeq::K_VALID_RANGE.contains(&k) {
-        bail!(MyrSeq::K_VALID_RANGE_ERROR_MSG);
+    if !MyrSeq::K_SPARSE_VALID_RANGE.contains(&k) {
+        bail!(MyrSeq::K_SPARSE_VALID_RANGE_ERROR_MSG);
     }
 
     struct Cluster {

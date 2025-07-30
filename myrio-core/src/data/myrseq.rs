@@ -12,7 +12,7 @@ use bio_seq::{
     seq::{Seq, SeqSlice},
 };
 use itertools::Itertools;
-use myrio_proc::match_k;
+use myrio_proc::{gen_match_k_dense, gen_match_k_sparse};
 use thiserror::Error;
 
 use crate::constants::Q_TO_BP_CALL_CORRECT_PROB_MAP;
@@ -43,8 +43,13 @@ impl From<&fastq::Record> for MyrSeq {
 }
 
 impl MyrSeq {
-    pub const K_VALID_RANGE: Range<usize> = 2..43;
-    pub const K_VALID_RANGE_ERROR_MSG: &'static str = "Only k ∈ {{2, ..., 42}} is currently supported";
+    pub const K_DENSE_VALID_RANGE: Range<usize> = 2..10;
+    pub const K_DENSE_VALID_RANGE_ERROR_MSG: &'static str =
+        "For dense k-mer count maps, only k ∈ {{2, ..., 9}} is currently supported";
+
+    pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..43;
+    pub const K_SPARSE_VALID_RANGE_ERROR_MSG: &'static str =
+        "For sparse k-mer count maps, only k ∈ {{2, ..., 42}} is currently supported";
 
     /// Create a new MyrSeq from owned parameters
     pub fn new(
@@ -71,8 +76,45 @@ impl MyrSeq {
         }
     }
 
+    pub fn compute_dense_kmer_counts(
+        &self,
+        k: usize,
+        cutoff: f64,
+    ) -> Result<(Vec<f64>, usize), Error> {
+        let conf_score_per_kmer = self
+            .quality
+            .iter()
+            .map(|q| Q_TO_BP_CALL_CORRECT_PROB_MAP[*q as usize])
+            .collect_vec()
+            .windows(k)
+            .map(|vals| vals.iter().product::<f64>())
+            .collect_vec();
+
+        macro_rules! body {
+            ($seq:expr, $K:expr) => {{
+                let nb_kmers = $seq.len() - $K + 1;
+                let mut nb_hck: usize = 0; // number of high-quality k-mers
+                let mut map: Vec<f64> = vec![0.0; 4_usize.pow(k as u32)];
+
+                for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
+                    // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
+                    if conf_score_per_kmer[idx] > cutoff {
+                        map[usize::from(&kmer)] += 1.0;
+                        nb_hck += 1;
+                    }
+                    if conf_score_per_kmer[nb_kmers - 1 - idx] > cutoff {
+                        map[usize::from(&kmer_rc)] += 1.0;
+                        nb_hck += 1;
+                    }
+                }
+                Ok((map, nb_hck))
+            }};
+        }
+        gen_match_k_dense!(self.sequence)
+    }
+
     /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `f64` values which correspond to the weighted number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are used.
-    pub fn compute_kmer_map(
+    pub fn compute_sparse_kmer_counts(
         &self,
         k: usize,
         cutoff: f64,
@@ -94,24 +136,22 @@ impl MyrSeq {
 
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
                     // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
-                    let conf_score = conf_score_per_kmer[idx];
-                    if conf_score > cutoff {
+                    if conf_score_per_kmer[idx] > cutoff {
                         let val_ref = map.entry(usize::from(&kmer)).or_default();
+                        val_ref.add_assign(1.0);
                         nb_hck += 1;
-                        val_ref.add_assign(conf_score)
+
                     }
-                    let conf_score = conf_score_per_kmer[nb_kmers - 1 - idx];
-                    if conf_score > cutoff {
+                    if conf_score_per_kmer[nb_kmers - 1 - idx] > cutoff {
                         let val_ref = map.entry(usize::from(&kmer_rc)).or_default();
+                        val_ref.add_assign(1.0);
                         nb_hck += 1;
-                        val_ref.add_assign(conf_score)
                     }
                 }
                 Ok((map, nb_hck))
             }};
         }
-
-        match_k!(self.sequence)
+        gen_match_k_sparse!(self.sequence)
     }
 
     pub fn compute_kmer_map_or_panic(
@@ -119,7 +159,7 @@ impl MyrSeq {
         k: usize,
         cutoff: f64,
     ) -> (HashMap<usize, f64>, usize) {
-        self.compute_kmer_map(k, cutoff).expect(Self::K_VALID_RANGE_ERROR_MSG)
+        self.compute_sparse_kmer_counts(k, cutoff).expect(Self::K_SPARSE_VALID_RANGE_ERROR_MSG)
     }
 
     pub fn from_fastq_record_ignore_desc(value: &fastq::Record) -> Self {
@@ -199,8 +239,8 @@ pub enum Error {
     BincodeEncodeError(#[from] bincode::error::EncodeError),
     #[error(transparent)]
     IO(#[from] std::io::Error),
-    #[error("{}", MyrSeq::K_VALID_RANGE_ERROR_MSG)]
-    InvalidKmerSize,
+    #[error("{0}")]
+    InvalidKmerSize(&'static str),
 }
 
 #[cfg(test)]

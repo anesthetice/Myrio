@@ -451,8 +451,8 @@ def _(mean_slider, std_slider, vis_nbin):
 @app.cell
 def _(mo):
     val_slider = mo.ui.slider(start=200, stop=2000, step=10, show_value=True, label="length")
-    val_to_mean = 0.4
-    val_to_std = 1
+    val_to_mean = 0.6
+    val_to_std = 0.2
 
     val_slider
     return val_slider, val_to_mean, val_to_std

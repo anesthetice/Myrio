@@ -13,8 +13,10 @@ use bio_seq::{
 };
 use itertools::Itertools;
 use myrio_proc::{gen_match_k_dense, gen_match_k_sparse};
+use ndarray::Array1;
 use thiserror::Error;
 
+use super::sparse::SparseFloatVec;
 use crate::constants::Q_TO_BP_CALL_CORRECT_PROB_MAP;
 
 /// The main data structure used by Myrio, an efficient representation of an FASTQ record
@@ -46,7 +48,6 @@ impl MyrSeq {
     pub const K_DENSE_VALID_RANGE: Range<usize> = 2..10;
     pub const K_DENSE_VALID_RANGE_ERROR_MSG: &'static str =
         "For dense k-mer count maps, only k ∈ {{2, ..., 9}} is currently supported";
-
     pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..43;
     pub const K_SPARSE_VALID_RANGE_ERROR_MSG: &'static str =
         "For sparse k-mer count maps, only k ∈ {{2, ..., 42}} is currently supported";
@@ -80,7 +81,7 @@ impl MyrSeq {
         &self,
         k: usize,
         cutoff: f64,
-    ) -> Result<(Vec<f64>, usize), Error> {
+    ) -> Result<(Array1<f64>, usize), Error> {
         let conf_score_per_kmer = self
             .quality
             .iter()
@@ -94,7 +95,7 @@ impl MyrSeq {
             ($seq:expr, $K:expr) => {{
                 let nb_kmers = $seq.len() - $K + 1;
                 let mut nb_hck: usize = 0; // number of high-quality k-mers
-                let mut map: Vec<f64> = vec![0.0; 4_usize.pow(k as u32)];
+                let mut map = Array1::<f64>::zeros(4_usize.pow(k as u32));
 
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
                     // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
@@ -118,7 +119,7 @@ impl MyrSeq {
         &self,
         k: usize,
         cutoff: f64,
-    ) -> Result<(HashMap<usize, f64>, usize), Error> {
+    ) -> Result<(SparseFloatVec, usize), Error> {
         let conf_score_per_kmer = self
             .quality
             .iter()
@@ -132,19 +133,17 @@ impl MyrSeq {
             ($seq:expr, $K:expr) => {{
                 let nb_kmers = $seq.len() - $K + 1;
                 let mut nb_hck: usize = 0; // number of high-quality k-mers
-                let mut map: HashMap<usize, f64> = HashMap::new();
+                let mut map = SparseFloatVec::default();
 
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
                     // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
                     if conf_score_per_kmer[idx] > cutoff {
-                        let val_ref = map.entry(usize::from(&kmer)).or_default();
-                        val_ref.add_assign(1.0);
+                        map.get_or_insert_mut(usize::from(&kmer)).add_assign(1.0);
                         nb_hck += 1;
 
                     }
                     if conf_score_per_kmer[nb_kmers - 1 - idx] > cutoff {
-                        let val_ref = map.entry(usize::from(&kmer_rc)).or_default();
-                        val_ref.add_assign(1.0);
+                        map.get_or_insert_mut(usize::from(&kmer_rc)).add_assign(1.0);
                         nb_hck += 1;
                     }
                 }
@@ -152,14 +151,6 @@ impl MyrSeq {
             }};
         }
         gen_match_k_sparse!(self.sequence)
-    }
-
-    pub fn compute_kmer_map_or_panic(
-        &self,
-        k: usize,
-        cutoff: f64,
-    ) -> (HashMap<usize, f64>, usize) {
-        self.compute_sparse_kmer_counts(k, cutoff).expect(Self::K_SPARSE_VALID_RANGE_ERROR_MSG)
     }
 
     pub fn from_fastq_record_ignore_desc(value: &fastq::Record) -> Self {

@@ -23,6 +23,7 @@ anyhow = { version = "1.0" }
 bio = { version = "2.3" }
 bio-seq = { git = "https://github.com/anesthetice/bio-seq.git" }
 itertools = { version = "0.14" }
+rand = { version = "0.9" }
 
 [profile.dev]
 opt-level = 1

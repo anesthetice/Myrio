@@ -7,13 +7,48 @@ mod misc;
 use std::collections::HashMap;
 
 // Imports
-use myrio_core::{MyrSeq, simseq::Generator};
+use bio_seq::prelude::*;
+use myrio_core::{
+    MyrSeq,
+    clustering::SimilarityFunction,
+    simseq::{Generator, distr::DiscreteDistribution},
+};
 use rand::{SeedableRng, seq::IndexedRandom};
 
 use crate::clustering::{ClusterMethod, SimFunc};
 
 fn main() -> anyhow::Result<()> {
-    argmin_check()?;
+    let mut rng = rand::rngs::StdRng::from_os_rng();
+    let generator = Generator::default()
+        .with_q_score_distr(DiscreteDistribution::new_nbin_from_mean_and_std(10.0, 6.0).unwrap());
+    let myrseqs: Vec<MyrSeq> = [
+        // ITS
+        generator.generate_pseudo_amplicon(588, 150, "1", &mut rng),
+        // matK
+        generator.generate_pseudo_amplicon(1500, 150, "2", &mut rng),
+        // rbcL
+        generator.generate_pseudo_amplicon(1431, 150, "3", &mut rng),
+        // trnH-psbA
+        generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
+    ]
+    .concat();
+    let clusters = myrio_core::clustering::Clusterer::cluster(
+        myrseqs,
+        5,
+        0.7,
+        0.75,
+        myrio_core::clustering::SimilarityFunction::Cosine,
+    );
+
+    for (idx, cluster) in clusters.iter().enumerate() {
+        let mut id_count_map: HashMap<&str, usize> = HashMap::new();
+        for myrseq in cluster.iter() {
+            let count_ref = id_count_map.entry(myrseq.id.as_str()).or_default();
+            *count_ref += 1;
+        }
+        println!("cluster {idx}: {id_count_map:?}")
+    }
+
     Ok(())
 }
 
@@ -39,7 +74,7 @@ fn argmin_check() -> anyhow::Result<()> {
 
     cluster_and_display(
         myrseqs.clone(),
-        clustering::method_one,
+        unimplemented!(),
         clustering::cosine_similarity,
         5,
         0.6733343002437883,
@@ -48,7 +83,7 @@ fn argmin_check() -> anyhow::Result<()> {
 
     cluster_and_display(
         myrseqs.clone(),
-        clustering::method_one,
+        unimplemented!(),
         clustering::overlap_similarity,
         5,
         0.6979517680844866,
@@ -86,21 +121,7 @@ fn cluster_and_display(
 ) {
     println!(
         "## cluster_method: {}, sim_func: {}",
-        if std::ptr::fn_addr_eq(
-            cluster_method,
-            clustering::method_one
-                as fn(
-                    Vec<MyrSeq>,
-                    usize,
-                    f64,
-                    f64,
-                    for<'a, 'b> fn(&'a HashMap<usize, f64>, &'b HashMap<usize, f64>) -> f64,
-                ) -> Result<Vec<Vec<MyrSeq>>, anyhow::Error>
-        ) {
-            "one"
-        } else {
-            "two"
-        },
+        unimplemented!(),
         if std::ptr::fn_addr_eq(
             sim_func,
             clustering::cosine_similarity

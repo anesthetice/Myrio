@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.14.12"
+__generated_with = "0.14.16"
 app = marimo.App(width="medium")
 
 
@@ -428,8 +428,8 @@ def _(p_slider, r_slider, vis_nbin):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mean_slider = mo.ui.slider(start=1, stop=1001, step=5, show_value=True, label="mean")
-    std_slider = mo.ui.slider(start=1, stop=2001, step=5, show_value=True, label="std")
+    mean_slider = mo.ui.slider(start=1, stop=1001, step=1, show_value=True, label="mean")
+    std_slider = mo.ui.slider(start=2, stop=2001, step=1, show_value=True, label="std")
 
     mean_slider, std_slider
     return mean_slider, std_slider
@@ -468,7 +468,8 @@ def _(val_slider, val_to_mean, val_to_std, vis_nbin):
         p = mean / (std * std)
         return vis_nbin(r, p)
 
-    _() 
+
+    _()
     return
 
 

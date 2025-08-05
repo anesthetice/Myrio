@@ -8,8 +8,7 @@ use itertools::Itertools;
 use myrio_core::{MyrSeq, simseq::Generator};
 use ndarray::{Array1, array};
 use rand::SeedableRng;
-use rayon::iter::ParallelIterator;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use crate::clustering::{ClusterMethod, SimFunc};
 
@@ -101,13 +100,13 @@ pub fn run_all(k: usize) -> anyhow::Result<()> {
         ClusterAlgorithm {
             k,
             myrseqs: myrseqs.clone(),
-            method: super::method_one,
+            method: unimplemented!(),
             sim_func: super::cosine_similarity,
         },
         ClusterAlgorithm {
             k,
             myrseqs: myrseqs.clone(),
-            method: super::method_one,
+            method: unimplemented!(),
             sim_func: super::overlap_similarity,
         },
         ClusterAlgorithm {

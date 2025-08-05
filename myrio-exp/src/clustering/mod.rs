@@ -1,6 +1,5 @@
 // Modules
 pub mod optim;
-pub mod sparse;
 
 // Imports
 use std::collections::HashMap;
@@ -19,22 +18,25 @@ pub type ClusterMethod = fn(
 
 pub type SimFunc = fn(&HashMap<usize, f64>, &HashMap<usize, f64>) -> f64;
 
+pub type DenseSimFunc = fn(&Vec<f64>, &Vec<f64>) -> f64;
+
 /// Based off the clustering method used by `isONclust3`; notably, we use k-mers instead of minimizers as our expected amplicon length isn't very high (<2000 bp).
 pub fn method_one(
     myrseqs: Vec<MyrSeq>,
     k: usize,
     t1_cutoff: f64,
     t2_cutoff: f64,
-    similarity_function: SimFunc,
+    similarity_function: DenseSimFunc,
 ) -> anyhow::Result<Vec<Vec<MyrSeq>>> {
     if !MyrSeq::K_SPARSE_VALID_RANGE.contains(&k) {
         bail!(MyrSeq::K_SPARSE_VALID_RANGE_ERROR_MSG);
     }
+    /*
     // Step 1
     let mut myrseqs_extra = myrseqs
         .into_iter()
         .map(|myrseq| {
-            let (map, nb_hck) = myrseq.compute_kmer_map_or_panic(k, t1_cutoff);
+            let (map, nb_hck) = myrseq.compute_dense_kmer_counts(k, t1_cutoff).unwrap();
             (myrseq, map, nb_hck)
         })
         .sorted_by(|(.., a), (.., b)| a.cmp(b)) // ascending order
@@ -42,9 +44,10 @@ pub fn method_one(
 
     // Step 2
     struct Cluster {
-        reference_seeds: HashMap<usize, f64>,
+        reference_seeds: Vec<f64>,
         elements: Vec<MyrSeq>,
     }
+
     let mut clusters: Vec<Cluster> = Vec::new();
     {
         let (myrseq, ref_seeds, _) = myrseqs_extra.pop().unwrap();
@@ -62,6 +65,8 @@ pub fn method_one(
     }
 
     Ok(clusters.into_iter().map(|cluster| cluster.elements).collect_vec())
+    */
+    unimplemented!()
 }
 
 /// More classical approach to clustering, every sequence becomes a cluster and we progressively merge these
@@ -75,7 +80,7 @@ pub fn method_two(
     if !MyrSeq::K_SPARSE_VALID_RANGE.contains(&k) {
         bail!(MyrSeq::K_SPARSE_VALID_RANGE_ERROR_MSG);
     }
-
+    /*
     struct Cluster {
         seeds: HashMap<usize, f64>,
         elements: Vec<MyrSeq>,
@@ -124,6 +129,8 @@ pub fn method_two(
     }
 
     Ok(clusters.into_iter().map(|cluster| cluster.elements).collect_vec())
+    */
+    unimplemented!()
 }
 
 pub fn cosine_similarity(

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use myrio_core::{clustering::SimilarityFunction, constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::MyrSeq};
 use ndarray::Array1;
 
-pub struct Clusterer {}
+pub struct Clusterer;
 
 impl Clusterer {
     pub fn cluster(
@@ -87,7 +87,8 @@ impl Clusterer {
             while i < clusters.len() {
                 let mut j = i + 1;
                 while j < clusters.len() {
-                    if similarity_function.compute_dense(&clusters[i].seeds, &clusters[j].seeds) > t2_cutoff {
+                    if *similarity_function.compute_dense(&clusters[i].seeds, &clusters[j].seeds) > t2_cutoff
+                    {
                         halt = false;
                         let cluster_to_be_merged = clusters.remove(j);
                         clusters[i].merge(cluster_to_be_merged);

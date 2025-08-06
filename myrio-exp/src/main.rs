@@ -5,22 +5,16 @@ mod clustering;
 mod misc;
 mod scripts;
 
-use std::collections::HashMap;
-
 // Imports
 use bio_seq::prelude::*;
 use myrio_core::{
-    clustering::SimilarityFunction,
+    clustering::{SimFunc, SimilarityFunction},
     data::MyrSeq,
     simseq::{Generator, distr::DiscreteDistribution},
 };
 use rand::{SeedableRng, seq::IndexedRandom};
+use std::collections::HashMap;
 
-fn main() -> anyhow::Result<()> {
-    Ok(())
-}
-
-/*
 fn main() -> anyhow::Result<()> {
     let mut rng = rand::rngs::StdRng::from_os_rng();
     let generator = Generator::default()
@@ -36,7 +30,7 @@ fn main() -> anyhow::Result<()> {
         generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
     ]
     .concat();
-    let clusters = myrio_core::clustering::Clusterer::cluster_test(myrseqs, 5);
+    let clusters = clustering::partition::Clusterer::cluster(myrseqs, 4, 5, 0.4, SimFunc::Cosine);
 
     for (idx, cluster) in clusters.iter().enumerate() {
         let mut id_count_map: HashMap<&str, usize> = HashMap::new();
@@ -49,7 +43,7 @@ fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
+/*
 fn simseq_test() -> anyhow::Result<()> {
     let mut rng = rand::rngs::StdRng::from_os_rng();
     let generator = Generator::default();

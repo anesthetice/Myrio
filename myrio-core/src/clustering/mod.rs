@@ -2,4 +2,4 @@
 mod simfunc;
 
 // Re-exports
-pub use simfunc::SimilarityFunction;
+pub use simfunc::{SimFunc, SimScore, SimilarityFunction, SimilarityScore};

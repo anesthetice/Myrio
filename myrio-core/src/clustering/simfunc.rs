@@ -3,6 +3,18 @@ use itertools::Itertools;
 use ndarray::Array1;
 
 use crate::data::SFVec;
+use nutype::nutype;
+
+pub type SimScore = SimilarityScore;
+pub type SimFunc = SimilarityFunction;
+
+#[nutype(
+    default = 0_f64,
+    sanitize(with = |val| val.clamp(0.0, 1.0)),
+    validate(greater_or_equal = 0.0, less_or_equal = 1.0, finite),
+    derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deref, TryFrom, Display, Default)
+)]
+pub struct SimilarityScore(f64);
 
 #[derive(Debug, Clone, Copy)]
 pub enum SimilarityFunction {
@@ -15,11 +27,12 @@ impl SimilarityFunction {
         &self,
         a: &Array1<f64>,
         b: &Array1<f64>,
-    ) -> f64 {
+    ) -> SimScore {
         match &self {
-            Self::Cosine => {
-                a.dot(b) / (a.mapv(|val| val * val).sum().sqrt() * b.mapv(|val| val * val).sum().sqrt())
-            }
+            Self::Cosine => SimScore::try_new(
+                a.dot(b) / (a.mapv(|val| val * val).sum().sqrt() * b.mapv(|val| val * val).sum().sqrt()),
+            )
+            .unwrap(),
             Self::Overlap => {
                 let mut max = Array1::<f64>::zeros(a.len());
                 let mut min = Array1::<f64>::zeros(a.len());
@@ -29,7 +42,7 @@ impl SimilarityFunction {
                     min[idx] = a.min(b);
                 }
 
-                min.sum() / max.sum()
+                SimilarityScore::try_new(min.sum() / max.sum()).unwrap()
             }
         }
     }
@@ -38,7 +51,7 @@ impl SimilarityFunction {
         &self,
         a: &SFVec,
         b: &SFVec,
-    ) -> f64 {
+    ) -> SimScore {
         match &self {
             Self::Cosine => {
                 let dot: f64 = {
@@ -58,8 +71,11 @@ impl SimilarityFunction {
                             .sum()
                     }
                 };
-                dot / (a.values().map(|val| val * val).sum::<f64>().sqrt()
-                    * b.values().map(|val| val * val).sum::<f64>().sqrt())
+                SimScore::try_new(
+                    dot / (a.values().map(|val| val * val).sum::<f64>().sqrt()
+                        * b.values().map(|val| val * val).sum::<f64>().sqrt()),
+                )
+                .unwrap()
             }
             Self::Overlap => {
                 let mut max = Array1::<f64>::zeros(a.len() + b.len());
@@ -70,7 +86,7 @@ impl SimilarityFunction {
                     min[idx] = a[key].min(b[key]);
                 }
 
-                min.sum() / max.sum()
+                SimScore::try_new(min.sum() / max.sum()).unwrap()
             }
         }
     }
@@ -93,16 +109,16 @@ mod test {
         let a = myrseq_1.compute_dense_kmer_counts(2, f64::MIN).unwrap().0;
         let b = myrseq_2.compute_dense_kmer_counts(2, f64::MIN).unwrap().0;
         let cosine_dense = SimilarityFunction::Cosine.compute_dense(&a, &b);
-        assert!((cosine_dense - 2.0 / 3.0).abs() < f64::EPSILON);
+        assert!((*cosine_dense - 2.0 / 3.0).abs() < f64::EPSILON);
         let overlap_dense = SimilarityFunction::Overlap.compute_dense(&a, &b);
-        assert!((overlap_dense - 0.5).abs() < f64::EPSILON);
+        assert!((*overlap_dense - 0.5).abs() < f64::EPSILON);
 
         let a = myrseq_1.compute_sparse_kmer_counts(2, f64::MIN).unwrap().0;
         let b = myrseq_2.compute_sparse_kmer_counts(2, f64::MIN).unwrap().0;
         let cosine_sparse = SimilarityFunction::Cosine.compute_sparse(&a, &b);
-        assert!((cosine_sparse - 2.0 / 3.0).abs() < f64::EPSILON);
+        assert!((*cosine_sparse - 2.0 / 3.0).abs() < f64::EPSILON);
         let overlap_sparse = SimilarityFunction::Overlap.compute_sparse(&a, &b);
-        assert!((overlap_sparse - 0.5).abs() < f64::EPSILON);
+        assert!((*overlap_sparse - 0.5).abs() < f64::EPSILON);
 
         assert_eq!(cosine_dense, cosine_sparse);
         assert_eq!(overlap_dense, overlap_sparse);

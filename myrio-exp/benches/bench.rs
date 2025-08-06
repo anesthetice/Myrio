@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::AddAssign};
 use bio_seq::prelude::*;
 use divan::{Bencher, black_box};
 use itertools::Itertools;
-use myrio_core::data::sparse::SparseFloatVec;
+use myrio_core::data::SFVec;
 use ndarray::Array1;
 
 const K: usize = 5;
@@ -63,8 +63,8 @@ fn kmer_map_sfvec(bencher: Bencher) {
         "GCGAGACGAGGGAGTAGGCGCAAGTCGATCGCGCTGTATCCATATATTCATCGTTCCCAAGTAATGTCTCGAAGACATTTTACATAATCGGTCATGCGATGGGAATCGATAGCGGTCAGTGAGCTTAGAGGTCGACTCCAAACGTTAACT"
     ));
 
-    bencher.bench(move || -> SparseFloatVec {
-        let mut map = SparseFloatVec::new();
+    bencher.bench(move || -> SFVec {
+        let mut map = SFVec::new();
         for (kmer, kmer_rc) in seq.kmers::<K>().zip_eq(seq.to_revcomp().kmers::<K>()) {
             map.get_or_insert_mut(usize::from(&kmer)).add_assign(1.0);
             map.get_or_insert_mut(usize::from(&kmer_rc)).add_assign(1.0);

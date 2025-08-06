@@ -3,20 +3,24 @@
 // Modules
 mod clustering;
 mod misc;
+mod scripts;
 
 use std::collections::HashMap;
 
 // Imports
 use bio_seq::prelude::*;
 use myrio_core::{
-    MyrSeq,
     clustering::SimilarityFunction,
+    data::MyrSeq,
     simseq::{Generator, distr::DiscreteDistribution},
 };
 use rand::{SeedableRng, seq::IndexedRandom};
 
-use crate::clustering::{ClusterMethod, SimFunc};
+fn main() -> anyhow::Result<()> {
+    Ok(())
+}
 
+/*
 fn main() -> anyhow::Result<()> {
     let mut rng = rand::rngs::StdRng::from_os_rng();
     let generator = Generator::default()
@@ -32,13 +36,7 @@ fn main() -> anyhow::Result<()> {
         generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
     ]
     .concat();
-    let clusters = myrio_core::clustering::Clusterer::cluster(
-        myrseqs,
-        5,
-        0.7,
-        0.75,
-        myrio_core::clustering::SimilarityFunction::Cosine,
-    );
+    let clusters = myrio_core::clustering::Clusterer::cluster_test(myrseqs, 5);
 
     for (idx, cluster) in clusters.iter().enumerate() {
         let mut id_count_map: HashMap<&str, usize> = HashMap::new();
@@ -144,3 +142,4 @@ fn cluster_and_display(
     }
     println!();
 }
+*/

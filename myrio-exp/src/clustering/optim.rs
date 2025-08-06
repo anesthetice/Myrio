@@ -5,15 +5,13 @@ use argmin::{
     solver::{linesearch::MoreThuenteLineSearch, quasinewton::LBFGS},
 };
 use itertools::Itertools;
-use myrio_core::{MyrSeq, simseq::Generator};
+use myrio_core::{data::MyrSeq, simseq::Generator};
 use ndarray::{Array1, array};
 use rand::SeedableRng;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
-use crate::clustering::{ClusterMethod, SimFunc};
-
 const EPS_GRAD: f64 = 2e-2;
-
+/*
 struct ClusterAlgorithm {
     k: usize,
     myrseqs: Vec<MyrSeq>,
@@ -166,3 +164,4 @@ pub fn _generate_and_save_random_sequences_for_cluster_testing() {
 
     MyrSeq::encode_vec_to_file("./ignore/argmin_myrseqs.bin", &myrseqs, 17).unwrap();
 }
+*/

@@ -8,7 +8,7 @@ use bio_seq::prelude::*;
 use itertools::Itertools;
 use thiserror::Error;
 
-use crate::MyrSeq;
+use crate::data::MyrSeq;
 
 pub fn read_fastq_from_file<Q: AsRef<Path>>(filepath: Q) -> Result<Vec<MyrSeq>, Error> {
     let filepath: &Path = filepath.as_ref();

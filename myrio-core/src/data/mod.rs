@@ -1,3 +1,7 @@
 // Modules
-pub mod myrseq;
-pub mod sparse;
+mod myrseq;
+mod sparse;
+
+// Re-exports
+pub use myrseq::MyrSeq;
+pub use sparse::{SFVec, SparseFloatVec};

@@ -1,4 +1,4 @@
-//! Yanked and slightly modfied code from the crate `statrs`, `https://crates.io/crates/statrs`
+//! Yanked and slightly modified code from the crate `statrs`, `https://crates.io/crates/statrs`
 //!
 //! MIT License
 //!

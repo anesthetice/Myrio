@@ -1,6 +1,5 @@
 // Imports
 use std::{
-    collections::HashMap,
     ops::{AddAssign, Range},
     path::Path,
 };

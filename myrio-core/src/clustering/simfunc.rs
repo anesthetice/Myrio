@@ -1,7 +1,8 @@
 // Imports
-use crate::data::sparse::SparseFloatVec;
 use itertools::Itertools;
 use ndarray::Array1;
+
+use crate::data::SFVec;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SimilarityFunction {
@@ -35,8 +36,8 @@ impl SimilarityFunction {
 
     pub fn compute_sparse(
         &self,
-        a: &SparseFloatVec,
-        b: &SparseFloatVec,
+        a: &SFVec,
+        b: &SFVec,
     ) -> f64 {
         match &self {
             Self::Cosine => {
@@ -79,9 +80,10 @@ impl SimilarityFunction {
 mod test {
     use std::f64;
 
-    use super::*;
-    use crate::data::myrseq::MyrSeq;
     use bio_seq::prelude::*;
+
+    use super::*;
+    use crate::data::MyrSeq;
 
     #[test]
     fn simfunc_test() {

@@ -11,8 +11,8 @@ use rand::{distr::Distribution, seq::IndexedRandom};
 use thiserror::Error;
 
 use crate::{
-    MyrSeq,
     constants::{MAX_Q_SCORE, MIN_Q_SCORE},
+    data::MyrSeq,
 };
 
 #[derive(Debug)]

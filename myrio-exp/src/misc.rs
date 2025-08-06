@@ -3,7 +3,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use bio_seq::prelude::*;
 use itertools::Itertools;
-use myrio_core::MyrSeq;
+use myrio_core::data::MyrSeq;
 
 const K: usize = 5;
 const W: usize = 9;

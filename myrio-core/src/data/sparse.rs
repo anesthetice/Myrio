@@ -1,5 +1,9 @@
+// Imports
 use itertools::Itertools;
 
+pub type SFVec = SparseFloatVec;
+
+/// A sparse vector containing floats, similar to `HashMap<usize,f64>` but without the need for hashing
 #[derive(Debug, Clone, Default)]
 pub struct SparseFloatVec {
     keys: Vec<usize>,
@@ -64,6 +68,10 @@ impl SparseFloatVec {
 
     pub fn len(&self) -> usize {
         self.keys.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.keys.len() == 0
     }
 }
 

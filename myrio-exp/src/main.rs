@@ -5,6 +5,7 @@ mod clustering;
 mod misc;
 mod scripts;
 
+use anyhow::Ok;
 // Imports
 use bio_seq::prelude::*;
 use myrio_core::{
@@ -15,7 +16,14 @@ use myrio_core::{
 use rand::{SeedableRng, seq::IndexedRandom};
 use std::collections::HashMap;
 
+use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset};
+
 fn main() -> anyhow::Result<()> {
+    cluster_simple_test();
+    Ok(())
+}
+
+fn cluster_simple_test() {
     let mut rng = rand::rngs::StdRng::from_os_rng();
     let generator = Generator::default()
         .with_q_score_distr(DiscreteDistribution::new_nbin_from_mean_and_std(10.0, 6.0).unwrap());
@@ -30,7 +38,7 @@ fn main() -> anyhow::Result<()> {
         generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
     ]
     .concat();
-    let clusters = clustering::partition::Clusterer::cluster(myrseqs, 4, 5, 0.4, SimFunc::Cosine);
+    let clusters = clustering::partition::Clusterer::cluster(myrseqs, 4, 6, 0.2, SimFunc::Cosine);
 
     for (idx, cluster) in clusters.iter().enumerate() {
         let mut id_count_map: HashMap<&str, usize> = HashMap::new();
@@ -40,9 +48,8 @@ fn main() -> anyhow::Result<()> {
         }
         println!("cluster {idx}: {id_count_map:?}")
     }
-
-    Ok(())
 }
+
 /*
 fn simseq_test() -> anyhow::Result<()> {
     let mut rng = rand::rngs::StdRng::from_os_rng();

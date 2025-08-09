@@ -1,12 +1,11 @@
-use std::f64;
-
-use itertools::Itertools;
 // Imports
+use itertools::Itertools;
 use myrio_core::{
     clustering::{SimScore, SimilarityFunction},
     data::MyrSeq,
 };
 use ndarray::Array1;
+use std::{collections::HashMap, f64};
 
 /// Partition-based clustering
 pub struct Clusterer;
@@ -44,11 +43,15 @@ impl Clusterer {
             fn new(seeds: &'a Array1<f64>) -> Self {
                 Self { centroid_seeds: seeds.clone(), elements: vec![seeds] }
             }
+            // TODO: rename
             fn reincarnate(
                 self,
                 countmap_size: usize,
             ) -> Self {
                 let n = self.elements.len() as f64;
+                if self.elements.is_empty() {
+                    return Self { centroid_seeds: self.centroid_seeds, elements: Vec::new() };
+                }
                 let new_centroid_seeds: Array1<f64> = self
                     .elements
                     .into_iter()
@@ -64,9 +67,9 @@ impl Clusterer {
         // Step 1, compute the k-mer counts for each myrseq
         let (myrseqs, kcounts, nb_hcks): (Vec<MyrSeq>, Vec<Array1<f64>>, Vec<usize>) = myrseqs
             .into_iter()
-            .map(|myrseq| {
+            .filter_map(|myrseq| {
                 let (kcount, nb_hck) = myrseq.compute_dense_kmer_counts(k, t1).unwrap();
-                (myrseq, kcount, nb_hck)
+                if nb_hck != 0 { Some((myrseq, kcount, nb_hck)) } else { None }
             })
             .sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first
             .multiunzip();
@@ -105,6 +108,7 @@ impl Clusterer {
                     .elements
                     .push(kcount);
             }
+
             clusters = clusters.into_iter().map(|cluster| cluster.reincarnate(countmap_size)).collect_vec();
         }
 
@@ -133,4 +137,23 @@ impl Clusterer {
     ) -> Vec<Vec<MyrSeq>> {
         todo!()
     }
+}
+
+pub fn compute_cluster_cost(clusters: Vec<Vec<MyrSeq>>) -> f64 {
+    let mut cost: f64 = 0.0;
+
+    for (idx, cluster) in clusters.into_iter().enumerate() {
+        let mut id_count_map: HashMap<&str, usize> = HashMap::new();
+        for myrseq in cluster.iter() {
+            let count_ref = id_count_map.entry(myrseq.id.as_str()).or_default();
+            *count_ref += 1;
+        }
+        if !id_count_map.is_empty() {
+            let counts = id_count_map.values().copied().collect_vec();
+            let max_count = *counts.iter().max().unwrap();
+            let diff = (counts.iter().sum::<usize>() - max_count) as f64;
+            cost += diff
+        }
+    }
+    cost
 }

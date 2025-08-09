@@ -109,7 +109,7 @@ impl Clusterer {
         t2_cutoff: f64,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
-        todo!()
+        unimplemented!()
     }
 }
 

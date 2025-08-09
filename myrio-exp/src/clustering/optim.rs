@@ -1,3 +1,4 @@
+/* Currently disabled as we are planning to use partition clustering
 use std::collections::HashMap;
 
 use argmin::{
@@ -11,7 +12,7 @@ use rand::SeedableRng;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 const EPS_GRAD: f64 = 2e-2;
-/*
+
 struct ClusterAlgorithm {
     k: usize,
     myrseqs: Vec<MyrSeq>,

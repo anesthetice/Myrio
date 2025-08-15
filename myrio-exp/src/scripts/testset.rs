@@ -1,11 +1,12 @@
 // Imports
+use std::str::FromStr;
+
 use itertools::Itertools;
 use myrio_core::{
     data::MyrSeq,
     simseq::{Generator, distr::DiscreteDistribution},
 };
 use rand::SeedableRng;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]

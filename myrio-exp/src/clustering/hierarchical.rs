@@ -1,7 +1,10 @@
 // Imports
 use itertools::Itertools;
-use myrio_core::{clustering::SimilarityFunction, constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::MyrSeq};
-use ndarray::Array1;
+use myrio_core::{
+    clustering::SimilarityFunction,
+    constants::Q_TO_BP_CALL_CORRECT_PROB_MAP,
+    data::{DFArray, MyrSeq},
+};
 
 pub struct Clusterer;
 
@@ -54,7 +57,7 @@ impl Clusterer {
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
         struct Cluster {
-            seeds: Array1<f64>,
+            seeds: DFArray,
             elements: Vec<MyrSeq>,
         }
 

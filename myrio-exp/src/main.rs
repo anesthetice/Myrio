@@ -4,6 +4,9 @@
 mod clustering;
 mod misc;
 mod scripts;
+mod tax;
+
+use std::collections::HashMap;
 
 use anyhow::Ok;
 // Imports
@@ -14,12 +17,11 @@ use myrio_core::{
     simseq::{Generator, distr::DiscreteDistribution},
 };
 use rand::{SeedableRng, seq::IndexedRandom};
-use std::collections::HashMap;
 
-use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset};
+use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset, tax::basic_test};
 
 fn main() -> anyhow::Result<()> {
-    cluster_simple_test();
+    basic_test()?;
     Ok(())
 }
 

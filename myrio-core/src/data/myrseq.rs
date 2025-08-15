@@ -12,11 +12,10 @@ use bio_seq::{
 };
 use itertools::Itertools;
 use myrio_proc::{gen_match_k_dense, gen_match_k_sparse};
-use ndarray::Array1;
 use thiserror::Error;
 
 use super::sparse::SparseFloatVec;
-use crate::constants::Q_TO_BP_CALL_CORRECT_PROB_MAP;
+use crate::{constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::DFArray};
 
 /// The main data structure used by Myrio, an efficient representation of an FASTQ record
 #[cfg_attr(test, derive(PartialEq))]
@@ -80,7 +79,7 @@ impl MyrSeq {
         &self,
         k: usize,
         cutoff: f64,
-    ) -> Result<(Array1<f64>, usize), Error> {
+    ) -> Result<(DFArray, usize), Error> {
         let conf_score_per_kmer = self
             .quality
             .iter()
@@ -94,7 +93,7 @@ impl MyrSeq {
             ($seq:expr, $K:expr) => {{
                 let nb_kmers = $seq.len() - $K + 1;
                 let mut nb_hck: usize = 0; // number of high-quality k-mers
-                let mut map = Array1::<f64>::zeros(4_usize.pow(k as u32));
+                let mut map = DFArray::zeros(4_usize.pow(k as u32));
 
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
                     // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.

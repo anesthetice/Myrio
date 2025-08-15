@@ -98,6 +98,15 @@ impl Generator {
         Self { min_window_size: size, ..self }
     }
 
+    pub fn generate_core_sequence(
+        length: usize,
+        rng: &mut impl rand::Rng,
+    ) -> Seq<Dna> {
+        let mut buffer = vec![0_u8; ((usize::BITS as usize) >> 3) * length];
+        rng.fill_bytes(&mut buffer);
+        Seq::from_raw(length, bytemuck::cast_slice(&buffer)).unwrap()
+    }
+
     pub fn generate_pseudo_amplicon(
         &self,
         length: usize,
@@ -106,11 +115,7 @@ impl Generator {
         rng: &mut impl rand::Rng,
     ) -> Vec<MyrSeq> {
         // We generate our core DNA forward amplicon sequence, and its reverse complement
-        let core_seq: Seq<Dna> = {
-            let mut buffer = vec![0_u8; ((usize::BITS as usize) >> 3) * length];
-            rng.fill_bytes(&mut buffer);
-            Seq::from_raw(length, bytemuck::cast_slice(&buffer)).unwrap()
-        };
+        let core_seq: Seq<Dna> = Self::generate_core_sequence(length, rng);
         let core_seq_rc = core_seq.to_revcomp();
 
         // We generate the ratio of sequences corresponding to the coding strand and the template (reverse complement) strand

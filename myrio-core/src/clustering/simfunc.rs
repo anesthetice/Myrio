@@ -1,9 +1,8 @@
 // Imports
 use itertools::Itertools;
-use ndarray::Array1;
-
-use crate::data::SFVec;
 use nutype::nutype;
+
+use crate::data::{DFArray, SFVec};
 
 pub type SimScore = SimilarityScore;
 pub type SimFunc = SimilarityFunction;
@@ -25,8 +24,8 @@ pub enum SimilarityFunction {
 impl SimilarityFunction {
     pub fn compute_dense(
         &self,
-        a: &Array1<f64>,
-        b: &Array1<f64>,
+        a: &DFArray,
+        b: &DFArray,
     ) -> SimScore {
         match &self {
             Self::Cosine => SimScore::try_new(
@@ -34,15 +33,13 @@ impl SimilarityFunction {
             )
             .unwrap(),
             Self::Overlap => {
-                let mut max = Array1::<f64>::zeros(a.len());
-                let mut min = Array1::<f64>::zeros(a.len());
+                let (mut sum_min, mut sum_max) = (0.0, 0.0);
 
-                for (idx, (&a, &b)) in a.iter().zip_eq(b.iter()).enumerate() {
-                    max[idx] = a.max(b);
-                    min[idx] = a.min(b);
-                }
-
-                SimilarityScore::try_new(min.sum() / max.sum()).unwrap()
+                ndarray::Zip::from(a).and(b).for_each(|&x, &y| {
+                    sum_min += x.min(y);
+                    sum_max += x.max(y);
+                });
+                SimilarityScore::try_new(sum_min / sum_max).unwrap()
             }
         }
     }
@@ -54,22 +51,10 @@ impl SimilarityFunction {
     ) -> SimScore {
         match &self {
             Self::Cosine => {
-                let dot: f64 = {
-                    if a.len() > b.len() {
-                        b.iter()
-                            .map(|(&key, &val)| match a.get(key) {
-                                Some(&other_val) => val * other_val,
-                                None => 0.0,
-                            })
-                            .sum()
-                    } else {
-                        a.iter()
-                            .map(|(&key, &val)| match b.get(key) {
-                                Some(&other_val) => val * other_val,
-                                None => 0.0,
-                            })
-                            .sum()
-                    }
+                let dot: f64 = if a.len() > b.len() {
+                    b.iter().filter_map(|(&key, &b_val)| a.get(key).map(|&a_val| a_val * b_val)).sum()
+                } else {
+                    a.iter().filter_map(|(&key, &a_val)| b.get(key).map(|&b_val| a_val * b_val)).sum()
                 };
                 SimScore::try_new(
                     dot / (a.values().map(|val| val * val).sum::<f64>().sqrt()
@@ -78,15 +63,16 @@ impl SimilarityFunction {
                 .unwrap()
             }
             Self::Overlap => {
-                let mut max = Array1::<f64>::zeros(a.len() + b.len());
-                let mut min = Array1::<f64>::zeros(a.len() + b.len());
+                let (mut sum_min, mut sum_max) = (0.0, 0.0);
 
-                for (idx, &key) in a.keys().chain(b.keys()).unique().enumerate() {
-                    max[idx] = a[key].max(b[key]);
-                    min[idx] = a[key].min(b[key]);
+                for &key in a.keys().chain(b.keys()).unique() {
+                    let a_val = a[key];
+                    let b_val = b[key];
+                    sum_min += a_val.min(b_val);
+                    sum_max += a_val.max(b_val);
                 }
 
-                SimScore::try_new(min.sum() / max.sum()).unwrap()
+                SimScore::try_new(sum_min / sum_max).unwrap()
             }
         }
     }

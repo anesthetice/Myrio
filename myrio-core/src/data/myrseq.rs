@@ -4,7 +4,6 @@ use std::{
     path::Path,
 };
 
-use bio::io::fastq;
 use bio_seq::{
     ReverseComplement,
     codec::dna::Dna as DnaCodec,
@@ -29,17 +28,6 @@ pub struct MyrSeq {
     pub sequence: Seq<DnaCodec>,
     /// Associated 'Quality Score' of each nucleotide
     pub quality: Vec<u8>,
-}
-
-impl From<&fastq::Record> for MyrSeq {
-    fn from(value: &fastq::Record) -> Self {
-        Self {
-            id: value.id().to_string(),
-            description: value.desc().map(str::to_string),
-            sequence: value.seq().try_into().unwrap(),
-            quality: value.qual().iter().map(|a| a.saturating_sub(33)).collect(),
-        }
-    }
 }
 
 impl MyrSeq {
@@ -151,15 +139,6 @@ impl MyrSeq {
         gen_match_k_sparse!(self.sequence)
     }
 
-    pub fn from_fastq_record_ignore_desc(value: &fastq::Record) -> Self {
-        Self {
-            id: value.id().to_string(),
-            description: None,
-            sequence: value.seq().try_into().unwrap(),
-            quality: value.qual().iter().map(|a| a.saturating_sub(33)).collect(),
-        }
-    }
-
     pub fn encode_vec<W: std::io::Write>(
         myrseqs: &[MyrSeq],
         compression_level: i32,
@@ -234,29 +213,9 @@ pub enum Error {
 
 #[cfg(test)]
 mod test {
-    use bio::io::fastq;
     use bio_seq::prelude::*;
 
     use super::MyrSeq;
-
-    #[test]
-    pub fn test_myrseq_from_fastq_record() {
-        let fastq_record = fastq::Record::with_attrs("1", Some("test"), b"ATCG", b"!0:I");
-
-        // default `from`
-        let myrseq = MyrSeq::from(&fastq_record);
-        assert_eq!(myrseq.sequence.as_ref(), dna!("ATCG"));
-        assert_eq!(myrseq.quality.as_slice(), &[0, 15, 25, 40]);
-        assert_eq!(myrseq.id.as_str(), "1");
-        assert_eq!(myrseq.description.as_deref(), Some("test"));
-
-        // minimal `from`
-        let myrseq = MyrSeq::from_fastq_record_ignore_desc(&fastq_record);
-        assert_eq!(myrseq.sequence.as_ref(), dna!("ATCG"));
-        assert_eq!(myrseq.quality.as_slice(), &[0, 15, 25, 40]);
-        assert_eq!(myrseq.id.as_str(), "1");
-        assert_eq!(myrseq.description, None);
-    }
 
     #[test]
     pub fn encode_decode_round_trip_test() {

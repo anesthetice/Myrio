@@ -13,7 +13,6 @@ myrio-core = { workspace = true }
 anyhow = { workspace = true }
 #argmin = { version = "0.10", features = ["ctrlc"] }
 #argmin-math = { version = "0.4", features = ["ndarray_v0_15-nolinalg"] }
-bio = { workspace = true }
 bio-seq = { workspace = true }
 bytemuck = { version = "1.23" }
 itertools = { workspace = true }

@@ -9,7 +9,6 @@ readme = "README.md"
 # internal
 myrio-proc = { workspace = true }
 # external
-bio = { workspace = true }
 bio-seq = { workspace = true }
 bincode = { version = "2.0" }
 bytemuck = { version = "1.23" }

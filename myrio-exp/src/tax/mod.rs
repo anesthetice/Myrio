@@ -1,14 +1,16 @@
-use std::str::FromStr;
+use std::{
+    io::{BufRead, BufReader},
+    path::Path,
+    str::FromStr,
+};
 
 use anyhow::Context;
 use bio_seq::{codec::dna::Dna as DnaCodec, seq::Seq};
 use itertools::Itertools;
 use myrio_core::{clustering::SimFunc, data::MyrSeq};
 
-use crate::clustering;
-
 pub fn basic_test() -> anyhow::Result<()> {
-    const K: usize = 6;
+    const K: usize = 8;
 
     let refs = std::fs::read_to_string("./ignore/Magnoliopsida_rbcL_raxdb.fasta")?
         .lines()
@@ -36,11 +38,20 @@ pub fn basic_test() -> anyhow::Result<()> {
     let queries =
         myrio_core::io::read_fastq_from_file("./ignore/Solanum_lycopersicummatK_rbcL_ITS_barcode11.fastq")?;
 
-    let centroids = clustering::partition::Clusterer::cluster_dense_alt(queries, 4, K, 0.2, SimFunc::Cosine);
+    let centroids =
+        crate::clustering::partition::Clusterer::cluster_dense_alt(queries, 2, K, 0.2, SimFunc::Cosine);
 
     for centroid in centroids.into_iter() {
-        let best = refs.iter().max_by_key(|(_, _, kcount)| SimFunc::Cosine.compute_dense(&centroid, kcount));
-        println!("{}\n", best.unwrap().1.as_ref().unwrap())
+        let best = refs
+            .iter()
+            .max_by_key(|(_, _, kcount)| SimFunc::Overlap.compute_dense(&centroid, kcount))
+            .unwrap();
+
+        println!(
+            "→ {}  with score of {:.4}",
+            best.1.as_ref().unwrap(),
+            SimFunc::Overlap.compute_dense(&centroid, &best.2)
+        )
     }
 
     Ok(())

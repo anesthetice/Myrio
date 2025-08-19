@@ -9,8 +9,7 @@ pub type SimFunc = SimilarityFunction;
 
 #[nutype(
     default = 0_f64,
-    sanitize(with = |val| val.clamp(0.0, 1.0)),
-    validate(greater_or_equal = 0.0, less_or_equal = 1.0, finite),
+    validate(finite),
     derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deref, TryFrom, Display, Default)
 )]
 pub struct SimilarityScore(f64);
@@ -19,6 +18,7 @@ pub struct SimilarityScore(f64);
 pub enum SimilarityFunction {
     Cosine,
     Overlap,
+    OverlapNorm,
 }
 
 impl SimilarityFunction {
@@ -33,12 +33,18 @@ impl SimilarityFunction {
             )
             .unwrap(),
             Self::Overlap => {
+                let mut sum_min: f64 = 0.0;
+                ndarray::Zip::from(a).and(b).for_each(|&x, &y| sum_min += x.min(y));
+                SimilarityScore::try_new(sum_min).unwrap()
+            }
+            Self::OverlapNorm => {
                 let (mut sum_min, mut sum_max) = (0.0, 0.0);
 
                 ndarray::Zip::from(a).and(b).for_each(|&x, &y| {
                     sum_min += x.min(y);
                     sum_max += x.max(y);
                 });
+
                 SimilarityScore::try_new(sum_min / sum_max).unwrap()
             }
         }
@@ -51,7 +57,7 @@ impl SimilarityFunction {
     ) -> SimScore {
         match &self {
             Self::Cosine => {
-                let dot: f64 = if a.len() > b.len() {
+                let dot: f64 = if a.count() > b.count() {
                     b.iter().filter_map(|(&key, &b_val)| a.get(key).map(|&a_val| a_val * b_val)).sum()
                 } else {
                     a.iter().filter_map(|(&key, &a_val)| b.get(key).map(|&b_val| a_val * b_val)).sum()
@@ -63,9 +69,16 @@ impl SimilarityFunction {
                 .unwrap()
             }
             Self::Overlap => {
+                let mut sum_min = 0.0;
+                for key in a.merge_keys(b) {
+                    sum_min += a[key].min(b[key]);
+                }
+                SimScore::try_new(sum_min).unwrap()
+            }
+            Self::OverlapNorm => {
                 let (mut sum_min, mut sum_max) = (0.0, 0.0);
 
-                for &key in a.keys().chain(b.keys()).unique() {
+                for key in a.merge_keys(b) {
                     let a_val = a[key];
                     let b_val = b[key];
                     sum_min += a_val.min(b_val);

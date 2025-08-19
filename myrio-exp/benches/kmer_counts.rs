@@ -65,7 +65,7 @@ fn kmer_counts_sfvec(bencher: Bencher) {
     ));
 
     bencher.bench(move || -> SFVec {
-        let mut map = SFVec::new();
+        let mut map = SFVec::new(NB_KMERS);
         for (kmer, kmer_rc) in seq.kmers::<K>().zip_eq(seq.to_revcomp().kmers::<K>()) {
             map.get_or_insert_mut(usize::from(&kmer)).add_assign(1.0);
             map.get_or_insert_mut(usize::from(&kmer_rc)).add_assign(1.0);

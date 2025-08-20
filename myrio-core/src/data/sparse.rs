@@ -222,10 +222,18 @@ impl SparseFloatVec {
         self.sum() / self.dim as f64
     }
 
+    /*
     pub fn clr_transform(&mut self) {
         self.apply_in_place(|x| x.add_assign(1.0));
         let ln_mean = self.mean().ln();
         self.apply_in_place(|x| *x = x.ln() - ln_mean);
+    }
+
+    /// https://journals.asm.org/doi/10.1128/msystems.00016-19#sec-4
+    pub fn rclr_transform(&mut self) {
+        let robust_ln_mean = self.values().product::<f64>().powf(1_f64 / self.count() as f64).ln();
+        assert!(robust_ln_mean.is_finite());
+        self.values_mut().for_each(|x| *x = x.ln() - robust_ln_mean);
     }
 
     pub fn dist_l2(
@@ -233,6 +241,12 @@ impl SparseFloatVec {
         other: &Self,
     ) -> f64 {
         self.merge_and_apply(other, |x, y| (x - y).powi(2)).sum().sqrt()
+    }
+    */
+
+    pub fn norm_l2(&self) -> f64 {
+        (self.values().map(|x| x * x).sum1().unwrap_or(0.0) + self.sval * self.sval * self.nb_sparse() as f64)
+            .sqrt()
     }
 }
 
@@ -363,5 +377,6 @@ mod test {
 
         assert_float_eq!(sfvec.sum(), 18.0);
         assert_float_eq!(sfvec.mean(), 18.0 / 5.0);
+        assert_float_eq!(sfvec.norm_l2(), 80_f64.sqrt())
     }
 }

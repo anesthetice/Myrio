@@ -10,7 +10,6 @@ pub mod tax;
 #[macro_export]
 macro_rules! assert_float_eq {
     ($lhs: expr, $rhs: expr) => {
-        let (a, b): (f64, f64) = ($lhs, $rhs);
-        assert!((a - b).abs() < f64::EPSILON)
+        assert!(($lhs - $rhs).abs() < f64::EPSILON)
     };
 }

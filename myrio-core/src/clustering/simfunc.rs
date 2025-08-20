@@ -1,3 +1,5 @@
+use std::f64;
+
 // Imports
 use itertools::Itertools;
 use nutype::nutype;
@@ -61,24 +63,10 @@ impl SimilarityFunction {
     ) -> SimScore {
         match &self {
             Self::Cosine => {
-                let dot: f64 = if a.count() > b.count() {
-                    b.iter().filter_map(|(&key, &b_val)| a.get(key).map(|&a_val| a_val * b_val)).sum()
-                } else {
-                    a.iter().filter_map(|(&key, &a_val)| b.get(key).map(|&b_val| a_val * b_val)).sum()
-                };
-                SimScore::try_new(
-                    dot / (a.values().map(|val| val * val).sum::<f64>().sqrt()
-                        * b.values().map(|val| val * val).sum::<f64>().sqrt()),
-                )
-                .unwrap()
+                let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+                SimScore::try_new(dot / (a.norm_l2() * b.norm_l2())).unwrap()
             }
-            Self::Overlap => {
-                let mut sum_min = 0.0;
-                for key in a.merge_keys(b) {
-                    sum_min += a[key].min(b[key]);
-                }
-                SimScore::try_new(sum_min).unwrap()
-            }
+            Self::Overlap => SimScore::try_new(a.merge_and_apply(b, |x, y| x.min(y)).sum()).unwrap(),
             Self::OverlapNorm => {
                 let (mut sum_min, mut sum_max) = (0.0, 0.0);
 
@@ -91,7 +79,9 @@ impl SimilarityFunction {
 
                 SimScore::try_new(sum_min / sum_max).unwrap()
             }
-            Self::NegEuclidDist => SimScore::try_new(-a.dist_l2(b)).unwrap(),
+            Self::NegEuclidDist => {
+                todo!()
+            }
         }
     }
 }

@@ -21,7 +21,7 @@ use rand::{SeedableRng, seq::IndexedRandom};
 use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset, tax::basic_test};
 
 fn main() -> anyhow::Result<()> {
-    cluster_simple_test();
+    basic_test();
     Ok(())
 }
 
@@ -40,9 +40,8 @@ fn cluster_simple_test() {
         generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
     ]
     .concat();
-    let clusters =
-        clustering::partition::Clusterer::_cluster_sparse(myrseqs, 4, 10, 0.2, SimFunc::NegEuclidDist);
-
+    let clusters = clustering::partition::Clusterer::_cluster_sparse(myrseqs, 4, 4, 0.2, SimFunc::Cosine);
+    /*
     for (idx, cluster) in clusters.iter().enumerate() {
         let mut id_count_map: HashMap<&str, usize> = HashMap::new();
         for myrseq in cluster.iter() {
@@ -51,6 +50,7 @@ fn cluster_simple_test() {
         }
         println!("cluster {idx}: {id_count_map:?}")
     }
+    */
 }
 
 /*

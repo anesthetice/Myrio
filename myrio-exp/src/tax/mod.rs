@@ -1,4 +1,5 @@
 use std::{
+    fs::OpenOptions,
     io::{BufRead, BufReader},
     path::Path,
     str::FromStr,
@@ -10,10 +11,12 @@ use itertools::Itertools;
 use myrio_core::{clustering::SimFunc, data::MyrSeq};
 
 pub fn basic_test() -> anyhow::Result<()> {
-    const K: usize = 8;
-    /*
-    let refs = std::fs::read_to_string("./ignore/Magnoliopsida_rbcL_raxdb.fasta")?
+    const K: usize = 12;
+    const SIMFUNC: SimFunc = SimFunc::Cosine;
+
+    let refs = BufReader::new(OpenOptions::new().read(true).open("./ignore/Magnoliopsida_rbcL_raxdb.fasta")?)
         .lines()
+        .map(|l| l.unwrap())
         .tuple_windows::<(_, _)>()
         .enumerate()
         .step_by(2)
@@ -31,29 +34,26 @@ pub fn basic_test() -> anyhow::Result<()> {
             let len = seq.len();
             let mseq = MyrSeq::new(id, desc, seq, vec![1; len]);
             let mut kmer_counts = mseq.compute_sparse_kmer_counts(K, 0.0).unwrap().0;
-            kmer_counts.clr_transform();
             (mseq.id, mseq.description, kmer_counts)
         })
         .collect_vec();
 
+    println!("refs gathered");
+
     let queries =
         myrio_core::io::read_fastq_from_file("./ignore/Solanum_lycopersicummatK_rbcL_ITS_barcode11.fastq")?;
 
-    let centroids =
-        crate::clustering::partition::Clusterer::_cluster_sparse(queries, 2, K, 0.2, SimFunc::CLRDist);
+    let centroids = crate::clustering::partition::Clusterer::_cluster_sparse(queries, 2, K, 0.2, SIMFUNC);
 
     for centroid in centroids.into_iter() {
-        let best = refs
-            .iter()
-            .max_by_key(|(_, _, kcount)| SimFunc::CLRDist.compute_sparse(&centroid, kcount))
-            .unwrap();
+        let best =
+            refs.iter().max_by_key(|(_, _, kcount)| SIMFUNC.compute_sparse(&centroid, kcount)).unwrap();
 
         println!(
             "→ {}  with score of {:.4}",
             best.1.as_ref().unwrap(),
-            SimFunc::Overlap.compute_sparse(&centroid, &best.2)
+            SIMFUNC.compute_sparse(&centroid, &best.2)
         )
     }
-    */
     Ok(())
 }

@@ -144,7 +144,7 @@ impl Clusterer {
         k: usize,
         t1: f64,
         similarity_function: SimilarityFunction,
-    ) -> Vec<Vec<MyrSeq>> {
+    ) -> Vec<SFVec> {
         struct Cluster<'a> {
             centroid_seeds: SFVec,
             elements: Vec<&'a SFVec>,
@@ -181,7 +181,6 @@ impl Clusterer {
             .into_iter()
             .filter_map(|myrseq| {
                 let (mut kcount, nb_hck) = myrseq.compute_sparse_kmer_counts(k, t1).unwrap();
-                kcount.clr_transform();
                 if nb_hck != 0 { Some((myrseq, kcount, nb_hck)) } else { None }
             })
             .sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first
@@ -212,7 +211,7 @@ impl Clusterer {
         }
 
         // Step 3
-        for _ in 0..5 {
+        for _ in 0..3 {
             for kcount in kcounts.iter() {
                 clusters
                     .iter_mut()
@@ -224,8 +223,8 @@ impl Clusterer {
 
             clusters = clusters.into_iter().map(|cluster| cluster.reincarnate(countmap_size)).collect_vec();
         }
-        //clusters.into_iter().map(|cl| cl.centroid_seeds).collect()
-
+        clusters.into_iter().map(|cl| cl.centroid_seeds).collect()
+        /*
         // Step 4
         let mut output: Vec<Vec<MyrSeq>> = vec![Vec::new(); nb_clusters];
         for (myrseq, kcount) in myrseqs.into_iter().zip_eq(kcounts.iter()) {
@@ -241,6 +240,7 @@ impl Clusterer {
         }
 
         output
+        */
     }
 }
 

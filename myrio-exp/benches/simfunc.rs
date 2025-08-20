@@ -7,7 +7,7 @@ use myrio_core::{
 };
 use rand::SeedableRng;
 
-const K: usize = 7;
+const K: usize = 6;
 const SEED: u64 = 0;
 const LENGTH: usize = 500;
 

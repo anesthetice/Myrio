@@ -19,6 +19,7 @@ pub enum SimilarityFunction {
     Cosine,
     Overlap,
     OverlapNorm,
+    NegEuclidDist,
 }
 
 impl SimilarityFunction {
@@ -46,6 +47,9 @@ impl SimilarityFunction {
                 });
 
                 SimilarityScore::try_new(sum_min / sum_max).unwrap()
+            }
+            Self::NegEuclidDist => {
+                todo!()
             }
         }
     }
@@ -87,6 +91,7 @@ impl SimilarityFunction {
 
                 SimScore::try_new(sum_min / sum_max).unwrap()
             }
+            Self::NegEuclidDist => SimScore::try_new(-a.dist_l2(b)).unwrap(),
         }
     }
 }
@@ -98,7 +103,7 @@ mod test {
     use bio_seq::prelude::*;
 
     use super::*;
-    use crate::data::MyrSeq;
+    use crate::{assert_float_eq, data::MyrSeq};
 
     #[test]
     fn simfunc_test() {
@@ -108,18 +113,18 @@ mod test {
         let a = myrseq_1.compute_dense_kmer_counts(2, f64::MIN).unwrap().0;
         let b = myrseq_2.compute_dense_kmer_counts(2, f64::MIN).unwrap().0;
         let cosine_dense = SimilarityFunction::Cosine.compute_dense(&a, &b);
-        assert!((*cosine_dense - 2.0 / 3.0).abs() < f64::EPSILON);
-        let overlap_dense = SimilarityFunction::Overlap.compute_dense(&a, &b);
-        assert!((*overlap_dense - 0.5).abs() < f64::EPSILON);
+        assert_float_eq!(*cosine_dense, 2.0 / 3.0);
+        let overlap_dense = SimilarityFunction::OverlapNorm.compute_dense(&a, &b);
+        assert_float_eq!(*overlap_dense, 0.5);
 
         let a = myrseq_1.compute_sparse_kmer_counts(2, f64::MIN).unwrap().0;
         let b = myrseq_2.compute_sparse_kmer_counts(2, f64::MIN).unwrap().0;
         let cosine_sparse = SimilarityFunction::Cosine.compute_sparse(&a, &b);
-        assert!((*cosine_sparse - 2.0 / 3.0).abs() < f64::EPSILON);
-        let overlap_sparse = SimilarityFunction::Overlap.compute_sparse(&a, &b);
-        assert!((*overlap_sparse - 0.5).abs() < f64::EPSILON);
+        assert_float_eq!(*cosine_sparse, 2.0 / 3.0);
+        let overlap_sparse = SimilarityFunction::OverlapNorm.compute_sparse(&a, &b);
+        assert_float_eq!(*overlap_sparse, 0.5);
 
-        assert_eq!(cosine_dense, cosine_sparse);
-        assert_eq!(overlap_dense, overlap_sparse);
+        assert_float_eq!(*cosine_dense, *cosine_sparse);
+        assert_float_eq!(*overlap_dense, *overlap_sparse);
     }
 }

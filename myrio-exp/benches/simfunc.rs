@@ -1,10 +1,11 @@
 // Imports
 use divan::{Bencher, black_box};
 use myrio_core::{
-    clustering::{SimFunc, SimScore},
     data::{DFArray, MyrSeq, SFVec},
+    similarity::SimScore,
     simseq::Generator,
 };
+use myrio_exp::simfunc::SimFunc;
 use rand::SeedableRng;
 
 const K: usize = 6;

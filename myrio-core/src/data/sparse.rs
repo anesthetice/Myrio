@@ -4,18 +4,19 @@ use core::{
     ops::{AddAssign, DivAssign, MulAssign, SubAssign},
 };
 
+use bincode::{Decode, Encode};
 use itertools::Itertools;
 use myrio_proc::impl_f64_ops_for_sfvec;
 
 pub type SFVec = SparseFloatVec;
 
 /// A sparse vector containing floats, similar to `HashMap<usize,f64>` but without the need for hashing
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct SparseFloatVec {
     keys: Vec<usize>,
     values: Vec<f64>,
     dim: usize,
-    /// Baseline sparse value, note that this does not act as an offset for 'real' values
+    /// Baseline sparse value, note that this does not act as an offset for the elements in `self.values`
     pub sval: f64,
 }
 
@@ -135,13 +136,13 @@ impl SparseFloatVec {
         self.values.iter_mut().for_each(op);
     }
 
-    pub fn merge_and_apply<F>(
+    pub fn merge_and_apply<F, T>(
         &self,
         other: &Self,
         op: F,
-    ) -> Self
+    ) -> (Vec<usize>, Vec<T>, usize, T)
     where
-        F: Fn(f64, f64) -> f64,
+        F: Fn(f64, f64) -> T,
     {
         let ak: &[usize] = &self.keys;
         let av: &[f64] = &self.values;
@@ -152,11 +153,11 @@ impl SparseFloatVec {
 
         let capacity: usize = ak.len() + bk.len();
         let mut ck: Vec<usize> = Vec::with_capacity(capacity);
-        let mut cv: Vec<f64> = Vec::with_capacity(capacity);
+        let mut cv: Vec<T> = Vec::with_capacity(capacity);
 
         unsafe {
             let ck_ptr: *mut usize = ck.as_mut_ptr();
-            let cv_ptr: *mut f64 = cv.as_mut_ptr();
+            let cv_ptr: *mut T = cv.as_mut_ptr();
             let mut written = 0;
 
             let mut i = 0;
@@ -168,7 +169,7 @@ impl SparseFloatVec {
                 let bk_j = bk.get_unchecked(j);
                 let bv_j = bv.get_unchecked(j);
 
-                let (c_key, c_val): (usize, f64) = match ak_i.cmp(bk_j) {
+                let (c_key, c_val): (usize, T) = match ak_i.cmp(bk_j) {
                     Ordering::Less => {
                         i += 1;
                         (*ak_i, op(*av_i, bsval))
@@ -207,11 +208,22 @@ impl SparseFloatVec {
             ck.set_len(written);
             cv.set_len(written);
         }
-
         let dim = self.dim.max(other.dim);
         let sval = op(asval, bsval);
 
-        unsafe { Self::new_unchecked(ck, cv, dim, sval) }
+        (ck, cv, dim, sval)
+    }
+
+    pub fn merge_with_and_apply<F>(
+        &self,
+        other: &Self,
+        op: F,
+    ) -> Self
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        let (keys, values, dim, sval) = self.merge_and_apply(other, op);
+        unsafe { Self::new_unchecked(keys, values, dim, sval) }
     }
 
     pub fn sum(&self) -> f64 {
@@ -220,6 +232,22 @@ impl SparseFloatVec {
 
     pub fn mean(&self) -> f64 {
         self.sum() / self.dim as f64
+    }
+
+    pub fn norm_l2(&self) -> f64 {
+        (self.values().map(|v| v.powi(2)).sum1().unwrap_or(0.0) + self.sval.powi(2) * self.nb_sparse() as f64)
+            .sqrt()
+    }
+
+    /// Alias for norm_l2, computes the magnitude (l2 norm) of the vector
+    pub fn magnitude(&self) -> f64 {
+        self.norm_l2()
+    }
+
+    /// Normalize to a unit vector
+    pub fn normalize_l2(&mut self) {
+        let magn = self.magnitude();
+        self.div_assign(magn);
     }
 
     /*
@@ -243,11 +271,6 @@ impl SparseFloatVec {
         self.merge_and_apply(other, |x, y| (x - y).powi(2)).sum().sqrt()
     }
     */
-
-    pub fn norm_l2(&self) -> f64 {
-        (self.values().map(|x| x * x).sum1().unwrap_or(0.0) + self.sval * self.sval * self.nb_sparse() as f64)
-            .sqrt()
-    }
 }
 
 impl core::ops::Index<usize> for SparseFloatVec {
@@ -337,9 +360,8 @@ unsafe fn merge_sorted_unique(
 mod test {
     use std::f64::consts::E;
 
-    use crate::assert_float_eq;
-
     use super::*;
+    use crate::assert_float_eq;
 
     #[test]
     fn merge_sorted_unique_fn_test() {
@@ -363,7 +385,7 @@ mod test {
         let a = unsafe { SFVec::new_unchecked(vec![1, 2, 3], vec![1.0, 2.0, 3.0], 3, 1.0) };
         let b = unsafe { SFVec::new_unchecked(vec![2, 3, 4], vec![2.0, 3.0, 4.0], 3, 2.0) };
 
-        let c = a.merge_and_apply(&b, |a, b| a + b);
+        let c = a.merge_with_and_apply(&b, |a, b| a + b);
 
         assert_float_eq!(c[1], 3.0);
         assert_float_eq!(c[2], 4.0);

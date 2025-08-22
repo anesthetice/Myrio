@@ -3,9 +3,11 @@ use std::{collections::HashMap, f64};
 
 use itertools::Itertools;
 use myrio_core::{
-    clustering::{SimScore, SimilarityFunction},
     data::{DFArray, MyrSeq, SFVec},
+    similarity::SimScore,
 };
+
+use crate::simfunc::SimilarityFunction;
 
 /// Partition-based clustering
 pub struct Clusterer;
@@ -167,7 +169,7 @@ impl Clusterer {
                 let n = self.elements.len() as f64;
                 let new_centroid_seeds: SFVec =
                     self.elements.into_iter().fold::<SFVec, _>(SFVec::new(countmap_size), |acc, x| {
-                        acc.merge_and_apply(x, |a, b| a + b)
+                        acc.merge_with_and_apply(x, |a, b| a + b)
                     }) / n;
 
                 Self { centroid_seeds: new_centroid_seeds, elements: Vec::new() }

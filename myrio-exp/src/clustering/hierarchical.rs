@@ -1,10 +1,11 @@
 // Imports
 use itertools::Itertools;
 use myrio_core::{
-    clustering::SimilarityFunction,
     constants::Q_TO_BP_CALL_CORRECT_PROB_MAP,
     data::{DFArray, MyrSeq},
 };
+
+use crate::simfunc::SimilarityFunction;
 
 pub struct Clusterer;
 

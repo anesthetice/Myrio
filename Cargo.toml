@@ -24,6 +24,7 @@ bio-seq = { git = "https://github.com/anesthetice/bio-seq.git" }
 itertools = { version = "0.14" }
 ndarray = { version = "0.16" }
 rand = { version = "0.9" }
+rayon = { version = "1.11" }
 
 [profile.dev]
 opt-level = 1

@@ -22,6 +22,7 @@ ndarray-stats = { version = "0.6.0" }
 nutype = { version = "0.6" }
 once_cell = { version = "1.21" }
 rand = { workspace = true }
+rayon = { workspace = true }
 regex = { version = "1.11" }
 thiserror = { version = "2.0" }
 zstd = { version = "0.13" }

@@ -4,7 +4,7 @@ version.workspace = true
 authors.workspace = true
 edition.workspace = true
 readme = "README.md"
-default-run = "myrio-exp"
+default-run = "myrio-exp-bin"
 
 [dependencies]
 # internal
@@ -18,13 +18,17 @@ bytemuck = { version = "1.23" }
 itertools = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
-rayon = { version = "1.10" }
+rayon = { workspace = true }
 
 [dev-dependencies]
 divan = { version = "0.1" }
 
+[lib]
+name = "myrio_exp"
+path = "src/lib.rs"
+
 [[bin]]
-name = "myrio-exp"
+name = "myrio-exp-bin"
 path = "src/main.rs"
 
 [[bench]]

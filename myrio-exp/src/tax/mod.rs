@@ -1,14 +1,15 @@
 use std::{
     fs::OpenOptions,
     io::{BufRead, BufReader},
-    path::Path,
     str::FromStr,
 };
 
 use anyhow::Context;
 use bio_seq::{codec::dna::Dna as DnaCodec, seq::Seq};
 use itertools::Itertools;
-use myrio_core::{clustering::SimFunc, data::MyrSeq};
+use myrio_core::data::MyrSeq;
+
+use crate::simfunc::SimFunc;
 
 pub fn basic_test() -> anyhow::Result<()> {
     const K: usize = 12;

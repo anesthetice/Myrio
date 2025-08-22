@@ -1,24 +1,18 @@
 #![allow(unused)]
 
-// Modules
-mod clustering;
-mod misc;
-mod scripts;
-mod tax;
-
+// Imports
 use std::collections::HashMap;
 
 use anyhow::Ok;
-// Imports
 use bio_seq::prelude::*;
 use myrio_core::{
-    clustering::{SimFunc, SimilarityFunction},
     data::MyrSeq,
     simseq::{Generator, distr::DiscreteDistribution},
 };
+use myrio_exp::{
+    clustering::partition::compute_cluster_cost, scripts::load_testset, simfunc::SimFunc, tax::basic_test,
+};
 use rand::{SeedableRng, seq::IndexedRandom};
-
-use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset, tax::basic_test};
 
 fn main() -> anyhow::Result<()> {
     basic_test();
@@ -40,7 +34,8 @@ fn cluster_simple_test() {
         generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
     ]
     .concat();
-    let clusters = clustering::partition::Clusterer::_cluster_sparse(myrseqs, 4, 4, 0.2, SimFunc::Cosine);
+    let clusters =
+        myrio_exp::clustering::partition::Clusterer::_cluster_sparse(myrseqs, 4, 4, 0.2, SimFunc::Cosine);
     /*
     for (idx, cluster) in clusters.iter().enumerate() {
         let mut id_count_map: HashMap<&str, usize> = HashMap::new();

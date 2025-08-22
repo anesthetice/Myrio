@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use myrio_core::clustering::SimFunc;
-
-use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset};
+use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset, simfunc::SimFunc};
 
 pub fn clustering_assessment() -> anyhow::Result<()> {
     let testset = load_testset()?;

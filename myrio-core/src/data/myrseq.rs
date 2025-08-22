@@ -204,9 +204,9 @@ impl core::fmt::Debug for MyrSeq {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
-    BincodeDecodeError(#[from] bincode::error::DecodeError),
+    BincodeDecode(#[from] bincode::error::DecodeError),
     #[error(transparent)]
-    BincodeEncodeError(#[from] bincode::error::EncodeError),
+    BincodeEncode(#[from] bincode::error::EncodeError),
     #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error("{0}")]

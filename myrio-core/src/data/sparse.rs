@@ -103,6 +103,49 @@ impl SparseFloatVec {
         }
     }
 
+    pub fn from_unsorted_pairs(
+        mut pairs: Vec<(usize, f64)>,
+        dim: usize,
+        sval: f64,
+    ) -> Self {
+        pairs.sort_unstable_by_key(|(key, _)| *key);
+        let capacity = pairs.len();
+
+        let mut keys: Vec<usize> = Vec::with_capacity(capacity);
+        let mut values: Vec<f64> = Vec::with_capacity(capacity);
+
+        if capacity == 0 {
+            return Self { keys, values, dim, sval };
+        }
+
+        unsafe {
+            let k_ptr: *mut usize = keys.as_mut_ptr();
+            let v_ptr: *mut f64 = values.as_mut_ptr();
+
+            let mut idx: usize = 0;
+
+            let (mut prev_key, mut val_to_write) = *pairs.get_unchecked(0);
+            k_ptr.write(prev_key);
+
+            pairs.into_iter().skip(1).for_each(|(key, val)| {
+                if prev_key != key {
+                    v_ptr.add(idx).write(val_to_write);
+                    idx += 1;
+                    k_ptr.add(idx).write(key);
+                    val_to_write = val;
+                    prev_key = key;
+                } else {
+                    val_to_write += val;
+                }
+            });
+            v_ptr.add(idx).write(val_to_write);
+            keys.set_len(idx + 1);
+            values.set_len(idx + 1);
+        }
+
+        Self { keys, values, dim, sval }
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&usize, &f64)> {
         self.keys.iter().zip_eq(self.values.iter())
     }
@@ -290,6 +333,12 @@ impl core::ops::Neg for SparseFloatVec {
     fn neg(mut self) -> Self::Output {
         self.values_mut().for_each(|v| *v = v.neg());
         self.sval = self.sval.neg();
+        self
+    }
+}
+
+impl AsRef<SparseFloatVec> for &SparseFloatVec {
+    fn as_ref(&self) -> &SparseFloatVec {
         self
     }
 }

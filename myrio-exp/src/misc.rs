@@ -1,9 +1,10 @@
-// Imports
-use std::hash::{DefaultHasher, Hash, Hasher};
+#![allow(unused)]
 
+// Imports
 use bio_seq::prelude::*;
 use itertools::Itertools;
 use myrio_core::data::MyrSeq;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 const K: usize = 5;
 const W: usize = 9;

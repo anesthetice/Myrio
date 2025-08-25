@@ -22,7 +22,7 @@ impl Clusterer {
         } else if MyrSeq::K_SPARSE_VALID_RANGE.contains(&k) {
             Self::_cluster_sparse(myrseqs, k, t1_cutoff, t2_cutoff, similarity_function)
         } else {
-            panic!("Only k ∈ {{2, ..., 42}} is currently supported")
+            panic!("Only k ∈ {{2, ..., 32}} is currently supported")
         }
     }
 
@@ -77,7 +77,7 @@ impl Clusterer {
         let mut clusters: Vec<Cluster> = myrseqs
             .into_iter()
             .map(|myrseq| {
-                let (map, _nb) = myrseq.compute_dense_kmer_counts(k, t1_cutoff).unwrap();
+                let (map, _nb) = myrseq.compute_dense_kmer_counts(k, t1_cutoff);
                 //println!("number of k-mers kept: {_nb} / {}", myrseq.sequence.len() - k + 1);
                 Cluster { seeds: map, elements: vec![myrseq] }
             })

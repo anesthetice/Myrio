@@ -28,7 +28,7 @@ impl Clusterer {
             //Self::_cluster_sparse(myrseqs, nb_clusters, k, t1, similarity_function)
             todo!()
         } else {
-            panic!("Only k ∈ {{2, ..., 42}} is currently supported")
+            panic!("Only k ∈ {{2, ..., 32}} is currently supported")
         }
     }
 
@@ -75,7 +75,7 @@ impl Clusterer {
         let (myrseqs, kcounts, nb_hcks): (Vec<MyrSeq>, Vec<DFArray>, Vec<usize>) = myrseqs
             .into_iter()
             .filter_map(|myrseq| {
-                let (kcount, nb_hck) = myrseq.compute_dense_kmer_counts(k, t1).unwrap();
+                let (kcount, nb_hck) = myrseq.compute_dense_kmer_counts(k, t1);
                 if nb_hck != 0 { Some((myrseq, kcount, nb_hck)) } else { None }
             })
             .sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first
@@ -182,7 +182,7 @@ impl Clusterer {
         let (myrseqs, kcounts, nb_hcks): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
             .into_iter()
             .filter_map(|myrseq| {
-                let (mut kcount, nb_hck) = myrseq.compute_sparse_kmer_counts(k, t1).unwrap();
+                let (mut kcount, nb_hck) = myrseq.compute_sparse_kmer_counts(k, t1);
                 if nb_hck != 0 { Some((myrseq, kcount, nb_hck)) } else { None }
             })
             .sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first

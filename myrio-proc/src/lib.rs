@@ -4,15 +4,22 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Expr, Ident, parse_macro_input};
 
-const K_DENSE_VALID_RANGE: Range<usize> = 2..10;
-const K_SPARSE_VALID_RANGE: Range<usize> = 2..43;
+const K_DENSE_VALID_RANGE: Range<usize> = 2..7;
+
+// When `usize` is 64-bit, max{k} = 32 as each nucleotide is repr. by 2 bits
+#[cfg(target_pointer_width = "64")]
+const K_SPARSE_VALID_RANGE: Range<usize> = 2..33;
+
+// When `usize` is 32-bit, max{k} = 16 as each nucleotide is repr. by 2 bits
+#[cfg(target_pointer_width = "32")]
+const K_SPARSE_VALID_RANGE: Range<usize> = 2..17;
 
 /// Generates a lengthy match expression required by const generics
 /// match k {
-///     2 => body!(self.sequence, 2),
-///     3 => body!(self.sequence, 3),
+///     2 => body!(input, 2),
+///     3 => body!(input, 3),
 ///     ...
-///     9 => body!(self.sequence, 9),
+///     6 => body!(input, 6),
 ///     _ => Err(...),
 /// }
 #[proc_macro]
@@ -28,7 +35,7 @@ pub fn gen_match_k_dense(input: TokenStream) -> TokenStream {
     let output = quote! {
         match k {
             #(#arms)*
-            _ => Err(Error::InvalidKmerSize(Self::K_DENSE_VALID_RANGE_ERROR_MSG)),
+            _ => panic!("{}", MyrSeq::K_DENSE_VALID_RANGE_ERROR_MSG),
         }
     };
 
@@ -37,10 +44,10 @@ pub fn gen_match_k_dense(input: TokenStream) -> TokenStream {
 
 /// Generates a lengthy match expression required by const generics
 /// match k {
-///     2 => body!(self.sequence, 2),
-///     3 => body!(self.sequence, 3),
+///     2 => body!(input, 2),
+///     3 => body!(input, 3),
 ///     ...
-///     42 => body!(self.sequence, 42),
+///     32 => body!(input, 32),
 ///     _ => Err(...),
 /// }
 #[proc_macro]
@@ -56,7 +63,7 @@ pub fn gen_match_k_sparse(input: TokenStream) -> TokenStream {
     let output = quote! {
         match k {
             #(#arms)*
-            _ => Err(Error::InvalidKmerSize(Self::K_SPARSE_VALID_RANGE_ERROR_MSG)),
+            _ => panic!("{}", MyrSeq::K_SPARSE_VALID_RANGE_ERROR_MSG),
         }
     };
 

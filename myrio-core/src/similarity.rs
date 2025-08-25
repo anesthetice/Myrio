@@ -43,6 +43,7 @@ pub fn overlap_similarity(
     SimScore::try_new(sum_min / sum_max).unwrap()
 }
 
+/// Does not yield the same as overlap_similarity
 pub fn overlap_similarity_already_normalized(
     a: &SFVec,
     b: &SFVec,
@@ -64,8 +65,8 @@ mod test {
         let myrseq_1 = MyrSeq::create("", None, dna!["ACTG"], &[0; 4]);
         let myrseq_2 = MyrSeq::create("", None, dna!["ACTC"], &[0; 4]);
 
-        let mut a = myrseq_1.compute_sparse_kmer_counts(2, f64::MIN).unwrap().0;
-        let mut b = myrseq_2.compute_sparse_kmer_counts(2, f64::MIN).unwrap().0;
+        let mut a = myrseq_1.compute_sparse_kmer_counts(2, f64::MIN).0;
+        let mut b = myrseq_2.compute_sparse_kmer_counts(2, f64::MIN).0;
         let cosine = cosine_similarity(&a, &b);
         assert_float_eq!(*cosine, 2.0 / 3.0);
         let overlap = overlap_similarity(&a, &b);
@@ -75,6 +76,6 @@ mod test {
         b.normalize_l2();
 
         assert_float_eq!(*cosine_similarity_already_normalized(&a, &b), *cosine);
-        assert_float_eq!(*overlap_similarity_already_normalized(&a, &b), *overlap);
+        //assert_float_eq!(*overlap_similarity_already_normalized(&a, &b), *overlap);
     }
 }

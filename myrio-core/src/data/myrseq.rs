@@ -33,12 +33,23 @@ pub struct MyrSeq {
 }
 
 impl MyrSeq {
-    pub const K_DENSE_VALID_RANGE: Range<usize> = 2..10;
+    pub const K_DENSE_VALID_RANGE: Range<usize> = 2..7;
     pub const K_DENSE_VALID_RANGE_ERROR_MSG: &'static str =
-        "For dense k-mer count maps, only k ∈ {{2, ..., 9}} is currently supported";
-    pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..43;
+        "For dense k-mer count maps, only k ∈ {{2, ..., 6}} is currently supported";
+
+    // When `usize` is 64-bit, max{k} = 32 as each nucleotide is repr. by 2 bits
+    #[cfg(target_pointer_width = "64")]
+    pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..33;
+    #[cfg(target_pointer_width = "64")]
     pub const K_SPARSE_VALID_RANGE_ERROR_MSG: &'static str =
-        "For sparse k-mer count maps, only k ∈ {{2, ..., 42}} is currently supported";
+        "For sparse k-mer count maps, only k ∈ {{2, ..., 32}} is currently supported";
+
+    // When `usize` is 32-bit, max{k} = 16 as each nucleotide is repr. by 2 bits
+    #[cfg(target_pointer_width = "32")]
+    pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..17;
+    #[cfg(target_pointer_width = "32")]
+    pub const K_SPARSE_VALID_RANGE_ERROR_MSG: &'static str =
+        "For sparse k-mer count maps, only k ∈ {{2, ..., 16}} is currently supported";
 
     /// Create a new MyrSeq from owned parameters
     pub fn new(
@@ -69,7 +80,7 @@ impl MyrSeq {
         &self,
         k: usize,
         cutoff: f64,
-    ) -> Result<(DFArray, usize), Error> {
+    ) -> (DFArray, usize) {
         let conf_score_per_kmer = self
             .quality
             .iter()
@@ -86,7 +97,7 @@ impl MyrSeq {
                 let mut map = DFArray::zeros(4_usize.pow(k as u32));
 
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
-                    // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
+                    // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence.
                     if conf_score_per_kmer[idx] > cutoff {
                         map[usize::from(&kmer)] += 1.0;
                         nb_hck += 1;
@@ -96,7 +107,7 @@ impl MyrSeq {
                         nb_hck += 1;
                     }
                 }
-                Ok((map, nb_hck))
+                (map, nb_hck)
             }};
         }
         gen_match_k_dense!(self.sequence)
@@ -107,7 +118,7 @@ impl MyrSeq {
         &self,
         k: usize,
         cutoff: f64,
-    ) -> Result<(SFVec, usize), Error> {
+    ) -> (SFVec, usize) {
         let conf_score_per_kmer = self
             .quality
             .iter()
@@ -117,28 +128,27 @@ impl MyrSeq {
             .map(|vals| vals.iter().product::<f64>())
             .collect_vec();
 
+        let mut nb_hck: usize = 0; // number of high-confidence k-mers
+        let mut pairs: Vec<(usize, f64)> = Vec::new();
+
         macro_rules! body {
             ($seq:expr, $K:expr) => {{
                 let nb_kmers = $seq.len() - $K + 1;
-                let mut nb_hck: usize = 0; // number of high-quality k-mers
-                let mut map = SFVec::new(4_usize.pow(k as u32));
-
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
-                    // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence; cleaner implementation if `KmerIter` supported `.rev()` method but it doesn't unfortunately.
+                    // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence.
                     if conf_score_per_kmer[idx] > cutoff {
-                        map.get_or_insert_mut(usize::from(&kmer)).add_assign(1.0);
+                        pairs.push((usize::from(&kmer), 1.0));
                         nb_hck += 1;
-
                     }
                     if conf_score_per_kmer[nb_kmers - 1 - idx] > cutoff {
-                        map.get_or_insert_mut(usize::from(&kmer_rc)).add_assign(1.0);
+                        pairs.push((usize::from(&kmer_rc), 1.0));
                         nb_hck += 1;
                     }
                 }
-                Ok((map, nb_hck))
             }};
         }
-        gen_match_k_sparse!(self.sequence)
+        gen_match_k_sparse!(self.sequence);
+        (SFVec::from_unsorted_pairs(pairs, 4_usize.pow(k as u32), 0.0), nb_hck)
     }
 
     pub fn encode_vec<W: std::io::Write>(
@@ -209,8 +219,6 @@ pub enum Error {
     BincodeEncode(#[from] bincode::error::EncodeError),
     #[error(transparent)]
     IO(#[from] std::io::Error),
-    #[error("{0}")]
-    InvalidKmerSize(&'static str),
 }
 
 #[cfg(test)]

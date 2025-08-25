@@ -15,11 +15,11 @@ use myrio_exp::{
 use rand::{SeedableRng, seq::IndexedRandom};
 
 fn main() -> anyhow::Result<()> {
-    myrio_core::tax::store::TaxTreeStore::load_from_fasta_file(
-        "./ignore/Magnoliopsida_trnH-psbA_mdb.fasta",
+    let tree = myrio_core::tax::store::TaxTreeStore::load_from_fasta_file(
+        "./ignore/Magnoliopsida_rbcL_mdb.fasta",
         "trnH-psbA",
-        Some(&[5, 10]),
-        Some(2),
+        None,
+        None,
     )?;
     Ok(())
 }

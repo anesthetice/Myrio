@@ -11,7 +11,7 @@ use myrio_proc::impl_f64_ops_for_sfvec;
 pub type SFVec = SparseFloatVec;
 
 /// A sparse vector containing floats, similar to `HashMap<usize,f64>` but without the need for hashing
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct SparseFloatVec {
     keys: Vec<usize>,
     values: Vec<f64>,
@@ -140,7 +140,9 @@ impl SparseFloatVec {
             });
             v_ptr.add(idx).write(val_to_write);
             keys.set_len(idx + 1);
+            //keys.shrink_to_fit();
             values.set_len(idx + 1);
+            //values.shrink_to_fit();
         }
 
         Self { keys, values, dim, sval }

@@ -28,10 +28,11 @@ thiserror = { version = "2.0" }
 zstd = { version = "0.13" }
 # optional
 indicatif = { version = "0.18", features = ["rayon"], optional = true }
+console = { version = "0.16", optional = true}
 
 [features]
 default = ["indicatif"]
-indicatif = ["dep:indicatif"]
+indicatif = ["dep:indicatif", "dep:console"]
 
 [dev-dependencies]
 indoc = { version = "2.0" }

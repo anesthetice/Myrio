@@ -19,10 +19,8 @@ use std::ops::AddAssign;
 #[derive(Debug)]
 pub struct TaxTree {
     gene: String,
-    nodes: Vec<Node>,
-    roots: Box<[usize]>,
+    roots: Box<[Node]>,
     highest_rank: Rank,
-    lowest_rank: Rank,
 }
 
 #[derive(Debug)]

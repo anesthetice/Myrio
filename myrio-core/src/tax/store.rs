@@ -57,7 +57,7 @@ pub struct TaxTreeStore {
 
 impl TaxTreeStore {
     const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
-    const FILE_EXTENSION: &str = "myrtree";
+    pub const FILE_EXTENSION: &str = "myrtree";
 
     pub fn encode<W: std::io::Write>(
         &self,

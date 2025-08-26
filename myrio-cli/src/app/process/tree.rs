@@ -1,4 +1,7 @@
+use std::path::PathBuf;
+
 use clap::ArgMatches;
+use myrio_core::tax::store::TaxTreeStore;
 
 use crate::app::config::Config;
 
@@ -21,6 +24,21 @@ fn process_tree_new(
     config: &Config,
 ) -> anyhow::Result<()> {
     let gene: String = mat.remove_one("gene").unwrap();
+    let input: PathBuf = mat.remove_one("input").unwrap();
+
+    let output = mat.remove_one::<PathBuf>("output").map_or(Ok(None), |mut pathbuf| {
+        if pathbuf.is_dir() {
+            let input_filename = input.file_name().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Provided input filepath does not contain a valid filename, '{}'",
+                    input.display()
+                )
+            })?;
+            pathbuf.set_file_name(input_filename);
+            pathbuf.set_extension(TaxTreeStore::FILE_EXTENSION);
+        }
+        anyhow::Ok(Some(pathbuf))
+    })?;
 
     Ok(())
 }

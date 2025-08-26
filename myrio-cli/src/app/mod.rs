@@ -1,0 +1,50 @@
+// Modules
+pub mod cli;
+pub mod config;
+mod process;
+
+// Imports
+use anyhow::Context;
+use config::Config;
+use directories::ProjectDirs;
+
+pub struct App {
+    config: Config,
+}
+
+impl App {
+    #[cfg(not(debug_assertions))]
+    const NAME: &'static str = "myrio";
+    #[cfg(debug_assertions)]
+    const NAME: &'static str = "myrio-dev";
+
+    pub fn load() -> anyhow::Result<Self> {
+        let dirs = ProjectDirs::from("", "", Self::NAME)
+            .ok_or_else(|| anyhow::anyhow!("Failed to get project directories"))?;
+
+        let _conf_dir = dirs.config_dir();
+        if !_conf_dir.exists() {
+            std::fs::create_dir_all(_conf_dir).with_context(|| {
+                format!("Failed to create the config directory at `{}`", _conf_dir.display())
+            })?;
+        }
+
+        let config = config::Config::load(&_conf_dir.join("myrio.conf.json"));
+
+        Ok(Self { config })
+    }
+
+    pub fn run(self) -> anyhow::Result<()> {
+        let mut mat = cli::build_cli().get_matches();
+
+        let Some((subcommand, sub_mat)) = mat.remove_subcommand() else {
+            return Ok(());
+        };
+
+        match subcommand.as_str() {
+            "run" => todo!(),
+            "tree" => process::tree(sub_mat, &self.config),
+            _ => Ok(()),
+        }
+    }
+}

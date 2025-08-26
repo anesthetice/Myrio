@@ -17,7 +17,8 @@ use rand::{SeedableRng, seq::IndexedRandom};
 fn main() -> anyhow::Result<()> {
     let tree = myrio_core::tax::store::TaxTreeStore::load_from_fasta_file(
         "./ignore/Magnoliopsida_rbcL_mdb.fasta",
-        "trnH-psbA",
+        None,
+        "rbcL",
         None,
         None,
     )?;

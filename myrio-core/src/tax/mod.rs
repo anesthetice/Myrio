@@ -1,6 +1,7 @@
 // Modules
 pub mod clade;
 pub mod store;
+pub mod tree;
 
 // Imports
 use crate::data::MyrSeq;
@@ -11,23 +12,10 @@ use bio_seq::{
     kmer::Kmer,
     seq::{Seq, SeqSlice},
 };
-use clade::Rank;
 use itertools::Itertools;
 use myrio_proc::gen_match_k_sparse;
-use std::ops::AddAssign;
 
-#[derive(Debug)]
-pub struct TaxTree {
-    gene: String,
-    roots: Box<[Node]>,
-    highest_rank: Rank,
-}
-
-#[derive(Debug)]
-pub enum Node {
-    Branch { name: Box<str>, children: Box<[Node]> },
-    Leaf { name: Box<str>, kmer_counts: Box<SFVec> },
-}
+pub(crate) const MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT: usize = 2;
 
 #[allow(non_snake_case)]
 pub fn compute_sparse_kmer_counts_for_fasta_seq(

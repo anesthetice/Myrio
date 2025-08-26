@@ -33,6 +33,8 @@ pub struct MyrSeq {
 }
 
 impl MyrSeq {
+    const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
+
     pub const K_DENSE_VALID_RANGE: Range<usize> = 2..7;
     pub const K_DENSE_VALID_RANGE_ERROR_MSG: &'static str =
         "For dense k-mer count maps, only k ∈ {{2, ..., 6}} is currently supported";
@@ -156,9 +158,8 @@ impl MyrSeq {
         compression_level: i32,
         output: W,
     ) -> Result<W, Error> {
-        let config = bincode::config::standard();
         let mut encoder = zstd::Encoder::new(output, compression_level)?;
-        bincode::encode_into_std_write(myrseqs, &mut encoder, config)?;
+        bincode::encode_into_std_write(myrseqs, &mut encoder, Self::BINCODE_CONFIG)?;
         encoder.finish().map_err(Error::from)
     }
 
@@ -167,8 +168,6 @@ impl MyrSeq {
         myrseqs: &[MyrSeq],
         compression_level: i32,
     ) -> Result<(), Error> {
-        let filepath = filepath.as_ref();
-
         let file = Self::encode_vec(
             myrseqs,
             compression_level,
@@ -179,13 +178,11 @@ impl MyrSeq {
     }
 
     pub fn decode_vec<R: std::io::Read>(input: R) -> Result<Vec<MyrSeq>, Error> {
-        let config = bincode::config::standard();
         let mut decoder = zstd::Decoder::new(input)?;
-        bincode::decode_from_std_read(&mut decoder, config).map_err(Error::from)
+        bincode::decode_from_std_read(&mut decoder, Self::BINCODE_CONFIG).map_err(Error::from)
     }
 
     pub fn decode_vec_from_file<Q: AsRef<Path>>(filepath: Q) -> Result<Vec<MyrSeq>, Error> {
-        let filepath: &Path = filepath.as_ref();
         Self::decode_vec(std::fs::OpenOptions::new().read(true).open(filepath)?)
     }
 }

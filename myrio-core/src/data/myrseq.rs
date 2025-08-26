@@ -34,21 +34,18 @@ pub struct MyrSeq {
 
 impl MyrSeq {
     const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
-
     pub const K_DENSE_VALID_RANGE: Range<usize> = 2..7;
     pub const K_DENSE_VALID_RANGE_ERROR_MSG: &'static str =
         "For dense k-mer count maps, only k ∈ {{2, ..., 6}} is currently supported";
-
     // When `usize` is 64-bit, max{k} = 32 as each nucleotide is repr. by 2 bits
     #[cfg(target_pointer_width = "64")]
     pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..33;
-    #[cfg(target_pointer_width = "64")]
-    pub const K_SPARSE_VALID_RANGE_ERROR_MSG: &'static str =
-        "For sparse k-mer count maps, only k ∈ {{2, ..., 32}} is currently supported";
-
     // When `usize` is 32-bit, max{k} = 16 as each nucleotide is repr. by 2 bits
     #[cfg(target_pointer_width = "32")]
     pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..17;
+    #[cfg(target_pointer_width = "64")]
+    pub const K_SPARSE_VALID_RANGE_ERROR_MSG: &'static str =
+        "For sparse k-mer count maps, only k ∈ {{2, ..., 32}} is currently supported";
     #[cfg(target_pointer_width = "32")]
     pub const K_SPARSE_VALID_RANGE_ERROR_MSG: &'static str =
         "For sparse k-mer count maps, only k ∈ {{2, ..., 16}} is currently supported";

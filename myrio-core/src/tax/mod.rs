@@ -4,8 +4,6 @@ pub mod store;
 pub mod tree;
 
 // Imports
-use crate::data::MyrSeq;
-use crate::data::SFVec;
 use bio_seq::{
     ReverseComplement,
     codec::{dna::Dna, iupac::Iupac},
@@ -14,6 +12,8 @@ use bio_seq::{
 };
 use itertools::Itertools;
 use myrio_proc::gen_match_k_sparse;
+
+use crate::data::{MyrSeq, SFVec};
 
 pub(crate) const MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT: usize = 2;
 

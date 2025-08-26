@@ -1,20 +1,28 @@
 // Imports
-use crate::tax::clade::Rank;
-use crate::tax::{MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT, compute_sparse_kmer_counts_for_fasta_seq};
-use crate::{data::SFVec, tax::clade};
+use std::{
+    collections::HashMap,
+    fs::OpenOptions,
+    hint::unreachable_unchecked,
+    io::Read,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
+
 use bincode::{Decode, Encode};
 use bio_seq::prelude::*;
+#[cfg(feature = "indicatif")]
+use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use once_cell::unsync::OnceCell;
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
-use std::hint::unreachable_unchecked;
-use std::io::Read;
-use std::path::PathBuf;
-use std::{collections::HashMap, fs::OpenOptions, path::Path, str::FromStr};
 use thiserror::Error;
 
-#[cfg(feature = "indicatif")]
-use indicatif::ParallelProgressIterator;
+use crate::{
+    data::SFVec,
+    tax::{
+        MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT, clade, clade::Rank, compute_sparse_kmer_counts_for_fasta_seq,
+    },
+};
 
 #[derive(Encode, Decode, PartialEq)]
 pub enum StoreNode {
@@ -380,8 +388,9 @@ pub enum Error {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use indoc::indoc;
+
+    use super::*;
 
     #[test]
     fn load_fasta_test() {

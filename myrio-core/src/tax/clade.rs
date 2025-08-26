@@ -25,6 +25,7 @@ impl Parsed {
 
 impl FromStr for Parsed {
     type Err = ParsingError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut view = s;
 

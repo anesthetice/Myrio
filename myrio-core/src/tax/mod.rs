@@ -3,8 +3,8 @@
 // Modules
 pub mod clade;
 pub mod core;
+pub mod results;
 pub mod store;
-pub mod tree;
 
 // Imports
 use bio_seq::{

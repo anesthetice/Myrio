@@ -1,58 +1,19 @@
 #![allow(non_snake_case)]
 
+use rayon::iter::IntoParallelIterator;
+
 // Imports
 use crate::{
     data::SFVec,
-    tax::{
-        Error,
-        clade::Rank,
-        store::{StoreNode, TaxTreeStore},
-    },
+    similarity::SimScore,
+    tax::{Error, clade::Rank, core::TaxTreeCore, store::TaxTreeStore},
 };
 
-#[derive(Debug)]
-pub struct Branch {
-    pub name: Box<str>,
-    pub children: Box<[Node]>,
+pub struct TaxTreeResults {
+    core: TaxTreeCore<(), SimScore>,
 }
 
-#[derive(Debug)]
-pub struct Leaf {
-    pub name: Box<str>,
-    pub kmer_counts: SFVec,
-}
-
-#[derive(Debug)]
-pub enum Node {
-    Branch(Branch),
-    Leaf(Leaf),
-}
-
-impl Node {
-    pub fn new_branch(
-        name: Box<str>,
-        children: Box<[Node]>,
-    ) -> Self {
-        Self::Branch(Branch { name, children })
-    }
-
-    pub fn new_leaf(
-        name: Box<str>,
-        kmer_counts: SFVec,
-    ) -> Self {
-        Self::Leaf(Leaf { name, kmer_counts })
-    }
-}
-
-#[derive(Debug)]
-pub struct TaxTree {
-    gene: String,
-    k: usize,
-    highest_rank: Rank,
-    roots: Box<[Node]>,
-}
-
-impl TaxTree {
+impl TaxTreeResults {
     pub fn from_store_with_caching(
         mut store: TaxTreeStore,
         k: usize,
@@ -69,8 +30,7 @@ impl TaxTree {
             .find(|&k_| k == k_)
             .map_or_else(
                 || {
-                    let store_leaves_mut = store.gather_leaves_mut();
-                    unsafe { TaxTreeStore::compute_and_append_kmer_counts(store_leaves_mut, k, max_consecutive_N_before_gap) };
+                    store.compute_and_append_kmer_counts(k, max_consecutive_N_before_gap);
                     store.encode_to_file(compression_level, multithreading_flag, nb_threads_available)?;
                     Ok::<usize, Error>(store.pre_computed.len())
                 },
@@ -92,18 +52,18 @@ impl TaxTree {
             .copied()
             .find(|&k_| k == k_)
             .unwrap_or_else(|| {
-                let store_leaves_mut = store.gather_leaves_mut();
-                unsafe { TaxTreeStore::compute_and_overwrite_kmer_counts(store_leaves_mut, k, max_consecutive_N_before_gap) };
+                store.compute_and_overwrite_kmer_counts(k, max_consecutive_N_before_gap);
                 0_usize
             });
         Self::from_store_core(store, k, sfvec_idx)
     }
 
     fn from_store_core(
-        store: TaxTreeStore,
+        mut store: TaxTreeStore,
         k: usize,
         sfvec_idx: usize,
     ) -> Self {
+        /*
         fn dive_recursive(
             store_node: StoreNode,
             above: &mut Vec<Node>,
@@ -122,33 +82,8 @@ impl TaxTree {
                 }
             }
         }
-
-        let mut roots: Vec<Node> = Vec::with_capacity(store.roots.len());
-        for store_root in store.roots.into_iter() {
-            dive_recursive(store_root, &mut roots, sfvec_idx);
-        }
-
-        Self { gene: store.gene, k, highest_rank: store.highest_rank, roots: roots.into_boxed_slice() }
-    }
-
-    pub fn gather_leaves(&self) -> Vec<&Leaf> {
-        fn recursive_dive<'a>(
-            node: &'a Node,
-            output: &mut Vec<&'a Leaf>,
-        ) {
-            match node {
-                Node::Branch(branch) => {
-                    for node in &branch.children {
-                        recursive_dive(node, output);
-                    }
-                }
-                Node::Leaf(leaf) => output.push(leaf),
-            }
-        }
-        let mut output = Vec::new();
-        for root in self.roots.iter() {
-            recursive_dive(root, &mut output);
-        }
-        output
+        */
+        store.core.payloads.into_par_iter();
+        todo!()
     }
 }

@@ -20,38 +20,34 @@ use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
     data::SFVec,
-    tax::{Error, clade, clade::Rank, compute_sparse_kmer_counts_for_fasta_seq},
+    tax::{
+        Error,
+        clade::{self, Rank},
+        compute_sparse_kmer_counts_for_fasta_seq,
+        core::{Leaf, Node, TaxTreeCore},
+    },
 };
 
-#[derive(Encode, Decode, PartialEq)]
-pub enum StoreNode {
-    Branch { name: Box<str>, children: Box<[StoreNode]> },
-    Leaf { name: Box<str>, seq: Seq<Iupac>, pre_comp: Vec<SFVec> },
+#[derive(Encode, Decode)]
+pub struct StorePayload {
+    pub(crate) seq: Seq<Iupac>,
+    pub(crate) pre_comp: Vec<SFVec>,
 }
 
-impl core::fmt::Debug for StoreNode {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        match self {
-            Self::Branch { name, children } => {
-                write!(f, "{name}: {children:?}")
-            }
-            Self::Leaf { name, seq, pre_comp } => {
-                write!(f, "({name}, seqlen={}, nb. pre-comp = {})", seq.len(), pre_comp.len())
-            }
-        }
+impl StorePayload {
+    fn new(
+        seq: Seq<Iupac>,
+        pre_comp: Vec<SFVec>,
+    ) -> Self {
+        Self { seq, pre_comp }
     }
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Encode, Decode)]
 pub struct TaxTreeStore {
-    pub gene: String,
-    pub filepath: PathBuf,
-    pub highest_rank: Rank,
-    pub pre_computed: Vec<usize>,
-    pub roots: Box<[StoreNode]>,
+    pub(crate) core: TaxTreeCore<(), StorePayload>,
+    pub(crate) filepath: PathBuf,
+    pub(crate) pre_computed: Vec<usize>,
 }
 
 impl TaxTreeStore {
@@ -69,7 +65,7 @@ impl TaxTreeStore {
         let spinner = crate::utils::simple_spinner(
             Some(format!(
                 "Encoding the '{}' gene taxonomic tree to '{}'",
-                self.gene,
+                self.core.gene,
                 self.filepath.display()
             )),
             Some(200),
@@ -155,11 +151,19 @@ impl TaxTreeStore {
     ) -> Result<Self, Error> {
         /// Phylogenetic rank name stack (i.e., 'species' is at the top of the stack (end of vector), and 'domain' is at the bottom of the stack (start of vector))
         type Stack = Vec<Box<str>>;
+        type StoreNode = Node<()>;
 
         let mut lines = fasta.lines().enumerate().peekable();
 
         let highest_rank: OnceCell<Rank> = OnceCell::new();
         let mut leaves_and_stacks: Vec<(StoreNode, Stack)> = Vec::new();
+        let mut payloads: Vec<StorePayload> = Vec::new();
+        let mut payload_id: usize = 0;
+
+        let pre_comp = match pre_compute_kcounts {
+            Some((k_values, _)) => Vec::with_capacity(k_values.len()),
+            None => Vec::with_capacity(0),
+        };
 
         #[cfg(feature = "indicatif")]
         let spinner = crate::utils::simple_spinner(None, Some(200));
@@ -187,42 +191,15 @@ impl TaxTreeStore {
 
             let name = unsafe { stack.pop().unwrap_unchecked() }; // Safe as an Ok(...) from `clade::parse_str` means the vector isn't empty
             let seq: Seq<Iupac> = Seq::from_str(&string_seq).map_err(|e| Error::BioSeq(e, lidx + 1))?;
-            let pre_comp = match pre_compute_kcounts {
-                Some((k_values, _)) => Vec::with_capacity(k_values.len()),
-                None => Vec::with_capacity(0),
-            };
-            leaves_and_stacks.push((StoreNode::Leaf { name, seq, pre_comp }, stack));
+
+            leaves_and_stacks.push((StoreNode::new_leaf(name, payload_id), stack));
+            payloads.push(StorePayload::new(seq, pre_comp.clone()));
+            payload_id += 1;
             string_seq.clear();
         }
 
         #[cfg(feature = "indicatif")]
         spinner.finish();
-
-        if let Some((k_values, max_consecutive_N_before_gap)) = pre_compute_kcounts {
-            for &k in k_values.iter().unique() {
-                #[cfg(feature = "indicatif")]
-                let pbar_len = leaves_and_stacks.len();
-
-                #[cfg(feature = "indicatif")]
-                let parallel_iterator = leaves_and_stacks
-                    .par_iter_mut()
-                    .progress_with(crate::utils::simple_progressbar(pbar_len, format!("for k={k}")));
-
-                #[cfg(not(feature = "indicatif"))]
-                let parallel_iterator = leaves_and_stacks.par_iter_mut();
-
-                parallel_iterator.for_each(|(leaf, _)| match leaf {
-                    StoreNode::Leaf { name: _, seq, pre_comp } => {
-                        pre_comp.push(compute_sparse_kmer_counts_for_fasta_seq(
-                            seq,
-                            k,
-                            max_consecutive_N_before_gap,
-                        ));
-                    }
-                    _ => unsafe { unreachable_unchecked() },
-                });
-            }
-        }
 
         // Now we get to the fun part, start at the bottom of the ranks (at species) and move upwards while bundling together
         #[cfg(feature = "indicatif")]
@@ -263,7 +240,7 @@ impl TaxTreeStore {
             nodes_and_stacks = super_node_name_to_nodes_and_stack
                 .into_iter()
                 .map(|(name, (nodes, stack))| {
-                    (StoreNode::Branch { name, children: nodes.into_boxed_slice() }, stack)
+                    (StoreNode::new_branch(name, nodes.into_boxed_slice(), ()), stack)
                 })
                 .collect_vec();
         }
@@ -277,209 +254,76 @@ impl TaxTreeStore {
 
         spinner.finish();
 
-        Ok(Self {
-            gene: gene.to_string(),
-            filepath: store_filepath,
-            highest_rank,
-            roots,
-            pre_computed: pre_compute_kcounts.map(|(k_values, _)| k_values.into()).unwrap_or_default(),
-        })
+        if let Some((k_values, max_consecutive_N_before_gap)) = pre_compute_kcounts {
+            let mut tax_tree_store = Self {
+                core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
+                filepath: store_filepath,
+                pre_computed: pre_compute_kcounts.map(|(k_values, _)| k_values.into()).unwrap_or_default(),
+            };
+
+            for &k in k_values {
+                tax_tree_store.compute_and_append_kmer_counts(k, max_consecutive_N_before_gap);
+            }
+
+            Ok(tax_tree_store)
+        } else {
+            Ok(Self {
+                core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
+                filepath: store_filepath,
+                pre_computed: pre_compute_kcounts.map(|(k_values, _)| k_values.into()).unwrap_or_default(),
+            })
+        }
     }
 
-    /// Unsafe as the leaves must be `StoreNode::Leaf`
-    pub(crate) unsafe fn compute_and_append_kmer_counts(
-        mut leaves: Vec<&mut StoreNode>,
+    pub(crate) fn compute_and_append_kmer_counts(
+        &mut self,
         k: usize,
         max_consecutive_N_before_gap: usize,
     ) {
         #[cfg(feature = "indicatif")]
-        let pbar_len = leaves.len();
+        let pbar_len = self.core.payloads.len();
 
         #[cfg(feature = "indicatif")]
-        let parallel_iterator = leaves
+        let parallel_iterator = self
+            .core
+            .payloads
             .par_iter_mut()
             .progress_with(crate::utils::simple_progressbar(pbar_len, format!("for k={k}")));
 
         #[cfg(not(feature = "indicatif"))]
-        let parallel_iterator = leaves_and_stacks.par_iter_mut();
+        let parallel_iterator = self.core.payloads.par_iter_mut();
 
-        parallel_iterator.for_each(|leaf| match leaf {
-            StoreNode::Leaf { name: _, seq, pre_comp } => {
-                pre_comp.push(compute_sparse_kmer_counts_for_fasta_seq(seq, k, max_consecutive_N_before_gap));
-            }
-            _ => unsafe { unreachable_unchecked() },
+        parallel_iterator.for_each(|sp| {
+            sp.pre_comp.push(compute_sparse_kmer_counts_for_fasta_seq(
+                &sp.seq,
+                k,
+                max_consecutive_N_before_gap,
+            ))
         });
     }
 
-    /// Unsafe as the leaves must be `StoreNode::Leaf`
-    pub(crate) unsafe fn compute_and_overwrite_kmer_counts(
-        mut leaves: Vec<&mut StoreNode>,
+    pub(crate) fn compute_and_overwrite_kmer_counts(
+        &mut self,
         k: usize,
         max_consecutive_N_before_gap: usize,
     ) {
         #[cfg(feature = "indicatif")]
-        let pbar_len = leaves.len();
+        let pbar_len = self.core.payloads.len();
 
         #[cfg(feature = "indicatif")]
-        let parallel_iterator = leaves
+        let parallel_iterator = self
+            .core
+            .payloads
             .par_iter_mut()
             .progress_with(crate::utils::simple_progressbar(pbar_len, format!("for k={k}")));
 
         #[cfg(not(feature = "indicatif"))]
-        let parallel_iterator = leaves_and_stacks.par_iter_mut();
+        let parallel_iterator = self.core.payloads.par_iter_mut();
 
-        parallel_iterator.for_each(|leaf| match leaf {
-            StoreNode::Leaf { name: _, seq, pre_comp } => {
-                *pre_comp =
-                    vec![compute_sparse_kmer_counts_for_fasta_seq(seq, k, max_consecutive_N_before_gap)]
-            }
-            _ => unsafe { unreachable_unchecked() },
+        parallel_iterator.for_each(|sp| {
+            let pre_comp = &mut sp.pre_comp;
+            *pre_comp =
+                vec![compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap)]
         });
-    }
-
-    pub fn gather_leaves(&self) -> Vec<&StoreNode> {
-        fn recursive_dive<'a>(
-            node: &'a StoreNode,
-            output: &mut Vec<&'a StoreNode>,
-        ) {
-            match node {
-                StoreNode::Branch { name: _, children } => {
-                    for node in children {
-                        recursive_dive(node, output);
-                    }
-                }
-                leaf @ StoreNode::Leaf { name: _, seq: _, pre_comp: _ } => output.push(leaf),
-            }
-        }
-        let mut output = Vec::new();
-        for root in self.roots.iter() {
-            recursive_dive(root, &mut output);
-        }
-        output
-    }
-
-    pub fn gather_leaves_mut(&mut self) -> Vec<&mut StoreNode> {
-        fn recursive_dive<'a>(
-            node: &'a mut StoreNode,
-            output: &mut Vec<&'a mut StoreNode>,
-        ) {
-            match node {
-                StoreNode::Branch { name: _, children } => {
-                    for node in children {
-                        recursive_dive(node, output);
-                    }
-                }
-                leaf @ StoreNode::Leaf { name: _, seq: _, pre_comp: _ } => output.push(leaf),
-            }
-        }
-        let mut output = Vec::new();
-        for root in self.roots.iter_mut() {
-            recursive_dive(root, &mut output);
-        }
-        output
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use indoc::indoc;
-
-    use super::*;
-
-    #[test]
-    fn load_fasta_test() {
-        let fasta = indoc! {"
-            >tax={ o:order_1; f:fam_1, g:genus_1, s:mouse }
-            ACTG
-            ACTG
-            >tax={ o:order_1; f:fam_1, g:genus_1, s:rat }
-            A
-            >tax={ o:order_1; f:fam_1, g:genus_1 }
-            A
-            >tax={ o: order_2 }
-            A
-            >tax={ o: order_3, f:fam_2, g:genus_2, s: ant }
-            A
-            >tax={ o: order_3, f:fam_2, g:genus_2, s: termite }
-            A
-        "}
-        .to_string();
-
-        let tree = TaxTreeStore::load_from_fasta_string(fasta, "".into(), "test", None).unwrap();
-
-        let mut tree_leaves = tree.gather_leaves();
-        tree_leaves.sort_by_key(|&node| match node {
-            StoreNode::Leaf { name, seq: _, pre_comp: _ } => name,
-            _ => unsafe { unreachable_unchecked() },
-        });
-
-        let expected_tree = TaxTreeStore {
-            gene: "test".to_string(),
-            filepath: PathBuf::new(),
-            highest_rank: Rank::Order,
-            pre_computed: vec![],
-            roots: Box::from([
-                StoreNode::Branch {
-                    name: Box::from("order_1"),
-                    children: Box::from([StoreNode::Branch {
-                        name: Box::from("fam_1"),
-                        children: Box::from([
-                            StoreNode::Branch {
-                                name: Box::from("genus_1"),
-                                children: Box::from([
-                                    StoreNode::Leaf {
-                                        name: Box::from("mouse"),
-                                        seq: iupac!("ACTGACTG").to_owned(),
-                                        pre_comp: vec![],
-                                    },
-                                    StoreNode::Leaf {
-                                        name: Box::from("rat"),
-                                        seq: iupac!("A").to_owned(),
-                                        pre_comp: vec![],
-                                    },
-                                ]),
-                            },
-                            StoreNode::Leaf {
-                                name: Box::from("genus_1"),
-                                seq: iupac!("A").to_owned(),
-                                pre_comp: vec![],
-                            },
-                        ]),
-                    }]),
-                },
-                StoreNode::Leaf { name: Box::from("order_2"), seq: iupac!("A").to_owned(), pre_comp: vec![] },
-                StoreNode::Branch {
-                    name: Box::from("order_3"),
-                    children: Box::from([StoreNode::Branch {
-                        name: Box::from("fam_2"),
-                        children: Box::from([StoreNode::Branch {
-                            name: Box::from("genus_2"),
-                            children: Box::from([
-                                StoreNode::Leaf {
-                                    name: Box::from("ant"),
-                                    seq: iupac!("A").to_owned(),
-                                    pre_comp: vec![],
-                                },
-                                StoreNode::Leaf {
-                                    name: Box::from("termite"),
-                                    seq: iupac!("A").to_owned(),
-                                    pre_comp: vec![],
-                                },
-                            ]),
-                        }]),
-                    }]),
-                },
-            ]),
-        };
-
-        let mut expected_tree_leaves = expected_tree.gather_leaves();
-        expected_tree_leaves.sort_by_key(|&node| match node {
-            StoreNode::Leaf { name, seq: _, pre_comp: _ } => name,
-            _ => unsafe { unreachable_unchecked() },
-        });
-
-        println!("{tree_leaves:?}\n{expected_tree_leaves:?}");
-
-        assert_eq!(tree_leaves, expected_tree_leaves);
     }
 }

@@ -2,28 +2,76 @@
 use crate::tax::clade::Rank;
 use bincode::{BorrowDecode, Decode, Encode};
 
-pub(super) struct Branch<B> {
-    pub(super) name: Box<str>,
-    pub(super) children: Box<[Node<B>]>,
-    pub(super) extra: B,
+pub(crate) struct Branch<B> {
+    pub(crate) name: Box<str>,
+    pub(crate) children: Box<[Node<B>]>,
+    pub(crate) extra: B,
 }
 
 #[derive(Encode, Decode)]
-pub(super) struct Leaf {
-    pub(super) name: Box<str>,
-    pub(super) payload_id: usize,
+pub(crate) struct Leaf {
+    pub(crate) name: Box<str>,
+    pub(crate) payload_id: usize,
 }
 
-pub(super) enum Node<B> {
+pub(crate) enum Node<B> {
     Branch(Branch<B>),
     Leaf(Leaf),
 }
 
-pub(super) struct TaxTreeCore<B, L> {
-    pub(super) gene: String,
-    pub(super) highest_rank: Rank,
-    pub(super) roots: Box<[Node<B>]>,
-    pub(super) payloads: Box<[L]>,
+impl<B> Node<B> {
+    pub(crate) fn new_branch(
+        name: Box<str>,
+        children: Box<[Node<B>]>,
+        extra: B,
+    ) -> Self {
+        Self::Branch(Branch { name, children, extra })
+    }
+
+    pub(crate) fn new_leaf(
+        name: Box<str>,
+        payload_id: usize,
+    ) -> Self {
+        Self::Leaf(Leaf { name, payload_id })
+    }
+}
+
+pub(crate) struct TaxTreeCore<B, L> {
+    pub(crate) gene: String,
+    pub(crate) highest_rank: Rank,
+    pub(crate) roots: Box<[Node<B>]>,
+    pub(crate) payloads: Box<[L]>,
+}
+
+impl<B, L> TaxTreeCore<B, L> {
+    pub(crate) fn new(
+        gene: String,
+        highest_rank: Rank,
+        roots: Box<[Node<B>]>,
+        payloads: Box<[L]>,
+    ) -> Self {
+        Self { gene, highest_rank, roots, payloads }
+    }
+    pub fn gather_leaves(&self) -> Vec<&Leaf> {
+        fn recursive_dive<'a, B>(
+            node: &'a Node<B>,
+            output: &mut Vec<&'a Leaf>,
+        ) {
+            match node {
+                Node::Branch(branch) => {
+                    for node in &branch.children {
+                        recursive_dive(node, output);
+                    }
+                }
+                Node::Leaf(leaf) => output.push(leaf),
+            }
+        }
+        let mut output = Vec::new();
+        for root in self.roots.iter() {
+            recursive_dive(root, &mut output);
+        }
+        output
+    }
 }
 
 impl<B: Encode> bincode::Encode for Branch<B> {

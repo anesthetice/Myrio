@@ -53,8 +53,11 @@ pub(super) fn ln_gamma(x: f64) -> f64 {
             - LN_2_SQRT_E_OVER_PI
             - (0.5 - x) * ((0.5 - x + GAMMA_R) / f64::consts::E).ln()
     } else {
-        let s =
-            GAMMA_DK.iter().enumerate().skip(1).fold(GAMMA_DK[0], |s, t| s + t.1 / (x + t.0 as f64 - 1.0));
+        let s = GAMMA_DK
+            .iter()
+            .enumerate()
+            .skip(1)
+            .fold(GAMMA_DK[0], |s, t| s + t.1 / (x + t.0 as f64 - 1.0));
 
         s.ln() + LN_2_SQRT_E_OVER_PI + (x - 0.5) * ((x - 0.5 + GAMMA_R) / f64::consts::E).ln()
     }

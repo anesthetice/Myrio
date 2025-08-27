@@ -2,15 +2,22 @@ use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
 
+#[allow(non_snake_case)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
-    zstd_compression_level: i32,
+    pub zstd_compression_level: i32,
+    pub zstd_multithreading_flag: bool,
+    pub fasta_expansion_max_consecutive_N_before_gap: usize,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self { zstd_compression_level: 17 }
+        Self {
+            zstd_compression_level: 15,
+            zstd_multithreading_flag: true,
+            fasta_expansion_max_consecutive_N_before_gap: 3,
+        }
     }
 }
 
@@ -44,7 +51,11 @@ impl Config {
 
     fn from_file(filepath: &std::path::Path) -> anyhow::Result<Self> {
         let mut buffer: Vec<u8> = Vec::new();
-        std::fs::OpenOptions::new().create(false).read(true).open(filepath)?.read_to_end(&mut buffer)?;
+        std::fs::OpenOptions::new()
+            .create(false)
+            .read(true)
+            .open(filepath)?
+            .read_to_end(&mut buffer)?;
         Ok(ijson::from_value(&serde_json::from_slice(&buffer)?)?)
     }
 

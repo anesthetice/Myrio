@@ -56,6 +56,16 @@ pub fn build_cli() -> Command {
                 .long("output")
                 .value_parser(vparser!(PathBuf))
                 .action(ArgAction::Set),
+        )
+        .arg(
+            Arg::new("pre-compute")
+                .help("The k-mer counts to pre-compute and store for one or more `k` ")
+                .required(false)
+                .num_args(1..101)
+                .short('k')
+                .long("pre-compute")
+                .value_parser(vparser!(usize))
+                .action(ArgAction::Set),
         );
 
     let tree_subcommand = Command::new("tree")

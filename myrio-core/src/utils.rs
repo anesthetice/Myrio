@@ -5,7 +5,7 @@ pub(crate) fn greenify(s: &str) -> String {
 
 #[cfg(feature = "indicatif")]
 pub(crate) fn simple_spinner(
-    start_message: Option<&'static str>,
+    start_message: Option<String>,
     steady_tick_ms: Option<u64>,
 ) -> indicatif::ProgressBar {
     let spinner = indicatif::ProgressBar::new_spinner().with_style(

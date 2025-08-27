@@ -47,8 +47,10 @@ pub fn basic_test() -> anyhow::Result<()> {
     let centroids = crate::clustering::partition::Clusterer::_cluster_sparse(queries, 2, K, 0.2, SIMFUNC);
 
     for centroid in centroids.into_iter() {
-        let best =
-            refs.iter().max_by_key(|(_, _, kcount)| SIMFUNC.compute_sparse(&centroid, kcount)).unwrap();
+        let best = refs
+            .iter()
+            .max_by_key(|(_, _, kcount)| SIMFUNC.compute_sparse(&centroid, kcount))
+            .unwrap();
 
         println!(
             "→ {}  with score of {:.4}",

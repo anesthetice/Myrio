@@ -1,8 +1,11 @@
 fmt:
     cargo +nightly fmt
 
-runmax:
-    RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run --release
+runmaxcli +ARGS:
+    RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run -p myrio-cli --release -- {{ARGS}}
+
+runmaxexp:
+    RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run -p myrio-exp --release
 
 test:
     RUSTFLAGS="-Awarnings" cargo test -p myrio-cli --no-default-features

@@ -1,7 +1,9 @@
+#![allow(non_snake_case)]
+
+// Imports
 use std::str::FromStr;
 
 use bincode::{Decode, Encode};
-// Imports
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;

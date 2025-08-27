@@ -10,6 +10,7 @@ use directories::ProjectDirs;
 
 pub struct App {
     config: Config,
+    nb_threads_available: usize,
 }
 
 impl App {
@@ -30,8 +31,9 @@ impl App {
         }
 
         let config = config::Config::load(&_conf_dir.join("myrio.conf.json"));
+        let nb_threads_available = std::thread::available_parallelism()?.into();
 
-        Ok(Self { config })
+        Ok(Self { config, nb_threads_available })
     }
 
     pub fn run(self) -> anyhow::Result<()> {
@@ -43,7 +45,7 @@ impl App {
 
         match subcommand.as_str() {
             "run" => todo!(),
-            "tree" => process::tree(sub_mat, &self.config),
+            "tree" => process::tree(sub_mat, &self),
             _ => Ok(()),
         }
     }

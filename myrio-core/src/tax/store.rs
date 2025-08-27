@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 // Imports
 use std::{
     collections::HashMap,
@@ -15,13 +17,10 @@ use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use once_cell::unsync::OnceCell;
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
-use thiserror::Error;
 
 use crate::{
     data::SFVec,
-    tax::{
-        MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT, clade, clade::Rank, compute_sparse_kmer_counts_for_fasta_seq,
-    },
+    tax::{Error, clade, clade::Rank, compute_sparse_kmer_counts_for_fasta_seq},
 };
 
 #[derive(Encode, Decode, PartialEq)]
@@ -62,19 +61,41 @@ impl TaxTreeStore {
     pub fn encode<W: std::io::Write>(
         &self,
         compression_level: i32,
+        multithreading_flag: bool,
+        nb_threads_available: usize,
         output: W,
     ) -> Result<W, Error> {
+        #[cfg(feature = "indicatif")]
+        let spinner = crate::utils::simple_spinner(
+            Some(format!(
+                "Encoding the '{}' gene taxonomic tree to '{}'",
+                self.gene,
+                self.filepath.display()
+            )),
+            Some(200),
+        );
+
         let mut encoder = zstd::Encoder::new(output, compression_level)?;
+        if multithreading_flag {
+            encoder.multithread(nb_threads_available as u32)?;
+        }
         bincode::encode_into_std_write(self, &mut encoder, Self::BINCODE_CONFIG)?;
-        encoder.finish().map_err(Error::from)
+        let output = encoder.finish()?;
+        #[cfg(feature = "indicatif")]
+        spinner.finish();
+        Ok(output)
     }
 
     pub fn encode_to_file(
         &self,
         compression_level: i32,
+        multithreading_flag: bool,
+        nb_threads_available: usize,
     ) -> Result<(), Error> {
         let file = self.encode(
             compression_level,
+            multithreading_flag,
+            nb_threads_available,
             std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(&self.filepath)?,
         )?;
 
@@ -98,8 +119,9 @@ impl TaxTreeStore {
         input_filepath: Q,
         store_filepath: Option<Q>,
         gene: impl ToString,
-        pre_compute_kcounts: Option<&[usize]>,
-        pre_compute_kcounts_max_consecutive_N_before_cutoff: Option<usize>,
+        // the first element is the list of `k` for which to pre-compute sparse k-mer counts,
+        // the second element is the `max_consecutive_N_before_cutoff` parameter
+        pre_compute_kcounts: Option<(&[usize], usize)>,
     ) -> Result<Self, Error> {
         let store_filepath = if let Some(fp) = store_filepath {
             fp.as_ref().to_path_buf()
@@ -120,27 +142,24 @@ impl TaxTreeStore {
             }
         };
         file.read_to_string(&mut fasta)?;
-        Self::load_from_fasta_string(
-            fasta,
-            store_filepath,
-            gene,
-            pre_compute_kcounts,
-            pre_compute_kcounts_max_consecutive_N_before_cutoff,
-        )
+        Self::load_from_fasta_string(fasta, store_filepath, gene, pre_compute_kcounts)
     }
 
     pub fn load_from_fasta_string(
         fasta: String,
         store_filepath: PathBuf,
         gene: impl ToString,
-        pre_compute_kcounts: Option<&[usize]>,
-        pre_compute_kcounts_max_consecutive_N_before_cutoff: Option<usize>,
+        // the first element is the list of `k` for which to pre-compute sparse k-mer counts,
+        // the second element is the `max_consecutive_N_before_cutoff` parameter
+        pre_compute_kcounts: Option<(&[usize], usize)>,
     ) -> Result<Self, Error> {
+        /// Phylogenetic rank name stack (i.e., 'species' is at the top of the stack (end of vector), and 'domain' is at the bottom of the stack (start of vector))
+        type Stack = Vec<Box<str>>;
+
         let mut lines = fasta.lines().enumerate().peekable();
 
         let highest_rank: OnceCell<Rank> = OnceCell::new();
-        let mut leaves_and_stacks: Vec<(StoreNode, Vec<Box<str>>)> = Vec::new();
-        //let stack_size: OnceCell<usize> = OnceCell::new();
+        let mut leaves_and_stacks: Vec<(StoreNode, Stack)> = Vec::new();
 
         #[cfg(feature = "indicatif")]
         let spinner = crate::utils::simple_spinner(None, Some(200));
@@ -169,7 +188,7 @@ impl TaxTreeStore {
             let name = unsafe { stack.pop().unwrap_unchecked() }; // Safe as an Ok(...) from `clade::parse_str` means the vector isn't empty
             let seq: Seq<Iupac> = Seq::from_str(&string_seq).map_err(|e| Error::BioSeq(e, lidx + 1))?;
             let pre_comp = match pre_compute_kcounts {
-                Some(ks) => Vec::with_capacity(ks.len()),
+                Some((k_values, _)) => Vec::with_capacity(k_values.len()),
                 None => Vec::with_capacity(0),
             };
             leaves_and_stacks.push((StoreNode::Leaf { name, seq, pre_comp }, stack));
@@ -179,11 +198,8 @@ impl TaxTreeStore {
         #[cfg(feature = "indicatif")]
         spinner.finish();
 
-        if let Some(ks) = pre_compute_kcounts {
-            #[allow(non_snake_case)]
-            let max_consecutive_N_before_cutoff = pre_compute_kcounts_max_consecutive_N_before_cutoff
-                .unwrap_or(MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT);
-            for &k in ks.iter().unique() {
+        if let Some((k_values, max_consecutive_N_before_gap)) = pre_compute_kcounts {
+            for &k in k_values.iter().unique() {
                 #[cfg(feature = "indicatif")]
                 let pbar_len = leaves_and_stacks.len();
 
@@ -200,7 +216,7 @@ impl TaxTreeStore {
                         pre_comp.push(compute_sparse_kmer_counts_for_fasta_seq(
                             seq,
                             k,
-                            max_consecutive_N_before_cutoff,
+                            max_consecutive_N_before_gap,
                         ));
                     }
                     _ => unsafe { unreachable_unchecked() },
@@ -210,14 +226,15 @@ impl TaxTreeStore {
 
         // Now we get to the fun part, start at the bottom of the ranks (at species) and move upwards while bundling together
         #[cfg(feature = "indicatif")]
-        let spinner = crate::utils::simple_spinner(Some("Bundling everything together"), Some(200));
+        let spinner =
+            crate::utils::simple_spinner(Some("Bundling everything together".to_string()), Some(200));
 
         let highest_rank =
             *highest_rank.get().expect("Totally invalid or empty file (highest rank was not set)");
-        let mut nodes_and_stacks: Vec<(StoreNode, Vec<Box<str>>)> = Vec::new();
+        let mut nodes_and_stacks: Vec<(StoreNode, Stack)> = Vec::new();
 
         for curr_stack_len in (1..highest_rank as usize).rev() {
-            let mut super_node_name_to_nodes_and_stack: HashMap<Box<str>, (Vec<StoreNode>, Vec<Box<str>>)> =
+            let mut super_node_name_to_nodes_and_stack: HashMap<Box<str>, (Vec<StoreNode>, Stack)> =
                 HashMap::new();
 
             let mut remaining_leaves_and_stacks = Vec::new();
@@ -265,7 +282,7 @@ impl TaxTreeStore {
             filepath: store_filepath,
             highest_rank,
             roots,
-            pre_computed: pre_compute_kcounts.map(Vec::from).unwrap_or_default(),
+            pre_computed: pre_compute_kcounts.map(|(k_values, _)| k_values.into()).unwrap_or_default(),
         })
     }
 
@@ -273,7 +290,7 @@ impl TaxTreeStore {
     pub(crate) unsafe fn compute_and_append_kmer_counts(
         mut leaves: Vec<&mut StoreNode>,
         k: usize,
-        max_consecutive_N_before_cutoff: Option<usize>,
+        max_consecutive_N_before_gap: usize,
     ) {
         #[cfg(feature = "indicatif")]
         let pbar_len = leaves.len();
@@ -288,11 +305,7 @@ impl TaxTreeStore {
 
         parallel_iterator.for_each(|leaf| match leaf {
             StoreNode::Leaf { name: _, seq, pre_comp } => {
-                pre_comp.push(compute_sparse_kmer_counts_for_fasta_seq(
-                    seq,
-                    k,
-                    max_consecutive_N_before_cutoff.unwrap_or(MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT),
-                ));
+                pre_comp.push(compute_sparse_kmer_counts_for_fasta_seq(seq, k, max_consecutive_N_before_gap));
             }
             _ => unsafe { unreachable_unchecked() },
         });
@@ -302,7 +315,7 @@ impl TaxTreeStore {
     pub(crate) unsafe fn compute_and_overwrite_kmer_counts(
         mut leaves: Vec<&mut StoreNode>,
         k: usize,
-        max_consecutive_N_before_cutoff: Option<usize>,
+        max_consecutive_N_before_gap: usize,
     ) {
         #[cfg(feature = "indicatif")]
         let pbar_len = leaves.len();
@@ -317,11 +330,8 @@ impl TaxTreeStore {
 
         parallel_iterator.for_each(|leaf| match leaf {
             StoreNode::Leaf { name: _, seq, pre_comp } => {
-                *pre_comp = vec![compute_sparse_kmer_counts_for_fasta_seq(
-                    seq,
-                    k,
-                    max_consecutive_N_before_cutoff.unwrap_or(MAX_CONSECUTIVE_N_BEFORE_CUTOFF_DEFAULT),
-                )]
+                *pre_comp =
+                    vec![compute_sparse_kmer_counts_for_fasta_seq(seq, k, max_consecutive_N_before_gap)]
             }
             _ => unsafe { unreachable_unchecked() },
         });
@@ -370,22 +380,6 @@ impl TaxTreeStore {
     }
 }
 
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error(transparent)]
-    BincodeDecode(#[from] bincode::error::DecodeError),
-    #[error(transparent)]
-    BincodeEncode(#[from] bincode::error::EncodeError),
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
-    #[error("Bio-seq parsing error for the record starting on line {1}, {0}")]
-    BioSeq(ParseBioError, usize),
-    #[error("Failed to parse taxonomic identity of the record starting on line {1}, {0}")]
-    CladeParse(clade::ParsingError, usize),
-    #[error("Expected the highest rank to be {0}, got {1} instead for the record starting on line {2}")]
-    HighestRankMismatch(Rank, Rank, usize),
-}
-
 #[cfg(test)]
 mod test {
     use indoc::indoc;
@@ -411,7 +405,7 @@ mod test {
         "}
         .to_string();
 
-        let tree = TaxTreeStore::load_from_fasta_string(fasta, "".into(), "test", None, None).unwrap();
+        let tree = TaxTreeStore::load_from_fasta_string(fasta, "".into(), "test", None).unwrap();
 
         let mut tree_leaves = tree.gather_leaves();
         tree_leaves.sort_by_key(|&node| match node {

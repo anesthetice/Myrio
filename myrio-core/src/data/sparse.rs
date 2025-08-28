@@ -339,8 +339,8 @@ impl core::ops::Neg for SparseFloatVec {
     }
 }
 
-impl AsRef<SparseFloatVec> for &SparseFloatVec {
-    fn as_ref(&self) -> &SparseFloatVec {
+impl AsRef<SparseFloatVec> for SparseFloatVec {
+    fn as_ref(&self) -> &Self {
         self
     }
 }

@@ -1,89 +1,107 @@
 #![allow(non_snake_case)]
 
-use rayon::iter::IntoParallelIterator;
-
+use itertools::Itertools;
 // Imports
+use rayon::iter::IndexedParallelIterator;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
+
+#[cfg(feature = "indicatif")]
+use indicatif::ParallelProgressIterator;
+
+use crate::similarity::SimFunc;
+use crate::tax::compute::TaxTreeCompute;
+use crate::tax::core::Node;
 use crate::{
     data::SFVec,
     similarity::SimScore,
-    tax::{Error, clade::Rank, core::TaxTreeCore, store::TaxTreeStore},
+    tax::{Error, core::TaxTreeCore},
 };
 
+pub struct BranchExtra {
+    mean: f64,
+}
+
 pub struct TaxTreeResults {
-    core: TaxTreeCore<(), SimScore>,
+    core: TaxTreeCore<BranchExtra, SimScore>,
 }
 
 impl TaxTreeResults {
-    pub fn from_store_with_caching(
-        mut store: TaxTreeStore,
-        k: usize,
-        max_consecutive_N_before_gap: usize,
-        compression_level: i32,
-        multithreading_flag: bool,
-        nb_threads_available: usize,
+    pub fn from_compute_tree(
+        query: SFVec,
+        compute: TaxTreeCompute,
+        simfunc: SimFunc,
     ) -> Result<Self, Error> {
+        let payloads_len = compute.core.payloads.len();
+
+        #[cfg(feature = "indicatif")]
+        let payloads_par_iter = compute
+            .core
+            .payloads
+            .into_par_iter()
+            .progress_with(crate::utils::simple_progressbar(payloads_len, "computing similarity scores"));
+
+        #[cfg(not(feature = "indicatif"))]
+        let payloads_par_iter = store.core.payloads.into_par_iter();
+
+        let mut payloads: Vec<SimScore> = Vec::with_capacity(payloads_len);
         #[rustfmt::skip]
-        let sfvec_idx = store
-            .pre_computed
-            .iter()
-            .copied()
-            .find(|&k_| k == k_)
-            .map_or_else(
-                || {
-                    store.compute_and_append_kmer_counts(k, max_consecutive_N_before_gap);
-                    store.encode_to_file(compression_level, multithreading_flag, nb_threads_available)?;
-                    Ok::<usize, Error>(store.pre_computed.len())
-                },
-                Ok::<usize, Error>
-        )?;
+        payloads_par_iter
+            .map(|sfvec| simfunc(&query, &sfvec))
+            .collect_into_vec(&mut payloads);
 
-        Ok(Self::from_store_core(store, k, sfvec_idx))
-    }
-
-    pub fn from_store_without_caching(
-        mut store: TaxTreeStore,
-        k: usize,
-        max_consecutive_N_before_gap: usize,
-    ) -> Self {
-        #[rustfmt::skip]
-        let sfvec_idx = store
-            .pre_computed
-            .iter()
-            .copied()
-            .find(|&k_| k == k_)
-            .unwrap_or_else(|| {
-                store.compute_and_overwrite_kmer_counts(k, max_consecutive_N_before_gap);
-                0_usize
-            });
-        Self::from_store_core(store, k, sfvec_idx)
-    }
-
-    fn from_store_core(
-        mut store: TaxTreeStore,
-        k: usize,
-        sfvec_idx: usize,
-    ) -> Self {
-        /*
+        let mut roots = Vec::with_capacity(compute.core.roots.len());
         fn dive_recursive(
-            store_node: StoreNode,
-            above: &mut Vec<Node>,
-            sfvec_idx: usize,
-        ) {
+            store_node: Node<()>,
+            above: &mut Vec<Node<BranchExtra>>,
+            simscores: &[SimScore],
+        ) -> f64 {
             match store_node {
-                StoreNode::Branch { name, children } => {
-                    let mut current: Vec<Node> = Vec::with_capacity(children.len());
-                    for store_node in children {
-                        dive_recursive(store_node, &mut current, sfvec_idx);
-                    }
-                    above.push(Node::new_branch(name, current.into_boxed_slice()));
+                Node::Branch(branch) => {
+                    let mut current: Vec<Node<BranchExtra>> = Vec::with_capacity(branch.children.len());
+                    let (n, sum) = branch
+                        .children
+                        .into_iter()
+                        .map(|store_node| dive_recursive(store_node, &mut current, simscores))
+                        .fold((0.0, 0.0), |(n, sum), x| (n + 1.0, sum + x));
+                    let mean = sum / n;
+                    above.push(Node::new_branch(
+                        branch.name,
+                        current.into_boxed_slice(),
+                        BranchExtra { mean },
+                    ));
+                    mean
                 }
-                StoreNode::Leaf { name, seq: _, mut pre_comp } => {
-                    above.push(Node::new_leaf(name, pre_comp.swap_remove(sfvec_idx)))
+                Node::Leaf(leaf) => {
+                    let index = leaf.payload_id;
+                    above.push(Node::Leaf(leaf));
+                    unsafe { **simscores.get_unchecked(index) }
                 }
             }
         }
-        */
-        store.core.payloads.into_par_iter();
-        todo!()
+        for store_node in compute.core.roots {
+            dive_recursive(store_node, &mut roots, &payloads);
+        }
+
+        Ok(Self {
+            core: TaxTreeCore {
+                gene: compute.core.gene,
+                highest_rank: compute.core.highest_rank,
+                roots: roots.into_boxed_slice(),
+                payloads: payloads.into_boxed_slice(),
+            },
+        })
+    }
+
+    pub fn test(&self) {
+        let best = self
+            .core
+            .gather_leaves()
+            .iter()
+            .map(|leaf| (&leaf.name, self.core.payloads[leaf.payload_id]))
+            .max_by_key(|(_, score)| *score)
+            .unwrap();
+
+        println!("for {}, best = {}, with a score of {}", self.core.gene, best.0, best.1);
     }
 }

@@ -4,7 +4,6 @@
 use std::{
     collections::HashMap,
     fs::OpenOptions,
-    hint::unreachable_unchecked,
     io::Read,
     path::{Path, PathBuf},
     str::FromStr,
@@ -56,11 +55,23 @@ impl TaxTreeStore {
 
     pub fn encode<W: std::io::Write>(
         &self,
-        compression_level: i32,
-        multithreading_flag: bool,
-        nb_threads_available: usize,
+        zstd_compression_level: i32,
+        zstd_multithreading_opt: Option<u32>,
         output: W,
     ) -> Result<W, Error> {
+        let mut encoder = zstd::Encoder::new(output, zstd_compression_level)?;
+        if let Some(n_workers) = zstd_multithreading_opt {
+            encoder.multithread(n_workers)?;
+        }
+        bincode::encode_into_std_write(self, &mut encoder, Self::BINCODE_CONFIG)?;
+        encoder.finish().map_err(Error::from)
+    }
+
+    pub fn encode_to_file(
+        &self,
+        zstd_compression_level: i32,
+        zstd_multithreading_opt: Option<u32>,
+    ) -> Result<(), Error> {
         #[cfg(feature = "indicatif")]
         let spinner = crate::utils::simple_spinner(
             Some(format!(
@@ -70,32 +81,17 @@ impl TaxTreeStore {
             )),
             Some(200),
         );
-
-        let mut encoder = zstd::Encoder::new(output, compression_level)?;
-        if multithreading_flag {
-            encoder.multithread(nb_threads_available as u32)?;
-        }
-        bincode::encode_into_std_write(self, &mut encoder, Self::BINCODE_CONFIG)?;
-        let output = encoder.finish()?;
-        #[cfg(feature = "indicatif")]
-        spinner.finish();
-        Ok(output)
-    }
-
-    pub fn encode_to_file(
-        &self,
-        compression_level: i32,
-        multithreading_flag: bool,
-        nb_threads_available: usize,
-    ) -> Result<(), Error> {
         let file = self.encode(
-            compression_level,
-            multithreading_flag,
-            nb_threads_available,
+            zstd_compression_level,
+            zstd_multithreading_opt,
             std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(&self.filepath)?,
         )?;
+        file.sync_all()?;
 
-        file.sync_all().map_err(Error::from)
+        #[cfg(feature = "indicatif")]
+        spinner.finish();
+
+        Ok(())
     }
 
     pub fn decode<R: std::io::Read>(input: R) -> Result<Self, Error> {
@@ -169,12 +165,25 @@ impl TaxTreeStore {
         let spinner = crate::utils::simple_spinner(None, Some(200));
 
         let mut string_seq = String::new();
-        while let Some((lidx, text_line)) = lines.next() {
+
+        'outer: while let Some((lidx, text_line)) = lines.next() {
             #[cfg(feature = "indicatif")]
             spinner.set_message(format!("working on line n°{lidx}"));
 
             let (h_rank, _, mut stack) =
-                clade::Parsed::from_str(text_line).map_err(|e| Error::CladeParse(e, lidx + 1))?.uncurl();
+                match clade::Parsed::from_str(text_line).map_err(|e| Error::CladeParse(e, lidx + 1)) {
+                    Ok(parsed) => parsed.uncurl(),
+                    Err(e) => {
+                        eprintln!("{e}");
+                        while let Some((_, next_line)) = lines.peek() {
+                            if next_line.starts_with('>') {
+                                continue 'outer;
+                            }
+                            lines.next();
+                        }
+                        break;
+                    }
+                };
 
             let expected_highest_rank = *highest_rank.get_or_init(|| h_rank);
             if expected_highest_rank != h_rank {
@@ -294,11 +303,10 @@ impl TaxTreeStore {
         let parallel_iterator = self.core.payloads.par_iter_mut();
 
         parallel_iterator.for_each(|sp| {
-            sp.pre_comp.push(compute_sparse_kmer_counts_for_fasta_seq(
-                &sp.seq,
-                k,
-                max_consecutive_N_before_gap,
-            ))
+            let mut kmer_freqs =
+                compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap);
+            kmer_freqs /= kmer_freqs.sum();
+            sp.pre_comp.push(kmer_freqs);
         });
     }
 
@@ -321,9 +329,11 @@ impl TaxTreeStore {
         let parallel_iterator = self.core.payloads.par_iter_mut();
 
         parallel_iterator.for_each(|sp| {
+            let mut kmer_freqs =
+                compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap);
+            kmer_freqs /= kmer_freqs.sum();
             let pre_comp = &mut sp.pre_comp;
-            *pre_comp =
-                vec![compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap)]
+            *pre_comp = vec![kmer_freqs]
         });
     }
 }

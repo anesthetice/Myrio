@@ -15,7 +15,7 @@ pub struct ClusteringParameters {
     t2: usize,
     simfunc: SimFunc,
     cim: ClusterInitializationMethod,
-    multi_threading_flag: bool,
+    multithreading_flag: bool,
 }
 
 impl ClusteringParameters {
@@ -25,13 +25,13 @@ impl ClusteringParameters {
         t2: usize,
         simfunc: SimFunc,
         cim: ClusterInitializationMethod,
-        multi_threading_flag: bool,
+        multithreading_flag: bool,
     ) -> Self {
-        Self { k, t1, t2, simfunc, cim, multi_threading_flag }
+        Self { k, t1, t2, simfunc, cim, multithreading_flag }
     }
 
     pub fn unshell(self) -> (usize, f64, usize, SimFunc, ClusterInitializationMethod, bool) {
-        (self.k, self.t1, self.t2, (self.simfunc), self.cim, self.multi_threading_flag)
+        (self.k, self.t1, self.t2, (self.simfunc), self.cim, self.multithreading_flag)
     }
 }
 
@@ -89,7 +89,7 @@ pub fn cluster(
     myrseqs: Vec<MyrSeq>,
     params: ClusteringParameters,
 ) -> ClusteringResults {
-    let (k, t1, t2, simfunc, cim, multi_threading_flag) = params.unshell();
+    let (k, t1, t2, simfunc, cim, multithreading_flag) = params.unshell();
 
     let mut rejected: Vec<MyrSeq> = Vec::new();
 
@@ -138,7 +138,7 @@ pub fn cluster(
     };
 
     // Step 3
-    if multi_threading_flag {
+    if multithreading_flag {
         let mut target: Vec<(&SFVec, usize)> = Vec::with_capacity(kmer_freqs_vec.len());
         for _ in 0..3 {
             kmer_freqs_vec

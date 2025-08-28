@@ -54,7 +54,7 @@ impl DiscreteDistribution {
         match self {
             Self::Cdf { cummul_freqs } => {
                 let rand_unif_val: f64 = rng.sample(rand::distr::StandardUniform);
-                cummul_freqs.iter().find_position(|&&freq| freq >= rand_unif_val).unwrap().0
+                cummul_freqs.iter().position(|&freq| freq >= rand_unif_val).unwrap()
             }
             Self::Poisson { inner } => inner.sample(rng),
             Self::NBin { inner } => inner.sample(rng),

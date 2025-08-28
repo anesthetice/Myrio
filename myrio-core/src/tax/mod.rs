@@ -2,6 +2,7 @@
 
 // Modules
 pub mod clade;
+pub mod compute;
 pub mod core;
 pub mod results;
 pub mod store;

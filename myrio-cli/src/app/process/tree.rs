@@ -1,27 +1,22 @@
-use std::path::PathBuf;
-
-use clap::ArgMatches;
-use myrio_core::tax::store::TaxTreeStore;
-
-use crate::app::App;
+use super::*;
 
 pub fn process_tree(
     mut mat: ArgMatches,
-    app_ref: &App,
+    config: &Config,
 ) -> anyhow::Result<()> {
     let Some((subcommand, sub_mat)) = mat.remove_subcommand() else {
         return Ok(());
     };
 
     match subcommand.as_str() {
-        "new" => process_tree_new(sub_mat, app_ref),
+        "new" => process_tree_new(sub_mat, config),
         _ => Ok(()),
     }
 }
 
 fn process_tree_new(
     mut mat: ArgMatches,
-    app_ref: &App,
+    config: &Config,
 ) -> anyhow::Result<()> {
     let gene: String = mat.remove_one("gene").unwrap();
     let input: PathBuf = mat.remove_one("input").unwrap();
@@ -46,15 +41,11 @@ fn process_tree_new(
     let pre_compute_k_values: Option<Vec<usize>> = mat.remove_many("pre-compute").map(|vals| vals.collect());
     let pre_compute_kcounts = pre_compute_k_values
         .as_deref()
-        .map(|k_values| (k_values, app_ref.config.fasta_expansion_max_consecutive_N_before_gap));
+        .map(|k_values| (k_values, config.fasta_expansion_max_consecutive_N_before_gap));
 
     let tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
 
-    tree.encode_to_file(
-        app_ref.config.zstd_compression_level,
-        app_ref.config.zstd_multithreading_flag,
-        app_ref.nb_threads_available,
-    )?;
+    tree.encode_to_file(config.zstd_compression_level, config.zstd_multithreading_opt)?;
 
     Ok(())
 }

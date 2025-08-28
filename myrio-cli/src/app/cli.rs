@@ -8,9 +8,9 @@ pub fn build_cli() -> Command {
     let run_subcommand = Command::new("run")
         .arg(
             Arg::new("input")
-                .help("The one or more `.fastq` files to use as input")
+                .help("The `.fastq` file to use as input")
                 .required(true)
-                .num_args(1..101)
+                //.num_args(1..101)
                 .short('i')
                 .long("input")
                 .value_parser(vparser!(PathBuf))

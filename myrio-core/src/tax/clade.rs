@@ -51,7 +51,7 @@ impl FromStr for Parsed {
                     if lowest_rank > rank {
                         lowest_rank = rank
                     }
-                    Box::from(name)
+                    clean_str(name).into_boxed_str()
                 })
             })
             .collect_vec();
@@ -143,9 +143,44 @@ impl std::fmt::Display for Rank {
     }
 }
 
+fn clean_str(s: &str) -> String {
+    let mut output: String = String::with_capacity(s.len());
+
+    let mut capitalize_next_flag: bool = true;
+
+    let mut chars_iter = s.chars().peekable();
+    while let Some(chr) = chars_iter.next() {
+        if chr.is_whitespace() {
+            while let Some(chr) = chars_iter.peek()
+                && chr.is_whitespace()
+            {
+                chars_iter.next();
+            }
+            output.push(' ');
+            capitalize_next_flag = true;
+        } else if chr.is_alphabetic() {
+            if capitalize_next_flag {
+                output.push(chr.to_ascii_uppercase());
+                capitalize_next_flag = false;
+            } else {
+                output.push(chr);
+            }
+        }
+    }
+    output
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn clean_str_test() {
+        let input: &str = "..gorilla   gorilla Gorilla🫶";
+        let expected: &str = "Gorilla Gorilla Gorilla";
+
+        assert_eq!(clean_str(input).as_str(), expected);
+    }
 
     #[test]
     fn parse_test() {

@@ -6,7 +6,7 @@ pub mod io;
 pub mod similarity;
 pub mod simseq;
 pub mod tax;
-pub(crate) mod utils;
+pub mod utils;
 
 #[cfg(test)]
 #[macro_export]

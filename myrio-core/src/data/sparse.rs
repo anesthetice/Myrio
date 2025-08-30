@@ -295,6 +295,11 @@ impl SparseFloatVec {
         self.div_assign(magn);
     }
 
+    pub fn normalize_l2_alt(mut self) -> Self {
+        self.normalize_l2();
+        self
+    }
+
     /*
     pub fn clr_transform(&mut self) {
         self.apply_in_place(|x| x.add_assign(1.0));
@@ -350,6 +355,32 @@ impl_f64_ops_for_sfvec!(Add);
 impl_f64_ops_for_sfvec!(Sub);
 impl_f64_ops_for_sfvec!(Mul);
 impl_f64_ops_for_sfvec!(Div);
+
+impl<T> core::ops::Add<T> for SparseFloatVec
+where
+    T: AsRef<SparseFloatVec>,
+{
+    type Output = SparseFloatVec;
+    fn add(
+        self,
+        rhs: T,
+    ) -> Self::Output {
+        self.merge_with_and_apply(rhs.as_ref(), |x, y| x + y)
+    }
+}
+
+impl<T> core::ops::Add<T> for &SparseFloatVec
+where
+    T: AsRef<SparseFloatVec>,
+{
+    type Output = SparseFloatVec;
+    fn add(
+        self,
+        rhs: T,
+    ) -> Self::Output {
+        self.merge_with_and_apply(rhs.as_ref(), |x, y| x + y)
+    }
+}
 
 /// This function is only safe if both slices are sorted with unique elements
 unsafe fn merge_sorted_unique(

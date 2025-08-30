@@ -150,16 +150,14 @@ impl MyrSeq {
         (SFVec::from_unsorted_pairs(pairs, 4_usize.pow(k as u32), 0.0), nb_hck)
     }
 
-    pub fn compute_sparse_kmer_freqs(
+    pub fn compute_sparse_kmer_normcounts(
         &self,
         k: usize,
         cutoff: f64,
     ) -> (SFVec, usize) {
-        let (mut sfvec, nb_hck) = self.compute_sparse_kmer_counts(k, cutoff);
-        if nb_hck != 0 {
-            sfvec /= nb_hck as f64
-        }
-        (sfvec, nb_hck)
+        let mut tup = self.compute_sparse_kmer_counts(k, cutoff);
+        tup.0.normalize_l2();
+        tup
     }
 
     pub fn encode_vec<W: std::io::Write>(

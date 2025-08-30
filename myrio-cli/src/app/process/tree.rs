@@ -10,6 +10,7 @@ pub fn process_tree(
 
     match subcommand.as_str() {
         "new" => process_tree_new(sub_mat, config),
+        "shrink" => process_tree_shrink(sub_mat, config),
         _ => Ok(()),
     }
 }
@@ -45,7 +46,20 @@ fn process_tree_new(
 
     let tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
 
-    tree.encode_to_file(config.zstd_compression_level, config.zstd_multithreading_opt)?;
+    tree.encode_to_file(config.zstd_compression_level, config.zstd_multithreading_opt, None)?;
 
+    Ok(())
+}
+
+fn process_tree_shrink(
+    mut mat: ArgMatches,
+    config: &Config,
+) -> anyhow::Result<()> {
+    let tree_filepaths = gather_trees(&mut mat, "trees")?;
+    for filepath in tree_filepaths.into_iter() {
+        let mut ttstore = TaxTreeStore::decode_from_file(&filepath)?;
+        ttstore.shrink();
+        ttstore.encode_to_file(config.zstd_compression_level, config.zstd_multithreading_opt, None)?;
+    }
     Ok(())
 }

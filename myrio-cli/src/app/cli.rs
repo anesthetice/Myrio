@@ -68,9 +68,25 @@ pub fn build_cli() -> Command {
                 .action(ArgAction::Set),
         );
 
+    let tree_shrink_subcommand = Command::new("shrink")
+        .arg(
+            Arg::new("trees")
+                .help("The one or more `.myrtree` files to shrink")
+                .long_help("The one or more `.myrtree` files to shrink (discard pre-computed kmer-freqs), accepts filepaths as well as directories that will be searched for `.myrtree` files")
+                .required(true)
+                .num_args(1..101)
+                .short('t')
+                .visible_short_alias('i')
+                .long("trees")
+                .visible_aliases(["input"])
+                .value_parser(vparser!(PathBuf))
+                .action(ArgAction::Set),
+        );
+
     let tree_subcommand = Command::new("tree")
         .subcommands([
-            tree_new_subcommand
+            tree_new_subcommand,
+            tree_shrink_subcommand,
         ]);
 
 

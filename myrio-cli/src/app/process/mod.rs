@@ -13,3 +13,28 @@ use clap::ArgMatches;
 use myrio_core::data::{MyrSeq, SFVec};
 use myrio_core::tax::store::TaxTreeStore;
 use std::path::PathBuf;
+
+fn gather_trees(
+    mat: &mut ArgMatches,
+    arg_id: &str,
+) -> anyhow::Result<Vec<PathBuf>> {
+    let mut tree_filepaths: Vec<PathBuf> = Vec::new();
+    for pathbuf in mat.remove_many::<PathBuf>(arg_id).unwrap() {
+        if pathbuf.is_dir() {
+            pathbuf
+                .read_dir()?
+                .filter_map(Result::ok)
+                .map(|dir_entry| dir_entry.path())
+                .filter(|pathbuf| {
+                    pathbuf.extension().and_then(|s| s.to_str()) == Some(TaxTreeStore::FILE_EXTENSION)
+                })
+                .for_each(|pathbuf| tree_filepaths.push(pathbuf));
+        } else {
+            if !pathbuf.is_file() {
+                bail!("Invalid filepath: '{}'", pathbuf.display())
+            }
+            tree_filepaths.push(pathbuf);
+        }
+    }
+    Ok(tree_filepaths)
+}

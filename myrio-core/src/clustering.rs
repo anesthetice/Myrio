@@ -49,40 +49,27 @@ pub fn compute_cluster_centroid_with_parallelism<T>(elements: &[T]) -> SFVec
 where
     T: AsRef<SFVec> + Sync,
 {
-    let n = elements.len() as f64;
-
     let par_chunks = elements.par_chunks_exact(2);
     let remainder = par_chunks.remainder().first();
 
     // We have to use a slightly annoying trick as the `reduce_with` method expects the exact same input/output type and for the first 'round' input will be `&SFVec` meanwhile output will be `SFVec`
     let sfvec = par_chunks
-        .map(|chunk| unsafe {
-            chunk
-                .get_unchecked(0)
-                .as_ref()
-                .merge_with_and_apply(chunk.get_unchecked(1).as_ref(), |x, y| x + y)
-        })
-        .reduce_with(|a, b| a.merge_with_and_apply(&b, |x, y| x + y))
+        .map(|chunk| unsafe { chunk.get_unchecked(0).as_ref() + chunk.get_unchecked(1) })
+        .reduce_with(|a, b| a + b)
         .unwrap();
 
-    if let Some(rem) = remainder {
-        sfvec.merge_with_and_apply(rem.as_ref(), |x, y| x + y) / n
-    } else {
-        sfvec / n
-    }
+    if let Some(rem) = remainder { (sfvec + rem).normalize_l2_alt() } else { sfvec.normalize_l2_alt() }
 }
 
+#[rustfmt::skip]
 pub fn compute_cluster_centroid_without_parallelism<T>(elements: &[T]) -> SFVec
 where
     T: AsRef<SFVec>,
 {
-    let n = elements.len() as f64;
-
-    let mut sfvec = elements
+    elements
         .iter()
-        .fold(SFVec::new(0), |acc, x| acc.merge_with_and_apply(x.as_ref(), |x, y| x + y));
-    sfvec /= n;
-    sfvec
+        .fold(SFVec::new(0), |acc, x| acc + x)
+        .normalize_l2_alt()
 }
 
 pub fn cluster(
@@ -93,14 +80,13 @@ pub fn cluster(
 
     let mut rejected: Vec<MyrSeq> = Vec::new();
 
-    // Step 1, compute the k-mer freqs of each myrseq
-    let (myrseqs, kmer_freqs_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
+    // Step 1, compute the k-mer counts (normalized) of each myrseq
+    let (myrseqs, kmer_normcounts_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
         .into_iter()
         .filter_map(|myrseq| {
-            let (mut kmer_freqs, nb_hck) = myrseq.compute_sparse_kmer_counts(k, t1);
+            let (kmer_normcounts, nb_hck) = myrseq.compute_sparse_kmer_normcounts(k, t1);
             if nb_hck > t2 {
-                kmer_freqs /= nb_hck as f64;
-                Some((myrseq, kmer_freqs, nb_hck))
+                Some((myrseq, kmer_normcounts, nb_hck))
             } else {
                 rejected.push(myrseq);
                 None
@@ -116,10 +102,10 @@ pub fn cluster(
             .map(|centroid| Cluster { centroid_seeds: centroid, elements: Vec::new() })
             .collect_vec(),
         ClusterInitializationMethod::FromNumber(nb_clusters) => {
-            let mut clusters: Vec<Cluster> = vec![Cluster::new(&kmer_freqs_vec[0])];
+            let mut clusters: Vec<Cluster> = vec![Cluster::new(&kmer_normcounts_vec[0])];
             let max_nb_hck = nb_hck_vec[0] as f64;
             while clusters.len() < nb_clusters {
-                let new_cluster_seeds = kmer_freqs_vec
+                let new_cluster_seeds = kmer_normcounts_vec
                     .iter()
                     .zip_eq(nb_hck_vec.iter())
                     .min_by_key(|&(kcount, nb_hck)| {
@@ -139,18 +125,18 @@ pub fn cluster(
 
     // Step 3
     if multithreading_flag {
-        let mut target: Vec<(&SFVec, usize)> = Vec::with_capacity(kmer_freqs_vec.len());
+        let mut target: Vec<(&SFVec, usize)> = Vec::with_capacity(kmer_normcounts_vec.len());
         for _ in 0..3 {
-            kmer_freqs_vec
+            kmer_normcounts_vec
                 .par_iter()
-                .map(|kmer_freqs| {
+                .map(|kmer_normcounts| {
                     let cl_idx = clusters
                         .iter()
                         .enumerate()
-                        .max_by_key(|(_, cluster)| simfunc(&cluster.centroid_seeds, kmer_freqs))
+                        .max_by_key(|(_, cluster)| simfunc(&cluster.centroid_seeds, kmer_normcounts))
                         .unwrap()
                         .0;
-                    (kmer_freqs, cl_idx)
+                    (kmer_normcounts, cl_idx)
                 })
                 .collect_into_vec(&mut target);
             target.iter().for_each(|(sfvec, cl_idx)| clusters[*cl_idx].elements.push(sfvec));
@@ -159,13 +145,13 @@ pub fn cluster(
         }
     } else {
         for _ in 0..3 {
-            kmer_freqs_vec.iter().for_each(|kmer_freqs| {
+            kmer_normcounts_vec.iter().for_each(|kmer_normcounts| {
                 clusters
                     .iter_mut()
-                    .max_by_key(|cluster| simfunc(&cluster.centroid_seeds, kmer_freqs))
+                    .max_by_key(|cluster| simfunc(&cluster.centroid_seeds, kmer_normcounts))
                     .unwrap()
                     .elements
-                    .push(kmer_freqs);
+                    .push(kmer_normcounts);
             });
             clusters = clusters.into_iter().map(Cluster::recenter_without_parallelism).collect_vec();
         }
@@ -174,11 +160,11 @@ pub fn cluster(
     // Step 4
     // (could also add multi-threading to this part in the future)
     let mut output: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
-    for (myrseq, kmer_freqs) in myrseqs.into_iter().zip_eq(kmer_freqs_vec.iter()) {
+    for (myrseq, kmer_normcounts) in myrseqs.into_iter().zip_eq(kmer_normcounts_vec.iter()) {
         let idx = clusters
             .iter()
             .enumerate()
-            .max_by_key(|(_, cluster)| simfunc(&cluster.centroid_seeds, kmer_freqs))
+            .max_by_key(|(_, cluster)| simfunc(&cluster.centroid_seeds, kmer_normcounts))
             .unwrap()
             .0;
         output[idx].push(myrseq);

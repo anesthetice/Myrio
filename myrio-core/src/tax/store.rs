@@ -11,8 +11,7 @@ use std::{
 
 use bincode::{Decode, Encode};
 use bio_seq::prelude::*;
-#[cfg(feature = "indicatif")]
-use indicatif::ParallelProgressIterator;
+use indicatif::{MultiProgress, ParallelProgressIterator};
 use itertools::Itertools;
 use once_cell::unsync::OnceCell;
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
@@ -71,8 +70,8 @@ impl TaxTreeStore {
         &self,
         zstd_compression_level: i32,
         zstd_multithreading_opt: Option<u32>,
+        multi: Option<&MultiProgress>,
     ) -> Result<(), Error> {
-        #[cfg(feature = "indicatif")]
         let spinner = crate::utils::simple_spinner(
             Some(format!(
                 "Encoding the '{}' gene taxonomic tree to '{}'",
@@ -80,6 +79,7 @@ impl TaxTreeStore {
                 self.filepath.display()
             )),
             Some(200),
+            multi,
         );
         let file = self.encode(
             zstd_compression_level,
@@ -87,8 +87,6 @@ impl TaxTreeStore {
             std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(&self.filepath)?,
         )?;
         file.sync_all()?;
-
-        #[cfg(feature = "indicatif")]
         spinner.finish();
 
         Ok(())
@@ -161,14 +159,12 @@ impl TaxTreeStore {
             None => Vec::with_capacity(0),
         };
 
-        #[cfg(feature = "indicatif")]
-        let spinner = crate::utils::simple_spinner(None, Some(200));
+        let spinner = crate::utils::simple_spinner(None::<&str>, Some(200), None);
 
         let mut string_seq = String::new();
 
         'outer: while let Some((lidx, text_line)) = lines.next() {
-            #[cfg(feature = "indicatif")]
-            spinner.set_message(format!("working on line n°{lidx}"));
+            spinner.set_message(format!("Working on line n°{lidx}"));
 
             let (h_rank, _, mut stack) =
                 match clade::Parsed::from_str(text_line).map_err(|e| Error::CladeParse(e, lidx + 1)) {
@@ -206,14 +202,11 @@ impl TaxTreeStore {
             payload_id += 1;
             string_seq.clear();
         }
-
-        #[cfg(feature = "indicatif")]
         spinner.finish();
 
         // Now we get to the fun part, start at the bottom of the ranks (at species) and move upwards while bundling together
-        #[cfg(feature = "indicatif")]
         let spinner =
-            crate::utils::simple_spinner(Some("Bundling everything together".to_string()), Some(200));
+            crate::utils::simple_spinner(Some("Bundling everything together".to_string()), Some(200), None);
 
         let highest_rank =
             *highest_rank.get().expect("Totally invalid or empty file (highest rank was not set)");
@@ -271,7 +264,7 @@ impl TaxTreeStore {
             };
 
             for &k in k_values {
-                tax_tree_store.compute_and_append_kmer_counts(k, max_consecutive_N_before_gap);
+                tax_tree_store.compute_and_append_kmer_counts(k, max_consecutive_N_before_gap, None)
             }
 
             Ok(tax_tree_store)
@@ -284,29 +277,34 @@ impl TaxTreeStore {
         }
     }
 
+    pub fn get_filepath(&self) -> &Path {
+        &self.filepath
+    }
+
+    pub fn set_filepath(
+        &mut self,
+        filepath: PathBuf,
+    ) {
+        self.filepath = filepath;
+    }
+
+    pub fn shrink(&mut self) {
+        self.core.payloads.iter_mut().for_each(|sp| sp.pre_comp.clear());
+        self.pre_computed.clear();
+    }
+
     pub(crate) fn compute_and_append_kmer_counts(
         &mut self,
         k: usize,
         max_consecutive_N_before_gap: usize,
+        multi: Option<&indicatif::MultiProgress>,
     ) {
-        #[cfg(feature = "indicatif")]
-        let pbar_len = self.core.payloads.len();
-
-        #[cfg(feature = "indicatif")]
-        let parallel_iterator = self
-            .core
-            .payloads
-            .par_iter_mut()
-            .progress_with(crate::utils::simple_progressbar(pbar_len, format!("for k={k}")));
-
-        #[cfg(not(feature = "indicatif"))]
-        let parallel_iterator = self.core.payloads.par_iter_mut();
-
-        parallel_iterator.for_each(|sp| {
-            let mut kmer_freqs =
+        let pb = crate::utils::simple_progressbar(self.core.payloads.len(), format!("for k={k}"), multi);
+        self.core.payloads.par_iter_mut().progress_with(pb).for_each(|sp| {
+            let mut kmer_normcounts =
                 compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap);
-            kmer_freqs /= kmer_freqs.sum();
-            sp.pre_comp.push(kmer_freqs);
+            kmer_normcounts.normalize_l2();
+            sp.pre_comp.push(kmer_normcounts);
         });
     }
 
@@ -314,26 +312,15 @@ impl TaxTreeStore {
         &mut self,
         k: usize,
         max_consecutive_N_before_gap: usize,
+        multi: Option<&indicatif::MultiProgress>,
     ) {
-        #[cfg(feature = "indicatif")]
-        let pbar_len = self.core.payloads.len();
-
-        #[cfg(feature = "indicatif")]
-        let parallel_iterator = self
-            .core
-            .payloads
-            .par_iter_mut()
-            .progress_with(crate::utils::simple_progressbar(pbar_len, format!("for k={k}")));
-
-        #[cfg(not(feature = "indicatif"))]
-        let parallel_iterator = self.core.payloads.par_iter_mut();
-
-        parallel_iterator.for_each(|sp| {
-            let mut kmer_freqs =
+        let pb = crate::utils::simple_progressbar(self.core.payloads.len(), format!("for k={k}"), multi);
+        self.core.payloads.par_iter_mut().progress_with(pb).for_each(|sp| {
+            let mut kmer_normcounts =
                 compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap);
-            kmer_freqs /= kmer_freqs.sum();
+            kmer_normcounts.normalize_l2();
             let pre_comp = &mut sp.pre_comp;
-            *pre_comp = vec![kmer_freqs]
+            *pre_comp = vec![kmer_normcounts]
         });
     }
 }

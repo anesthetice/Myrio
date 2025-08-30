@@ -1,13 +1,12 @@
 #![allow(non_snake_case)]
 
+use indicatif::MultiProgress;
 use itertools::Itertools;
 // Imports
+use indicatif::ParallelProgressIterator;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
-
-#[cfg(feature = "indicatif")]
-use indicatif::ParallelProgressIterator;
 
 use crate::similarity::SimFunc;
 use crate::tax::compute::TaxTreeCompute;
@@ -31,22 +30,15 @@ impl TaxTreeResults {
         query: SFVec,
         compute: TaxTreeCompute,
         simfunc: SimFunc,
+        multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
         let payloads_len = compute.core.payloads.len();
-
-        #[cfg(feature = "indicatif")]
-        let payloads_par_iter = compute
-            .core
-            .payloads
-            .into_par_iter()
-            .progress_with(crate::utils::simple_progressbar(payloads_len, "computing similarity scores"));
-
-        #[cfg(not(feature = "indicatif"))]
-        let payloads_par_iter = store.core.payloads.into_par_iter();
-
+        let pb = crate::utils::simple_progressbar(payloads_len, "Computing similarity scores", multi);
         let mut payloads: Vec<SimScore> = Vec::with_capacity(payloads_len);
         #[rustfmt::skip]
-        payloads_par_iter
+        compute.core.payloads
+            .into_par_iter()
+            .progress_with(pb)
             .map(|sfvec| simfunc(&query, &sfvec))
             .collect_into_vec(&mut payloads);
 

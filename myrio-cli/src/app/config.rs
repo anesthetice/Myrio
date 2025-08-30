@@ -63,7 +63,6 @@ impl From<ConfigPrecursor> for Config {
         } else {
             None
         };
-        eprintln!("{zstd_multithreading_opt:?}");
         Self {
             zstd_compression_level: value.zstd_compression_level,
             zstd_multithreading_opt,

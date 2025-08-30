@@ -23,11 +23,30 @@ pub fn cosine_similarity(
     (dot / (a.norm_l2() * b.norm_l2())).try_into().unwrap()
 }
 
+#[cfg(debug_assertions)]
 pub fn cosine_similarity_already_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    a.merge_with_and_apply(b, |x, y| x * y).sum().try_into().unwrap()
+    a.merge_with_and_apply(b, |x, y| x * y)
+        .sum()
+        .try_into()
+        .inspect_err(|_| {
+            eprintln!(
+                "WARNING: non-finite similarity score encountered\nleft: {} counts\nright: {} counts",
+                a.count(),
+                b.count()
+            )
+        })
+        .unwrap_or_default()
+}
+
+#[cfg(not(debug_assertions))]
+pub fn cosine_similarity_already_normalized(
+    a: &SFVec,
+    b: &SFVec,
+) -> SimScore {
+    a.merge_with_and_apply(b, |x, y| x * y).sum().try_into().unwrap_or_default()
 }
 
 pub fn overlap_similarity(

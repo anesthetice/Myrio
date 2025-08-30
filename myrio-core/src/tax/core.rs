@@ -8,7 +8,7 @@ pub(crate) struct Branch<B> {
     pub(crate) extra: B,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Clone, Encode, Decode)]
 pub(crate) struct Leaf {
     pub(crate) name: Box<str>,
     pub(crate) payload_id: usize,
@@ -34,6 +34,20 @@ impl<B> Node<B> {
     ) -> Self {
         Self::Leaf(Leaf { name, payload_id })
     }
+
+    pub(crate) fn gather_leaves<'a>(
+        &'a self,
+        output: &mut Vec<&'a Leaf>,
+    ) {
+        match self {
+            Self::Branch(branch) => {
+                for node in &branch.children {
+                    node.gather_leaves(output);
+                }
+            }
+            Self::Leaf(leaf) => output.push(leaf),
+        }
+    }
 }
 
 pub(crate) struct TaxTreeCore<B, L> {
@@ -52,23 +66,11 @@ impl<B, L> TaxTreeCore<B, L> {
     ) -> Self {
         Self { gene, highest_rank, roots, payloads }
     }
+
     pub fn gather_leaves(&self) -> Vec<&Leaf> {
-        fn recursive_dive<'a, B>(
-            node: &'a Node<B>,
-            output: &mut Vec<&'a Leaf>,
-        ) {
-            match node {
-                Node::Branch(branch) => {
-                    for node in &branch.children {
-                        recursive_dive(node, output);
-                    }
-                }
-                Node::Leaf(leaf) => output.push(leaf),
-            }
-        }
         let mut output = Vec::new();
         for root in self.roots.iter() {
-            recursive_dive(root, &mut output);
+            root.gather_leaves(&mut output);
         }
         output
     }
@@ -85,12 +87,27 @@ where
     ) -> std::fmt::Result {
         writeln!(f, "Root ({})", self.gene)?;
 
+        fn space(
+            depth: u8,
+            is_end_stack: u8,
+        ) -> String {
+            let mut s = String::new();
+            for i in 0..depth {
+                if is_end_stack & (0b1_u8 << i) == (0b1_u8 << i) {
+                    s.push_str("    ");
+                } else {
+                    s.push_str("│   ");
+                }
+            }
+            s
+        }
+
         fn dive<B, L>(
             node: &Node<B>,
             payloads: &[L],
-            depth: usize,
-            mut endc: usize,
+            depth: u8,
             is_end: bool,
+            mut is_end_stack: u8,
             f: &mut std::fmt::Formatter<'_>,
         ) -> std::result::Result<(), std::fmt::Error>
         where
@@ -101,34 +118,39 @@ where
                 Node::Branch(branch) => {
                     writeln!(
                         f,
-                        "{}{}{}── {} ({})",
-                        "│   ".repeat(depth - endc),
-                        "    ".repeat(endc),
+                        "{}{}── {} ({})",
+                        space(depth, is_end_stack),
                         if is_end { "└" } else { "├" },
                         branch.name,
                         branch.extra
                     )?;
                     if is_end {
-                        endc += 1
+                        is_end_stack |= 0b1_u8 << depth
                     }
                     let len = branch.children.len();
                     match len {
                         0 => (),
-                        1 => dive(&branch.children[0], payloads, depth + 1, endc, true, f)?,
+                        1 => dive(&branch.children[0], payloads, depth + 1, true, is_end_stack, f)?,
                         2.. => {
                             for node in branch.children[0..len - 1].iter() {
-                                dive(node, payloads, depth + 1, endc, false, f)?;
+                                dive(node, payloads, depth + 1, false, is_end_stack, f)?;
                             }
-                            dive(branch.children.last().unwrap(), payloads, depth + 1, endc, true, f)?;
+                            dive(
+                                branch.children.last().unwrap(),
+                                payloads,
+                                depth + 1,
+                                true,
+                                is_end_stack,
+                                f,
+                            )?;
                         }
                     }
                 }
                 Node::Leaf(leaf) => {
                     writeln!(
                         f,
-                        "{}{}{}── {} ({})",
-                        "│   ".repeat(depth - endc),
-                        "    ".repeat(endc),
+                        "{}{}── {} ({})",
+                        space(depth, is_end_stack),
                         if is_end { "└" } else { "├" },
                         leaf.name,
                         payloads[leaf.payload_id],
@@ -141,12 +163,12 @@ where
         let len = self.roots.len();
         match len {
             0 => (),
-            1 => dive(&self.roots[0], &self.payloads, 0, 0, true, f)?,
+            1 => dive(&self.roots[0], &self.payloads, 0, true, 0b0, f)?,
             2.. => {
                 for node in self.roots[0..len - 1].iter() {
-                    dive(node, &self.payloads, 0, 0, false, f)?;
+                    dive(node, &self.payloads, 0, false, 0b0, f)?;
                 }
-                dive(self.roots.last().unwrap(), &self.payloads, 0, 0, true, f)?;
+                dive(self.roots.last().unwrap(), &self.payloads, 0, true, 0b0, f)?;
             }
         }
 
@@ -329,6 +351,8 @@ mod test {
                 ].into(),
             payloads: [0.1, 0.2, 0.0, 0.0, 0.9].into()
         };
+
+        eprintln!("{}", tree);
 
         let expected = indoc! {"
             Root (Test)

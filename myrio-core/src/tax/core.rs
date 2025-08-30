@@ -74,6 +74,86 @@ impl<B, L> TaxTreeCore<B, L> {
     }
 }
 
+impl<B, L> std::fmt::Display for TaxTreeCore<B, L>
+where
+    B: std::fmt::Display,
+    L: std::fmt::Display,
+{
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        writeln!(f, "Root ({})", self.gene)?;
+
+        fn dive<B, L>(
+            node: &Node<B>,
+            payloads: &[L],
+            depth: usize,
+            mut endc: usize,
+            is_end: bool,
+            f: &mut std::fmt::Formatter<'_>,
+        ) -> std::result::Result<(), std::fmt::Error>
+        where
+            B: std::fmt::Display,
+            L: std::fmt::Display,
+        {
+            match node {
+                Node::Branch(branch) => {
+                    writeln!(
+                        f,
+                        "{}{}{}── {} ({})",
+                        "│   ".repeat(depth - endc),
+                        "    ".repeat(endc),
+                        if is_end { "└" } else { "├" },
+                        branch.name,
+                        branch.extra
+                    )?;
+                    if is_end {
+                        endc += 1
+                    }
+                    let len = branch.children.len();
+                    match len {
+                        0 => (),
+                        1 => dive(&branch.children[0], payloads, depth + 1, endc, true, f)?,
+                        2.. => {
+                            for node in branch.children[0..len - 1].iter() {
+                                dive(node, payloads, depth + 1, endc, false, f)?;
+                            }
+                            dive(branch.children.last().unwrap(), payloads, depth + 1, endc, true, f)?;
+                        }
+                    }
+                }
+                Node::Leaf(leaf) => {
+                    writeln!(
+                        f,
+                        "{}{}{}── {} ({})",
+                        "│   ".repeat(depth - endc),
+                        "    ".repeat(endc),
+                        if is_end { "└" } else { "├" },
+                        leaf.name,
+                        payloads[leaf.payload_id],
+                    )?;
+                }
+            }
+            Ok(())
+        }
+
+        let len = self.roots.len();
+        match len {
+            0 => (),
+            1 => dive(&self.roots[0], &self.payloads, 0, 0, true, f)?,
+            2.. => {
+                for node in self.roots[0..len - 1].iter() {
+                    dive(node, &self.payloads, 0, 0, false, f)?;
+                }
+                dive(self.roots.last().unwrap(), &self.payloads, 0, 0, true, f)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl<B: Encode> bincode::Encode for Branch<B> {
     fn encode<E: bincode::enc::Encoder>(
         &self,
@@ -198,5 +278,71 @@ where
             roots: bincode::BorrowDecode::borrow_decode(decoder)?,
             payloads: bincode::BorrowDecode::borrow_decode(decoder)?,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use indoc::indoc;
+
+    #[test]
+    fn display_test() {
+        #[rustfmt::skip]
+        let tree: TaxTreeCore<f64, f64> = TaxTreeCore {
+            gene: "Test".to_string(),
+            highest_rank: Rank::Family,
+            roots: [
+                Node::new_branch(
+                    "test-1".into(),
+                    [
+                        Node::new_branch(
+                            "test-11".into(),
+                            [
+                                Node::new_leaf("test-111".into(), 0),
+                                Node::new_leaf("test-112".into(), 1),
+                            ].into(),
+                            0.15,
+                        ),
+                        Node::new_branch(
+                            "test-12".into(),
+                            [
+                                Node::new_leaf("test-121".into(), 2),
+                                Node::new_leaf("test-122".into(), 3),
+                            ].into(),
+                            0.0,
+                        )
+                        ].into(),
+                    0.075),
+                Node::new_branch(
+                    "test-2".into(),
+                    [
+                        Node::new_branch(
+                            "test-21".into(),
+                            [
+                                Node::new_leaf("test-211".into(), 4),
+                            ].into(),
+                            0.9,
+                        )
+                        ].into(),
+                    0.9),
+                ].into(),
+            payloads: [0.1, 0.2, 0.0, 0.0, 0.9].into()
+        };
+
+        let expected = indoc! {"
+            Root (Test)
+            ├── test-1 (0.075)
+            │   ├── test-11 (0.15)
+            │   │   ├── test-111 (0.1)
+            │   │   └── test-112 (0.2)
+            │   └── test-12 (0)
+            │       ├── test-121 (0)
+            │       └── test-122 (0)
+            └── test-2 (0.9)
+                └── test-21 (0.9)
+                    └── test-211 (0.9)
+        "};
+        assert_eq!(tree.to_string().as_str(), expected);
     }
 }

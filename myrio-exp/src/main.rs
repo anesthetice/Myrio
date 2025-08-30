@@ -1,18 +1,18 @@
 #![allow(unused)]
 
 // Imports
-use std::collections::HashMap;
-
 use anyhow::Ok;
 use bio_seq::prelude::*;
-use myrio_core::{
-    data::MyrSeq,
-    simseq::{Generator, distr::DiscreteDistribution},
-};
+use myrio_core::data::MyrSeq;
 use myrio_exp::{
-    clustering::partition::compute_cluster_cost, scripts::load_testset, simfunc::SimFunc, tax::basic_test,
+    clustering::partition::compute_cluster_cost,
+    scripts::load_testset,
+    simfunc::SimFunc,
+    simseq::{Generator, distr::DiscreteDistribution},
+    tax::basic_test,
 };
 use rand::{SeedableRng, seq::IndexedRandom};
+use std::collections::HashMap;
 
 fn main() -> anyhow::Result<()> {
     let tree = myrio_core::tax::store::TaxTreeStore::load_from_fasta_file(

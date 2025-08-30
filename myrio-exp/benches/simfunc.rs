@@ -3,9 +3,9 @@ use divan::{Bencher, black_box};
 use myrio_core::{
     data::{DFArray, MyrSeq, SFVec},
     similarity::SimScore,
-    simseq::Generator,
 };
 use myrio_exp::simfunc::SimFunc;
+use myrio_exp::simseq::Generator;
 use rand::SeedableRng;
 
 const K: usize = 6;

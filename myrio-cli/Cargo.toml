@@ -12,10 +12,10 @@ myrio-core = { workspace = true }
 # external
 anyhow = { workspace = true }
 clap = { version = "4.5" }
-console = { version = "0.16" }
+console = { workspace = true}
 directories = { version = "6.0" }
 ijson = { version = "0.1" }
-indicatif = { version = "0.18", features = ["rayon"] }
+indicatif = { workspace = true, features = ["rayon"] }
 itertools = { workspace = true }
 rand = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }

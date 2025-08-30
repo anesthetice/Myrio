@@ -19,6 +19,7 @@ itertools = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 divan = { version = "0.1" }

@@ -21,10 +21,13 @@ myrio-proc = { version = "0.1.0", path = "myrio-proc" }
 
 anyhow = { version = "1.0" }
 bio-seq = { git = "https://github.com/anesthetice/bio-seq.git" }
+console = { version = "0.16" }
 itertools = { version = "0.14" }
+indicatif = { version = "0.18", features = ["rayon"] }
 ndarray = { version = "0.16" }
 rand = { version = "0.9" }
 rayon = { version = "1.11" }
+thiserror = { version = "2.0" }
 
 [profile.dev]
 opt-level = 1

@@ -4,7 +4,6 @@ pub mod constants;
 pub mod data;
 pub mod io;
 pub mod similarity;
-pub mod simseq;
 pub mod tax;
 pub mod utils;
 

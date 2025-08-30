@@ -1,11 +1,9 @@
 // Imports
-
 use itertools::Itertools;
-use myrio_core::{
-    data::MyrSeq,
-    simseq::{Generator, distr::DiscreteDistribution},
-};
+use myrio_core::data::MyrSeq;
 use rand::SeedableRng;
+
+use crate::simseq::{Generator, distr::DiscreteDistribution};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]

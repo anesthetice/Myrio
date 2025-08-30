@@ -1,18 +1,18 @@
 // Modules
+pub mod constants;
 pub mod distr;
 
 // Imports
-use std::ops::SubAssign;
-
 use bio_seq::prelude::*;
 use distr::{DiscreteDistribution, sample_multiple};
 use itertools::Itertools;
+use myrio_core::data::MyrSeq;
 use rand::{distr::Distribution, seq::IndexedRandom};
+use std::ops::SubAssign;
 use thiserror::Error;
 
-use crate::{
-    constants::{MAX_Q_SCORE, MIN_Q_SCORE},
-    data::MyrSeq,
+use crate::simseq::constants::{
+    MAX_Q_SCORE, MIN_Q_SCORE, OBSERVED_Q_SCORE_BLOCK_SIZE_CUMMUL_FREQ, OBSERVED_Q_SCORE_CUMMUL_FREQ,
 };
 
 #[derive(Debug)]
@@ -28,10 +28,8 @@ impl Default for Generator {
     fn default() -> Self {
         Self {
             coding_to_template_ratio_bounds: (0.35, 0.65),
-            q_score_distr: DiscreteDistribution::new_cdf(&crate::constants::OBSERVED_Q_SCORE_CUMMUL_FREQ),
-            q_score_block_size_distr: DiscreteDistribution::new_cdf(
-                &crate::constants::OBSERVED_Q_SCORE_BLOCK_SIZE_CUMMUL_FREQ,
-            ),
+            q_score_distr: DiscreteDistribution::new_cdf(&OBSERVED_Q_SCORE_CUMMUL_FREQ),
+            q_score_block_size_distr: DiscreteDistribution::new_cdf(&OBSERVED_Q_SCORE_BLOCK_SIZE_CUMMUL_FREQ),
             indel_insertion_snp_error_weights: (0.3, 0.3, 0.4),
             min_window_size: 150,
         }
@@ -193,7 +191,7 @@ impl Generator {
 
                 let mut idx = 0;
                 while idx < seq.len() {
-                    let p_error = crate::constants::Q_TO_BP_CALL_ERROR_PROB_MAP[q_scores[idx] as usize];
+                    let p_error = myrio_core::constants::Q_TO_BP_CALL_ERROR_PROB_MAP[q_scores[idx] as usize];
                     if rng.sample(rand::distr::Bernoulli::new(p_error).unwrap()) {
                         // An error has "occurred", now we determine which type
                         match [ErrorType::Indel, ErrorType::Insertion, ErrorType::Snp]

@@ -195,7 +195,14 @@ impl TaxTreeStore {
             }
 
             let name = unsafe { stack.pop().unwrap_unchecked() }; // Safe as an Ok(...) from `clade::parse_str` means the vector isn't empty
-            let seq: Seq<Iupac> = Seq::from_str(&string_seq).map_err(|e| Error::BioSeq(e, lidx + 1))?;
+            let seq: Seq<Iupac> = match Seq::from_str(&string_seq).map_err(|e| Error::BioSeq(e, lidx + 1)) {
+                Ok(seq) => seq,
+                Err(e) => {
+                    eprintln!("{e}");
+                    string_seq.clear();
+                    continue;
+                }
+            };
 
             leaves_and_stacks.push((StoreNode::new_leaf(name, payload_id), stack));
             payloads.push(StorePayload::new(seq, pre_comp.clone()));

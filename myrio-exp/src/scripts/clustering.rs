@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::{clustering::partition::compute_cluster_cost, scripts::load_testset, simfunc::SimFunc};
 
+/*
 pub fn clustering_assessment() -> anyhow::Result<()> {
     let testset = load_testset()?;
     let testset_ref = &testset;
@@ -13,8 +14,13 @@ pub fn clustering_assessment() -> anyhow::Result<()> {
             .into_iter()
             .map(|(myrseqs, nb_clusters, info)| {
                 println!("## {info}");
-                let clusters =
-                    crate::clustering::partition::Clusterer::cluster(myrseqs, nb_clusters, k, t1, simfunc);
+                let clusters = crate::clustering::partition::Clusterer::_cluster_dense(
+                    myrseqs,
+                    nb_clusters,
+                    k,
+                    t1,
+                    simfunc,
+                );
                 #[cfg(debug_assertions)]
                 for (idx, cluster) in clusters.iter().enumerate() {
                     let mut id_count_map: HashMap<&str, usize> = HashMap::new();
@@ -39,3 +45,4 @@ pub fn clustering_assessment() -> anyhow::Result<()> {
 
     Ok(())
 }
+*/

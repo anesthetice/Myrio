@@ -3,7 +3,7 @@
 // Imports
 use anyhow::Ok;
 use bio_seq::prelude::*;
-use myrio_core::data::MyrSeq;
+use myrio_core::{clustering::ClusterInitializationMethod, data::MyrSeq, similarity::Similarity};
 use myrio_exp::{
     clustering::partition::compute_cluster_cost,
     scripts::load_testset,
@@ -15,12 +15,7 @@ use rand::{SeedableRng, seq::IndexedRandom};
 use std::collections::HashMap;
 
 fn main() -> anyhow::Result<()> {
-    let tree = myrio_core::tax::store::TaxTreeStore::load_from_fasta_file(
-        "./ignore/Magnoliopsida_rbcL_mdb.fasta",
-        None,
-        "rbcL",
-        None,
-    )?;
+    cluster_simple_test();
     Ok(())
 }
 
@@ -39,10 +34,22 @@ fn cluster_simple_test() {
         generator.generate_pseudo_amplicon(1058, 150, "4", &mut rng),
     ]
     .concat();
-    let clusters =
-        myrio_exp::clustering::partition::Clusterer::_cluster_sparse(myrseqs, 4, 4, 0.2, SimFunc::Cosine);
-    /*
-    for (idx, cluster) in clusters.iter().enumerate() {
+
+    let params = myrio_core::clustering::ClusteringParameters::new(
+        6,
+        0.2,
+        5,
+        Similarity::Cosine(false),
+        ClusterInitializationMethod::FromNumber(4),
+        1E-3,
+        10,
+        1.0,
+        false,
+    );
+
+    let clusters = myrio_core::clustering::cluster(myrseqs, params);
+
+    for (idx, cluster) in clusters.clusters.iter().enumerate() {
         let mut id_count_map: HashMap<&str, usize> = HashMap::new();
         for myrseq in cluster.iter() {
             let count_ref = id_count_map.entry(myrseq.id.as_str()).or_default();
@@ -50,7 +57,24 @@ fn cluster_simple_test() {
         }
         println!("cluster {idx}: {id_count_map:?}")
     }
-    */
+
+    let myrseqs = myrio_core::io::read_fastq_from_file(
+        "./ignore/queries/Solanum_lycopersicummatK_rbcL_ITS_barcode11.fastq",
+    )
+    .unwrap();
+    let params = myrio_core::clustering::ClusteringParameters::new(
+        6,
+        0.2,
+        5,
+        Similarity::Cosine(false),
+        ClusterInitializationMethod::FromNumber(4),
+        1E-6,
+        10,
+        1.0,
+        false,
+    );
+
+    let clusters = myrio_core::clustering::cluster(myrseqs, params);
 }
 
 /*

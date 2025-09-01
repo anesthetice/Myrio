@@ -2,7 +2,7 @@ use indicatif::MultiProgress;
 use itertools::Itertools;
 use myrio_core::{
     clustering::{ClusterInitializationMethod, ClusteringParameters},
-    similarity::SimFunc,
+    similarity::{SimFunc, Similarity},
     tax::{
         compute::{CacheOptions, TaxTreeCompute},
         results::TaxTreeResults,
@@ -26,7 +26,7 @@ pub fn process_run(
 
     const T1: f64 = 0.2;
     const T2: usize = 5;
-    const SIMFUNC: SimFunc = myrio_core::similarity::cosine_similarity_already_normalized;
+    const SIMILARITY: Similarity = Similarity::Cosine(true);
     const MULTITHREADING_FLAG: bool = true;
 
     let myrseqs: Vec<MyrSeq> = myrio_core::io::read_fastq_from_file(input_filepath)?;
@@ -62,7 +62,8 @@ pub fn process_run(
     let cim = ClusterInitializationMethod::FromCentroids(
         compute_trees.iter().map(TaxTreeCompute::get_kmer_normcounts_repr).collect_vec(),
     );
-    let params = ClusteringParameters::new(K_CLUSTER, T1, T2, SIMFUNC, cim, MULTITHREADING_FLAG);
+    let params =
+        ClusteringParameters::new(K_CLUSTER, T1, T2, SIMILARITY, cim, 1E-4, 10, 1.2, MULTITHREADING_FLAG);
 
     let queries = myrio_core::clustering::cluster(myrseqs, params)
         .clusters
@@ -79,7 +80,7 @@ pub fn process_run(
     spinner.finish_with_message("Finished clustering");
 
     for (ctree, query) in compute_trees.into_iter().zip_eq(queries) {
-        let res_tree = TaxTreeResults::from_compute_tree(query, ctree, SIMFUNC, None)?;
+        let res_tree = TaxTreeResults::from_compute_tree(query, ctree, SIMILARITY.to_simfunc(), None)?;
         res_tree.test();
     }
 

@@ -10,13 +10,10 @@ use bio_seq::{
     seq::{Seq, SeqSlice},
 };
 use itertools::Itertools;
-use myrio_proc::{gen_match_k_dense, gen_match_k_sparse};
+use myrio_proc::gen_match_k_sparse;
 use thiserror::Error;
 
-use crate::{
-    constants::Q_TO_BP_CALL_CORRECT_PROB_MAP,
-    data::{DFArray, SFVec},
-};
+use crate::{constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::SFVec};
 
 /// The main data structure used by Myrio, an efficient representation of an FASTQ record
 #[cfg_attr(test, derive(PartialEq))]
@@ -34,9 +31,6 @@ pub struct MyrSeq {
 
 impl MyrSeq {
     const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
-    pub const K_DENSE_VALID_RANGE: Range<usize> = 2..7;
-    pub const K_DENSE_VALID_RANGE_ERROR_MSG: &'static str =
-        "For dense k-mer count maps, only k ∈ {{2, ..., 6}} is currently supported";
     // When `usize` is 64-bit, max{k} = 32 as each nucleotide is repr. by 2 bits
     #[cfg(target_pointer_width = "64")]
     pub const K_SPARSE_VALID_RANGE: Range<usize> = 2..33;
@@ -73,43 +67,6 @@ impl MyrSeq {
             sequence: seq.to_owned(),
             quality: qual.to_vec(),
         }
-    }
-
-    pub fn compute_dense_kmer_counts(
-        &self,
-        k: usize,
-        cutoff: f64,
-    ) -> (DFArray, usize) {
-        let conf_score_per_kmer = self
-            .quality
-            .iter()
-            .map(|q| Q_TO_BP_CALL_CORRECT_PROB_MAP[*q as usize])
-            .collect_vec()
-            .windows(k)
-            .map(|vals| vals.iter().product::<f64>())
-            .collect_vec();
-
-        macro_rules! body {
-            ($seq:expr, $K:expr) => {{
-                let nb_kmers = $seq.len() - $K + 1;
-                let mut nb_hck: usize = 0; // number of high-quality k-mers
-                let mut map = DFArray::zeros(4_usize.pow(k as u32));
-
-                for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
-                    // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence.
-                    if conf_score_per_kmer[idx] > cutoff {
-                        map[usize::from(&kmer)] += 1.0;
-                        nb_hck += 1;
-                    }
-                    if conf_score_per_kmer[nb_kmers - 1 - idx] > cutoff {
-                        map[usize::from(&kmer_rc)] += 1.0;
-                        nb_hck += 1;
-                    }
-                }
-                (map, nb_hck)
-            }};
-        }
-        gen_match_k_dense!(self.sequence)
     }
 
     /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `f64` values which correspond to the weighted number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are used.
@@ -150,7 +107,7 @@ impl MyrSeq {
         (SFVec::from_unsorted_pairs(pairs, 4_usize.pow(k as u32), 0.0), nb_hck)
     }
 
-    pub fn compute_sparse_kmer_normcounts(
+    pub fn compute_sparse_kmer_counts_normalized(
         &self,
         k: usize,
         cutoff: f64,

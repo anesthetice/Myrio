@@ -2,7 +2,11 @@ use std::ops::Range;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Expr, Ident, parse_macro_input};
+use syn::{
+    Expr, Ident, Type,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+};
 
 const K_DENSE_VALID_RANGE: Range<usize> = 2..7;
 
@@ -35,7 +39,7 @@ pub fn gen_match_k_dense(input: TokenStream) -> TokenStream {
     let output = quote! {
         match k {
             #(#arms)*
-            _ => panic!("{}", MyrSeq::K_DENSE_VALID_RANGE_ERROR_MSG),
+            _ => panic!("{}", K_DENSE_VALID_RANGE_ERROR_MSG),
         }
     };
 
@@ -70,17 +74,30 @@ pub fn gen_match_k_sparse(input: TokenStream) -> TokenStream {
     output.into()
 }
 
+struct MacroInput {
+    ty: Type,
+    op: Ident,
+}
+
+impl Parse for MacroInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let ty: Type = input.parse()?; // e.g. f64
+        let op: Ident = input.parse()?; // e.g. Add
+        Ok(MacroInput { ty, op })
+    }
+}
+
 #[proc_macro]
-pub fn impl_f64_ops_for_sfvec(input: TokenStream) -> TokenStream {
-    let op = parse_macro_input!(input as Ident);
+pub fn impl_ops_for_svec(input: TokenStream) -> TokenStream {
+    let MacroInput { ty, op } = parse_macro_input!(input as MacroInput);
     let op_assign = Ident::new(&(op.to_string() + "Assign"), op.span());
 
     let method = Ident::new(&op.to_string().to_lowercase(), op.span());
     let method_assign = Ident::new(&(method.to_string() + "_assign"), method.span());
 
     let expanded = quote! {
-        impl core::ops::#op<f64> for SparseFloatVec {
-            type Output = SparseFloatVec;
+        impl core::ops::#op<#ty> for SparseVec<#ty> {
+            type Output = SparseVec<#ty>;
 
             fn #method(mut self, rhs: f64) -> Self::Output {
                 self.values_mut().for_each(|v| v.#method_assign(rhs));
@@ -89,12 +106,12 @@ pub fn impl_f64_ops_for_sfvec(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl core::ops::#op<f64> for &SparseFloatVec {
-            type Output = SparseFloatVec;
+        impl core::ops::#op<#ty> for &SparseVec<#ty> {
+            type Output = SparseVec<#ty>;
 
             fn #method(self, rhs: f64) -> Self::Output {
                 unsafe {
-                    SparseFloatVec::new_unchecked(
+                    SparseVec::<#ty>::new_unchecked(
                         self.keys.clone(),
                         self.values.iter().map(|v| v.#method(rhs)).collect(),
                         self.dim,
@@ -104,7 +121,7 @@ pub fn impl_f64_ops_for_sfvec(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl core::ops::#op_assign<f64> for SparseFloatVec {
+        impl core::ops::#op_assign<#ty> for SparseVec<#ty> {
             fn #method_assign(&mut self, rhs: f64) {
                 self.values_mut().for_each(|v| v.#method_assign(rhs));
                 self.sval.#method_assign(rhs);

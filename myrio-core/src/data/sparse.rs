@@ -3,40 +3,49 @@ use core::{
     cmp::Ordering,
     ops::{AddAssign, DivAssign, MulAssign, SubAssign},
 };
+use std::{fmt::Debug, ops::Neg};
 
-use bincode::{Decode, Encode};
+use bincode::{BorrowDecode, Decode, Encode};
 use itertools::Itertools;
-use myrio_proc::impl_f64_ops_for_sfvec;
+use myrio_proc::impl_ops_for_svec;
 
-pub type SFVec = SparseFloatVec;
+/// A sparse vector containing floats, similar to `HashMap<usize,Float>` but without the need for hashing
+pub type Float = f64;
+pub type SFVec = SparseVec<Float>;
 
-/// A sparse vector containing floats, similar to `HashMap<usize,f64>` but without the need for hashing
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
-pub struct SparseFloatVec {
+#[derive(Debug, Clone, PartialEq)]
+pub struct SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd,
+{
     keys: Vec<usize>,
-    values: Vec<f64>,
+    values: Vec<T>,
     dim: usize,
-    /// Baseline sparse value, note that this does not act as an offset for the elements in `self.values`
-    pub sval: f64,
+    sval: T,
 }
 
-impl SparseFloatVec {
+impl<T> SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd,
+{
     pub fn new(dim: usize) -> Self {
-        Self { keys: Vec::new(), values: Vec::new(), dim, sval: 0.0 }
+        Self { keys: Vec::new(), values: Vec::new(), dim, sval: T::default() }
     }
 
     pub fn new_with_sparse_value(
         dim: usize,
-        sval: f64,
+        sval: T,
     ) -> Self {
         Self { keys: Vec::new(), values: Vec::new(), dim, sval }
     }
 
-    unsafe fn new_unchecked(
+    /// # Safety
+    /// `keys` and `values` must share the same length
+    pub unsafe fn new_unchecked(
         keys: Vec<usize>,
-        values: Vec<f64>,
+        values: Vec<T>,
         dim: usize,
-        sval: f64,
+        sval: T,
     ) -> Self {
         Self { keys, values, dim, sval }
     }
@@ -44,6 +53,10 @@ impl SparseFloatVec {
     /// Returns the theoretical length of the array
     pub fn dim(&self) -> usize {
         self.dim
+    }
+
+    pub fn sval(&self) -> T {
+        self.sval
     }
 
     /// Returns the number of non-sparse values held
@@ -58,7 +71,7 @@ impl SparseFloatVec {
     pub fn get(
         &self,
         idx: usize,
-    ) -> Option<&f64> {
+    ) -> Option<&T> {
         match self.keys.binary_search(&idx) {
             Ok(inner_idx) => Some(unsafe { self.values.get_unchecked(inner_idx) }),
             Err(_) => None,
@@ -68,7 +81,7 @@ impl SparseFloatVec {
     pub fn get_or_insert_mut(
         &mut self,
         idx: usize,
-    ) -> &mut f64 {
+    ) -> &mut T {
         if idx >= self.dim() {
             panic!("Specified index of {idx} exceeds SFVec dimension of {}", self.dim)
         }
@@ -85,8 +98,8 @@ impl SparseFloatVec {
     pub fn insert(
         &mut self,
         idx: usize,
-        val: f64,
-    ) -> Option<f64> {
+        val: T,
+    ) -> Option<T> {
         if idx >= self.dim() {
             panic!("Specified index of {idx} exceeds SFVec dimension of {}", self.dim)
         }
@@ -103,52 +116,7 @@ impl SparseFloatVec {
         }
     }
 
-    pub fn from_unsorted_pairs(
-        mut pairs: Vec<(usize, f64)>,
-        dim: usize,
-        sval: f64,
-    ) -> Self {
-        pairs.sort_unstable_by_key(|(key, _)| *key);
-        let capacity = pairs.len();
-
-        let mut keys: Vec<usize> = Vec::with_capacity(capacity);
-        let mut values: Vec<f64> = Vec::with_capacity(capacity);
-
-        if capacity == 0 {
-            return Self { keys, values, dim, sval };
-        }
-
-        unsafe {
-            let k_ptr: *mut usize = keys.as_mut_ptr();
-            let v_ptr: *mut f64 = values.as_mut_ptr();
-
-            let mut idx: usize = 0;
-
-            let (mut prev_key, mut val_to_write) = *pairs.get_unchecked(0);
-            k_ptr.write(prev_key);
-
-            pairs.into_iter().skip(1).for_each(|(key, val)| {
-                if prev_key != key {
-                    v_ptr.add(idx).write(val_to_write);
-                    idx += 1;
-                    k_ptr.add(idx).write(key);
-                    val_to_write = val;
-                    prev_key = key;
-                } else {
-                    val_to_write += val;
-                }
-            });
-            v_ptr.add(idx).write(val_to_write);
-            keys.set_len(idx + 1);
-            //keys.shrink_to_fit();
-            values.set_len(idx + 1);
-            //values.shrink_to_fit();
-        }
-
-        Self { keys, values, dim, sval }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&usize, &f64)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&usize, &T)> {
         self.keys.iter().zip_eq(self.values.iter())
     }
 
@@ -156,11 +124,11 @@ impl SparseFloatVec {
         self.keys.iter()
     }
 
-    pub fn values(&self) -> impl Iterator<Item = &f64> {
+    pub fn values(&self) -> impl Iterator<Item = &T> {
         self.values.iter()
     }
 
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut f64> {
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.values.iter_mut()
     }
 
@@ -175,34 +143,35 @@ impl SparseFloatVec {
         &mut self,
         op: F,
     ) where
-        F: Fn(&mut f64),
+        F: Fn(&mut T),
     {
         op(&mut self.sval);
         self.values.iter_mut().for_each(op);
     }
 
-    pub fn merge_and_apply<F, T>(
+    pub fn merge_and_apply<F, O>(
         &self,
         other: &Self,
         op: F,
-    ) -> (Vec<usize>, Vec<T>, usize, T)
+    ) -> SparseVec<O>
     where
-        F: Fn(f64, f64) -> T,
+        F: Fn(T, T) -> O,
+        O: Debug + Clone + Copy + Default + PartialOrd,
     {
         let ak: &[usize] = &self.keys;
-        let av: &[f64] = &self.values;
-        let asval: f64 = self.sval;
+        let av: &[T] = &self.values;
+        let asval: T = self.sval;
         let bk: &[usize] = &other.keys;
-        let bv: &[f64] = &other.values;
-        let bsval: f64 = other.sval;
+        let bv: &[T] = &other.values;
+        let bsval: T = other.sval;
 
         let capacity: usize = ak.len() + bk.len();
         let mut ck: Vec<usize> = Vec::with_capacity(capacity);
-        let mut cv: Vec<T> = Vec::with_capacity(capacity);
+        let mut cv: Vec<O> = Vec::with_capacity(capacity);
 
         unsafe {
             let ck_ptr: *mut usize = ck.as_mut_ptr();
-            let cv_ptr: *mut T = cv.as_mut_ptr();
+            let cv_ptr: *mut O = cv.as_mut_ptr();
             let mut written = 0;
 
             let mut i = 0;
@@ -214,7 +183,7 @@ impl SparseFloatVec {
                 let bk_j = bk.get_unchecked(j);
                 let bv_j = bv.get_unchecked(j);
 
-                let (c_key, c_val): (usize, T) = match ak_i.cmp(bk_j) {
+                let (c_key, c_val): (usize, O) = match ak_i.cmp(bk_j) {
                     Ordering::Less => {
                         i += 1;
                         (*ak_i, op(*av_i, bsval))
@@ -256,36 +225,79 @@ impl SparseFloatVec {
         let dim = self.dim.max(other.dim);
         let sval = op(asval, bsval);
 
-        (ck, cv, dim, sval)
+        unsafe { SparseVec::<O>::new_unchecked(ck, cv, dim, sval) }
+    }
+}
+
+impl<T> SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd + AddAssign,
+{
+    pub fn from_unsorted_pairs(
+        mut pairs: Vec<(usize, T)>,
+        dim: usize,
+        sval: T,
+    ) -> Self {
+        pairs.sort_unstable_by_key(|(key, _)| *key);
+        let capacity = pairs.len();
+
+        let mut keys: Vec<usize> = Vec::with_capacity(capacity);
+        let mut values: Vec<T> = Vec::with_capacity(capacity);
+
+        if capacity == 0 {
+            return Self { keys, values, dim, sval };
+        }
+
+        unsafe {
+            let k_ptr: *mut usize = keys.as_mut_ptr();
+            let v_ptr: *mut T = values.as_mut_ptr();
+
+            let mut idx: usize = 0;
+
+            let (mut prev_key, mut val_to_write) = *pairs.get_unchecked(0);
+            k_ptr.write(prev_key);
+
+            pairs.into_iter().skip(1).for_each(|(key, val)| {
+                if prev_key != key {
+                    v_ptr.add(idx).write(val_to_write);
+                    idx += 1;
+                    k_ptr.add(idx).write(key);
+                    val_to_write = val;
+                    prev_key = key;
+                } else {
+                    val_to_write += val;
+                }
+            });
+            v_ptr.add(idx).write(val_to_write);
+            keys.set_len(idx + 1);
+            //keys.shrink_to_fit();
+            values.set_len(idx + 1);
+            //values.shrink_to_fit();
+        }
+
+        Self { keys, values, dim, sval }
+    }
+}
+
+impl SparseVec<Float> {
+    pub fn sum(&self) -> Float {
+        self.values.iter().sum1::<Float>().unwrap_or_default() + self.sval * self.nb_sparse() as Float
     }
 
-    pub fn merge_with_and_apply<F>(
-        &self,
-        other: &Self,
-        op: F,
-    ) -> Self
-    where
-        F: Fn(f64, f64) -> f64,
-    {
-        let (keys, values, dim, sval) = self.merge_and_apply(other, op);
-        unsafe { Self::new_unchecked(keys, values, dim, sval) }
+    pub fn mean(&self) -> Float {
+        self.sum() / self.dim as Float
     }
 
-    pub fn sum(&self) -> f64 {
-        self.values().sum1().unwrap_or(0.0) + self.sval * self.nb_sparse() as f64
+    pub fn norm_l2_squared(&self) -> Float {
+        self.values().map(|v| v.powi(2)).sum1().unwrap_or(0.0) + self.sval.powi(2) * self.nb_sparse() as Float
     }
 
-    pub fn mean(&self) -> f64 {
-        self.sum() / self.dim as f64
-    }
-
-    pub fn norm_l2(&self) -> f64 {
-        (self.values().map(|v| v.powi(2)).sum1().unwrap_or(0.0) + self.sval.powi(2) * self.nb_sparse() as f64)
-            .sqrt()
+    pub fn norm_l2(&self) -> Float {
+        self.norm_l2_squared().sqrt()
     }
 
     /// Alias for norm_l2, computes the magnitude (l2 norm) of the vector
-    pub fn magnitude(&self) -> f64 {
+    pub fn magnitude(&self) -> Float {
         self.norm_l2()
     }
 
@@ -309,7 +321,7 @@ impl SparseFloatVec {
 
     /// https://journals.asm.org/doi/10.1128/msystems.00016-19#sec-4
     pub fn rclr_transform(&mut self) {
-        let robust_ln_mean = self.values().product::<f64>().powf(1_f64 / self.count() as f64).ln();
+        let robust_ln_mean = self.values().product::<Float>().powf(1_Float / self.count() as Float).ln();
         assert!(robust_ln_mean.is_finite());
         self.values_mut().for_each(|x| *x = x.ln() - robust_ln_mean);
     }
@@ -317,14 +329,65 @@ impl SparseFloatVec {
     pub fn dist_l2(
         &self,
         other: &Self,
-    ) -> f64 {
+    ) -> Float {
         self.merge_and_apply(other, |x, y| (x - y).powi(2)).sum().sqrt()
     }
     */
 }
 
-impl core::ops::Index<usize> for SparseFloatVec {
-    type Output = f64;
+impl<T> bincode::Encode for SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd + Encode,
+{
+    fn encode<E: bincode::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode::error::EncodeError> {
+        bincode::Encode::encode(&self.keys, encoder)?;
+        bincode::Encode::encode(&self.values, encoder)?;
+        bincode::Encode::encode(&self.dim, encoder)?;
+        bincode::Encode::encode(&self.sval, encoder)?;
+        Ok(())
+    }
+}
+
+impl<Context, T> bincode::Decode<Context> for SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd + Decode<Context> + 'static,
+{
+    fn decode<D: bincode::de::Decoder<Context = Context>>(
+        decoder: &mut D
+    ) -> Result<Self, bincode::error::DecodeError> {
+        Ok(Self {
+            keys: bincode::Decode::decode(decoder)?,
+            values: bincode::Decode::decode(decoder)?,
+            dim: bincode::Decode::decode(decoder)?,
+            sval: bincode::Decode::decode(decoder)?,
+        })
+    }
+}
+
+impl<'de, Context, T> bincode::BorrowDecode<'de, Context> for SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd + BorrowDecode<'de, Context> + 'de,
+{
+    fn borrow_decode<D: bincode::de::BorrowDecoder<'de, Context = Context>>(
+        decoder: &mut D
+    ) -> Result<Self, bincode::error::DecodeError> {
+        Ok(Self {
+            keys: bincode::BorrowDecode::borrow_decode(decoder)?,
+            values: bincode::BorrowDecode::borrow_decode(decoder)?,
+            dim: bincode::BorrowDecode::borrow_decode(decoder)?,
+            sval: bincode::BorrowDecode::borrow_decode(decoder)?,
+        })
+    }
+}
+
+impl<T> core::ops::Index<usize> for SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd,
+{
+    type Output = T;
 
     fn index(
         &self,
@@ -334,8 +397,11 @@ impl core::ops::Index<usize> for SparseFloatVec {
     }
 }
 
-impl core::ops::Neg for SparseFloatVec {
-    type Output = SparseFloatVec;
+impl<T> core::ops::Neg for SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd + Neg<Output = T>,
+{
+    type Output = Self;
 
     fn neg(mut self) -> Self::Output {
         self.values_mut().for_each(|v| *v = v.neg());
@@ -344,41 +410,44 @@ impl core::ops::Neg for SparseFloatVec {
     }
 }
 
-impl AsRef<SparseFloatVec> for SparseFloatVec {
+impl<T> AsRef<SparseVec<T>> for SparseVec<T>
+where
+    T: Debug + Clone + Copy + Default + PartialOrd,
+{
     fn as_ref(&self) -> &Self {
         self
     }
 }
 
 // run `cargo expand -p myrio-core data::sparse` to examine
-impl_f64_ops_for_sfvec!(Add);
-impl_f64_ops_for_sfvec!(Sub);
-impl_f64_ops_for_sfvec!(Mul);
-impl_f64_ops_for_sfvec!(Div);
+impl_ops_for_svec!(Float Add);
+impl_ops_for_svec!(Float Sub);
+impl_ops_for_svec!(Float Mul);
+impl_ops_for_svec!(Float Div);
 
-impl<T> core::ops::Add<T> for SparseFloatVec
+impl<T> core::ops::Add<T> for SparseVec<Float>
 where
-    T: AsRef<SparseFloatVec>,
+    T: AsRef<SparseVec<Float>>,
 {
-    type Output = SparseFloatVec;
+    type Output = SparseVec<Float>;
     fn add(
         self,
         rhs: T,
     ) -> Self::Output {
-        self.merge_with_and_apply(rhs.as_ref(), |x, y| x + y)
+        self.merge_and_apply(rhs.as_ref(), |x, y| x + y)
     }
 }
 
-impl<T> core::ops::Add<T> for &SparseFloatVec
+impl<T> core::ops::Add<T> for &SparseVec<Float>
 where
-    T: AsRef<SparseFloatVec>,
+    T: AsRef<SparseVec<Float>>,
 {
-    type Output = SparseFloatVec;
+    type Output = SparseVec<Float>;
     fn add(
         self,
         rhs: T,
     ) -> Self::Output {
-        self.merge_with_and_apply(rhs.as_ref(), |x, y| x + y)
+        self.merge_and_apply(rhs.as_ref(), |x, y| x + y)
     }
 }
 
@@ -459,7 +528,7 @@ mod test {
         sfvec.apply_in_place(|v| *v = v.ln());
         assert_float_eq!(sfvec[1], 0.0);
         assert_float_eq!(sfvec[2], 1.0);
-        assert_eq!(sfvec.sval, f64::NEG_INFINITY)
+        assert_eq!(sfvec.sval, Float::NEG_INFINITY)
     }
 
     #[test]
@@ -467,7 +536,7 @@ mod test {
         let a = unsafe { SFVec::new_unchecked(vec![1, 2, 3], vec![1.0, 2.0, 3.0], 3, 1.0) };
         let b = unsafe { SFVec::new_unchecked(vec![2, 3, 4], vec![2.0, 3.0, 4.0], 3, 2.0) };
 
-        let c = a.merge_with_and_apply(&b, |a, b| a + b);
+        let c = a.merge_and_apply(&b, |a, b| a + b);
 
         assert_float_eq!(c[1], 3.0);
         assert_float_eq!(c[2], 4.0);

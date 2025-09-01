@@ -10,64 +10,165 @@ pub type SimFunc = fn(&SFVec, &SFVec) -> SimScore;
 
 #[nutype(
     default = 0_f64,
+    new_unchecked,
     validate(finite),
     derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deref, TryFrom, Display, Default)
 )]
 pub struct SimScore(f64);
 
-pub fn cosine_similarity(
+pub enum Similarity {
+    /// Inner bool should be set to `true` if we expect pre-normalized input
+    Cosine(bool),
+    /// Inner bool should be set to `true` if we expect pre-normalized input
+    /// Called both the `Jaccard index` and the `Tanimoto coefficient`
+    /// See `https://link.springer.com/article/10.1007/s10910-010-9668-4`for more info
+    JacardTanimoto(bool),
+    Overlap,
+}
+
+impl Similarity {
+    pub fn is_helped_by_normalization(&self) -> bool {
+        matches!(self, Self::Cosine(_) | Self::JacardTanimoto(_))
+    }
+
+    pub fn normalized_input(&mut self) {
+        match self {
+            Self::Cosine(normalized) => *normalized = true,
+            Self::JacardTanimoto(normalized) => *normalized = true,
+            Self::Overlap => (),
+        }
+    }
+
+    pub fn to_simfunc(&self) -> SimFunc {
+        match self {
+            Self::Cosine(true) => cosine_pre_normalized,
+            Self::Cosine(false) => cosine,
+            Self::JacardTanimoto(true) => jacard_tanimoto_pre_normalized,
+            Self::JacardTanimoto(false) => jacard_tanimoto,
+            Self::Overlap => overlap,
+        }
+    }
+
+    pub fn dist(score: SimScore) -> SimScore {
+        // match self if necessary, currently isn't AFAIK
+        unsafe { SimScore::new_unchecked(1.0 - *score) }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn cosine(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
     let dot = a.merge_with_and_apply(b, |x, y| x * y).sum();
-    (dot / (a.norm_l2() * b.norm_l2())).try_into().unwrap()
+    (dot / (a.norm_l2() * b.norm_l2())).try_into().unwrap_or_default()
 }
 
 #[cfg(debug_assertions)]
-pub fn cosine_similarity_already_normalized(
+fn cosine(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    a.merge_with_and_apply(b, |x, y| x * y)
-        .sum()
+    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    (dot / (a.norm_l2() * b.norm_l2()))
         .try_into()
-        .inspect_err(|_| {
-            eprintln!(
-                "WARNING: non-finite similarity score encountered\nleft: {} counts\nright: {} counts",
-                a.count(),
-                b.count()
-            )
-        })
+        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
         .unwrap_or_default()
 }
 
 #[cfg(not(debug_assertions))]
-pub fn cosine_similarity_already_normalized(
+fn cosine_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    a.merge_with_and_apply(b, |x, y| x * y).sum().try_into().unwrap_or_default()
+    SimScore::new_unchecked(a.merge_with_and_apply(b, |x, y| x * y).sum())
 }
 
-pub fn overlap_similarity(
+#[cfg(debug_assertions)]
+fn cosine_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let (_, min_max, dim, (min_s, max_s)) = a.merge_and_apply(b, |x, y| (x.min(y), x.max(y)));
-
-    let nb_sparse = dim - min_max.len();
-    let sum_min = min_max.iter().map(|(min, _)| min).sum1().unwrap_or(0.0) + min_s * nb_sparse as f64;
-    let sum_max = min_max.iter().map(|(_, max)| max).sum1().unwrap_or(0.0) + max_s * nb_sparse as f64;
-
-    SimScore::try_new(sum_min / sum_max).unwrap()
+    a.merge_and_apply(b, |x, y| x * y)
+        .sum()
+        .try_into()
+        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .unwrap_or_default()
 }
 
-/// Does not yield the same as overlap_similarity
-pub fn overlap_similarity_already_normalized(
+#[cfg(not(debug_assertions))]
+fn jacard_tanimoto(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    a.merge_with_and_apply(b, |x, y| x.min(y)).sum().try_into().unwrap()
+    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    (dot / (a.norm_l2_squared() + b.norm_l2_squared() - dot)).try_into().unwrap_or_default()
+}
+
+#[cfg(debug_assertions)]
+fn jacard_tanimoto(
+    a: &SFVec,
+    b: &SFVec,
+) -> SimScore {
+    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    (dot / (a.norm_l2_squared() + b.norm_l2_squared() - dot))
+        .try_into()
+        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .unwrap_or_default()
+}
+
+#[cfg(not(debug_assertions))]
+fn jacard_tanimoto_pre_normalized(
+    a: &SFVec,
+    b: &SFVec,
+) -> SimScore {
+    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    (dot / (2.0 - dot)).try_into().unwrap_or_default()
+}
+
+#[cfg(debug_assertions)]
+fn jacard_tanimoto_pre_normalized(
+    a: &SFVec,
+    b: &SFVec,
+) -> SimScore {
+    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    (dot / (2.0 - dot))
+        .try_into()
+        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .unwrap_or_default()
+}
+
+#[cfg(not(debug_assertions))]
+fn overlap(
+    a: &SFVec,
+    b: &SFVec,
+) -> SimScore {
+    let min_max = a.merge_and_apply(b, |x, y| (x.min(y), x.max(y)));
+    let (min_s, max_s) = min_max.sval();
+
+    let nb_sparse = min_max.count() as f64;
+    let sum_min = min_max.values().map(|(min, _)| min).sum1().unwrap_or(0.0) + min_s * nb_sparse;
+    let sum_max = min_max.values().map(|(_, max)| max).sum1().unwrap_or(0.0) + max_s * nb_sparse;
+
+    (sum_min / sum_max).try_into().unwrap_or_default()
+}
+
+#[cfg(debug_assertions)]
+fn overlap(
+    a: &SFVec,
+    b: &SFVec,
+) -> SimScore {
+    let min_max = a.merge_and_apply(b, |x, y| (x.min(y), x.max(y)));
+    let (min_s, max_s) = min_max.sval();
+
+    let nb_sparse = min_max.count() as f64;
+    let sum_min = min_max.values().map(|(min, _)| min).sum1().unwrap_or(0.0) + min_s * nb_sparse;
+    let sum_max = min_max.values().map(|(_, max)| max).sum1().unwrap_or(0.0) + max_s * nb_sparse;
+
+    (sum_min / sum_max)
+        .try_into()
+        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -86,15 +187,14 @@ mod test {
 
         let mut a = myrseq_1.compute_sparse_kmer_counts(2, f64::MIN).0;
         let mut b = myrseq_2.compute_sparse_kmer_counts(2, f64::MIN).0;
-        let cosine = cosine_similarity(&a, &b);
+        let cosine = cosine(&a, &b);
         assert_float_eq!(*cosine, 2.0 / 3.0);
-        let overlap = overlap_similarity(&a, &b);
+        let overlap = overlap(&a, &b);
         assert_float_eq!(*overlap, 0.5);
 
         a.normalize_l2();
         b.normalize_l2();
 
-        assert_float_eq!(*cosine_similarity_already_normalized(&a, &b), *cosine);
-        //assert_float_eq!(*overlap_similarity_already_normalized(&a, &b), *overlap);
+        assert_float_eq!(*cosine_pre_normalized(&a, &b), *cosine);
     }
 }

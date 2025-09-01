@@ -3,35 +3,17 @@ use std::{collections::HashMap, f64};
 
 use itertools::Itertools;
 use myrio_core::{
-    data::{DFArray, MyrSeq, SFVec},
+    data::{MyrSeq, SFVec},
     similarity::SimScore,
 };
 
 use crate::simfunc::SimilarityFunction;
+use crate::{DFArray, compute_dense_kmer_counts};
 
 /// Partition-based clustering
 pub struct Clusterer;
 
 impl Clusterer {
-    pub fn cluster(
-        myrseqs: Vec<MyrSeq>,
-        nb_clusters: usize,
-        k: usize,
-        t1: f64,
-        similarity_function: SimilarityFunction,
-    ) -> Vec<Vec<MyrSeq>> {
-        //Vec<Vec<MyrSeq>> {
-        if MyrSeq::K_DENSE_VALID_RANGE.contains(&k) {
-            //Self::_cluster_dense(myrseqs, nb_clusters, k, t1, similarity_function)
-            todo!()
-        } else if MyrSeq::K_SPARSE_VALID_RANGE.contains(&k) {
-            //Self::_cluster_sparse(myrseqs, nb_clusters, k, t1, similarity_function)
-            todo!()
-        } else {
-            panic!("Only k ∈ {{2, ..., 32}} is currently supported")
-        }
-    }
-
     pub fn _cluster_dense(
         myrseqs: Vec<MyrSeq>,
         nb_clusters: usize,
@@ -75,7 +57,7 @@ impl Clusterer {
         let (myrseqs, kcounts, nb_hcks): (Vec<MyrSeq>, Vec<DFArray>, Vec<usize>) = myrseqs
             .into_iter()
             .filter_map(|myrseq| {
-                let (kcount, nb_hck) = myrseq.compute_dense_kmer_counts(k, t1);
+                let (kcount, nb_hck) = compute_dense_kmer_counts(&myrseq, k, t1);
                 if nb_hck != 0 { Some((myrseq, kcount, nb_hck)) } else { None }
             })
             .sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first
@@ -169,7 +151,7 @@ impl Clusterer {
                 let n = self.elements.len() as f64;
                 let new_centroid_seeds: SFVec =
                     self.elements.into_iter().fold::<SFVec, _>(SFVec::new(countmap_size), |acc, x| {
-                        acc.merge_with_and_apply(x, |a, b| a + b)
+                        acc.merge_and_apply(x, |a, b| a + b)
                     }) / n;
 
                 Self { centroid_seeds: new_centroid_seeds, elements: Vec::new() }

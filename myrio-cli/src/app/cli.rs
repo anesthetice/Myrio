@@ -12,7 +12,9 @@ pub fn build_cli() -> Command {
                 .required(true)
                 //.num_args(1..101)
                 .short('i')
+                .visible_short_alias('q')
                 .long("input")
+                .visible_alias("query")
                 .value_parser(vparser!(PathBuf))
                 .action(ArgAction::Set),
         )
@@ -28,6 +30,15 @@ pub fn build_cli() -> Command {
                 .visible_aliases(["refs", "references", "db"])
                 .value_parser(vparser!(PathBuf))
                 .action(ArgAction::Set),
+        ).arg(
+            Arg::new("nb_clusters")
+                .help("The number of clusters to expect")
+                .long_help("The number of clusters to expect, defaults to the number of `.myrtree` files found")
+                .required(false)
+                .short('n')
+                .long("nb-clusters")
+                .value_parser(vparser!(usize))
+                .action(ArgAction::Set)
         );
 
     let tree_new_subcommand = Command::new("new")

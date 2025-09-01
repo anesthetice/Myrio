@@ -1,11 +1,9 @@
 // Imports
 use itertools::Itertools;
-use myrio_core::{
-    constants::Q_TO_BP_CALL_CORRECT_PROB_MAP,
-    data::{DFArray, MyrSeq},
-};
+use myrio_core::{constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::MyrSeq};
 
 use crate::simfunc::SimilarityFunction;
+use crate::{DFArray, compute_dense_kmer_counts};
 
 pub struct Clusterer;
 
@@ -17,7 +15,7 @@ impl Clusterer {
         t2_cutoff: f64,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
-        if MyrSeq::K_DENSE_VALID_RANGE.contains(&k) {
+        if crate::K_DENSE_VALID_RANGE.contains(&k) {
             Self::_cluster_dense(myrseqs, k, t1_cutoff, t2_cutoff, similarity_function)
         } else if MyrSeq::K_SPARSE_VALID_RANGE.contains(&k) {
             Self::_cluster_sparse(myrseqs, k, t1_cutoff, t2_cutoff, similarity_function)
@@ -77,7 +75,7 @@ impl Clusterer {
         let mut clusters: Vec<Cluster> = myrseqs
             .into_iter()
             .map(|myrseq| {
-                let (map, _nb) = myrseq.compute_dense_kmer_counts(k, t1_cutoff);
+                let (map, _nb) = compute_dense_kmer_counts(&myrseq, k, t1_cutoff);
                 //println!("number of k-mers kept: {_nb} / {}", myrseq.sequence.len() - k + 1);
                 Cluster { seeds: map, elements: vec![myrseq] }
             })

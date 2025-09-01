@@ -9,6 +9,7 @@ default-run = "myrio-exp-bin"
 [dependencies]
 # internal
 myrio-core = { workspace = true }
+myrio-proc = { workspace = true }
 # external
 anyhow = { workspace = true }
 #argmin = { version = "0.10", features = ["ctrlc"] }

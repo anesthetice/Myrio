@@ -1,10 +1,8 @@
 // Imports
 use std::f64;
 
-use myrio_core::{
-    data::{DFArray, SFVec},
-    similarity::SimScore,
-};
+use crate::DFArray;
+use myrio_core::{data::SFVec, similarity::SimScore};
 
 pub type SimFunc = SimilarityFunction;
 
@@ -51,10 +49,10 @@ impl SimilarityFunction {
     ) -> SimScore {
         match &self {
             Self::Cosine => {
-                let dot = a.merge_with_and_apply(b, |x, y| x * y).sum();
+                let dot = a.merge_and_apply(b, |x, y| x * y).sum();
                 SimScore::try_new(dot / (a.norm_l2() * b.norm_l2())).unwrap()
             }
-            Self::Overlap => SimScore::try_new(a.merge_with_and_apply(b, |x, y| x.min(y)).sum()).unwrap(),
+            Self::Overlap => SimScore::try_new(a.merge_and_apply(b, |x, y| x.min(y)).sum()).unwrap(),
             Self::OverlapNorm => {
                 let (mut sum_min, mut sum_max) = (0.0, 0.0);
 

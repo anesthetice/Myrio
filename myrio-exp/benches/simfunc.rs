@@ -1,11 +1,12 @@
 // Imports
 use divan::{Bencher, black_box};
 use myrio_core::{
-    data::{DFArray, MyrSeq, SFVec},
+    data::{MyrSeq, SFVec},
     similarity::SimScore,
 };
-use myrio_exp::simfunc::SimFunc;
+use myrio_exp::DFArray;
 use myrio_exp::simseq::Generator;
+use myrio_exp::{compute_dense_kmer_counts, simfunc::SimFunc};
 use rand::SeedableRng;
 
 const K: usize = 6;
@@ -16,14 +17,30 @@ const LENGTH: usize = 500;
 fn dense_cosine(bencher: Bencher) {
     let mut rng = rand::rngs::SmallRng::seed_from_u64(SEED);
     let a: DFArray = black_box(
-        MyrSeq::create("a", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_dense_kmer_counts(K, 0.0)
-            .0,
+        compute_dense_kmer_counts(
+            &MyrSeq::create(
+                "a",
+                None,
+                &Generator::generate_core_sequence(LENGTH, &mut rng),
+                &vec![1; LENGTH],
+            ),
+            K,
+            0.0,
+        )
+        .0,
     );
     let b: DFArray = black_box(
-        MyrSeq::create("b", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_dense_kmer_counts(K, 0.0)
-            .0,
+        compute_dense_kmer_counts(
+            &MyrSeq::create(
+                "b",
+                None,
+                &Generator::generate_core_sequence(LENGTH, &mut rng),
+                &vec![1; LENGTH],
+            ),
+            K,
+            0.0,
+        )
+        .0,
     );
 
     bencher.bench(move || -> SimScore { SimFunc::Cosine.compute_dense(&a, &b) });
@@ -50,14 +67,30 @@ fn sparse_cosine(bencher: Bencher) {
 fn dense_overlap(bencher: Bencher) {
     let mut rng = rand::rngs::SmallRng::seed_from_u64(SEED);
     let a: DFArray = black_box(
-        MyrSeq::create("a", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_dense_kmer_counts(K, 0.0)
-            .0,
+        compute_dense_kmer_counts(
+            &MyrSeq::create(
+                "a",
+                None,
+                &Generator::generate_core_sequence(LENGTH, &mut rng),
+                &vec![1; LENGTH],
+            ),
+            K,
+            0.0,
+        )
+        .0,
     );
     let b: DFArray = black_box(
-        MyrSeq::create("b", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_dense_kmer_counts(K, 0.0)
-            .0,
+        compute_dense_kmer_counts(
+            &MyrSeq::create(
+                "b",
+                None,
+                &Generator::generate_core_sequence(LENGTH, &mut rng),
+                &vec![1; LENGTH],
+            ),
+            K,
+            0.0,
+        )
+        .0,
     );
 
     bencher.bench(move || SimFunc::Overlap.compute_dense(&a, &b));

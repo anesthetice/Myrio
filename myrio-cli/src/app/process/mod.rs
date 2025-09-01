@@ -3,16 +3,19 @@ mod run;
 mod tree;
 
 // Re-exports
+use std::path::PathBuf;
+
+use anyhow::bail;
+use clap::ArgMatches;
+use myrio_core::{
+    data::{MyrSeq, SFVec},
+    tax::store::TaxTreeStore,
+};
 pub(in crate::app) use run::process_run as run;
 pub(in crate::app) use tree::process_tree as tree;
 
 // Imports (for subfiles)
 use crate::app::config::Config;
-use anyhow::bail;
-use clap::ArgMatches;
-use myrio_core::data::{MyrSeq, SFVec};
-use myrio_core::tax::store::TaxTreeStore;
-use std::path::PathBuf;
 
 fn gather_trees(
     mat: &mut ArgMatches,

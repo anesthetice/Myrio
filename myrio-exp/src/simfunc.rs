@@ -1,8 +1,9 @@
 // Imports
 use std::f64;
 
-use crate::DFArray;
 use myrio_core::{data::SFVec, similarity::SimScore};
+
+use crate::DFArray;
 
 pub type SimFunc = SimilarityFunction;
 

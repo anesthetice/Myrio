@@ -7,8 +7,7 @@ use myrio_core::{
     similarity::SimScore,
 };
 
-use crate::simfunc::SimilarityFunction;
-use crate::{DFArray, compute_dense_kmer_counts};
+use crate::{DFArray, compute_dense_kmer_counts, simfunc::SimilarityFunction};
 
 /// Partition-based clustering
 pub struct Clusterer;

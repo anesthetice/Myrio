@@ -4,9 +4,7 @@ use myrio_core::{
     data::{MyrSeq, SFVec},
     similarity::SimScore,
 };
-use myrio_exp::DFArray;
-use myrio_exp::simseq::Generator;
-use myrio_exp::{compute_dense_kmer_counts, simfunc::SimFunc};
+use myrio_exp::{DFArray, compute_dense_kmer_counts, simfunc::SimFunc, simseq::Generator};
 use rand::SeedableRng;
 
 const K: usize = 6;

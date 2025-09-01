@@ -1,24 +1,21 @@
 #![allow(non_snake_case)]
 
-use std::ops::Neg;
-use std::usize;
+use std::{ops::Neg, usize};
 
 use indicatif::MultiProgress;
-use itertools::Itertools;
 // Imports
 use indicatif::ParallelProgressIterator;
-use rayon::iter::IndexedParallelIterator;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
+use itertools::Itertools;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
-use crate::similarity::SimFunc;
-use crate::tax::compute::TaxTreeCompute;
-use crate::tax::core::Leaf;
-use crate::tax::core::Node;
 use crate::{
     data::SFVec,
-    similarity::SimScore,
-    tax::{Error, core::TaxTreeCore},
+    similarity::{SimFunc, SimScore},
+    tax::{
+        Error,
+        compute::TaxTreeCompute,
+        core::{Leaf, Node, TaxTreeCore},
+    },
 };
 
 #[derive(Clone, Copy)]

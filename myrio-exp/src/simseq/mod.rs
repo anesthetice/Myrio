@@ -3,12 +3,13 @@ pub mod constants;
 pub mod distr;
 
 // Imports
+use std::ops::SubAssign;
+
 use bio_seq::prelude::*;
 use distr::{DiscreteDistribution, sample_multiple};
 use itertools::Itertools;
 use myrio_core::data::MyrSeq;
 use rand::{distr::Distribution, seq::IndexedRandom};
-use std::ops::SubAssign;
 use thiserror::Error;
 
 use crate::simseq::constants::{

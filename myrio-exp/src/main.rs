@@ -1,6 +1,8 @@
 #![allow(unused)]
 
 // Imports
+use std::collections::HashMap;
+
 use anyhow::Ok;
 use bio_seq::prelude::*;
 use myrio_core::{clustering::ClusterInitializationMethod, data::MyrSeq, similarity::Similarity};
@@ -12,7 +14,6 @@ use myrio_exp::{
     tax::basic_test,
 };
 use rand::{SeedableRng, seq::IndexedRandom};
-use std::collections::HashMap;
 
 fn main() -> anyhow::Result<()> {
     cluster_simple_test();

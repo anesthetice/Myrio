@@ -60,7 +60,7 @@ fn cosine(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.merge_with_and_apply(b, |x, y| x * y).sum();
+    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
     (dot / (a.norm_l2() * b.norm_l2())).try_into().unwrap_or_default()
 }
 
@@ -81,7 +81,7 @@ fn cosine_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    SimScore::new_unchecked(a.merge_with_and_apply(b, |x, y| x * y).sum())
+    unsafe { SimScore::new_unchecked(a.merge_and_apply(b, |x, y| x * y).sum()) }
 }
 
 #[cfg(debug_assertions)]

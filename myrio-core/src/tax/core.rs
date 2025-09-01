@@ -1,6 +1,7 @@
 // Imports
-use crate::tax::clade::Rank;
 use bincode::{BorrowDecode, Decode, Encode};
+
+use crate::tax::clade::Rank;
 
 pub(crate) struct Branch<B> {
     pub(crate) name: Box<str>,
@@ -305,8 +306,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use indoc::indoc;
+
+    use super::*;
 
     #[test]
     fn display_test() {

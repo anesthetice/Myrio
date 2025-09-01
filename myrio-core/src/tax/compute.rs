@@ -1,12 +1,13 @@
 // Imports
+use indicatif::MultiProgress;
+use itertools::Itertools;
+use rand::seq::IndexedRandom;
+
 use super::Error;
 use crate::{
     data::SFVec,
     tax::{compute_sparse_kmer_counts_for_fasta_seq, core::TaxTreeCore, store::TaxTreeStore},
 };
-use indicatif::MultiProgress;
-use itertools::Itertools;
-use rand::seq::IndexedRandom;
 
 pub struct TaxTreeCompute {
     pub(crate) core: TaxTreeCore<(), SFVec>,

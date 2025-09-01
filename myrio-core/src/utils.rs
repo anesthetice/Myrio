@@ -1,5 +1,4 @@
-use indicatif::MultiProgress;
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 
 pub fn greenify(s: &str) -> String {
     console::style(s).green().to_string()

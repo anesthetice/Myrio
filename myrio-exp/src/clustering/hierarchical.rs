@@ -2,8 +2,7 @@
 use itertools::Itertools;
 use myrio_core::{constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::MyrSeq};
 
-use crate::simfunc::SimilarityFunction;
-use crate::{DFArray, compute_dense_kmer_counts};
+use crate::{DFArray, compute_dense_kmer_counts, simfunc::SimilarityFunction};
 
 pub struct Clusterer;
 

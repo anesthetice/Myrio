@@ -430,6 +430,7 @@ where
     T: AsRef<SparseVec<Float>>,
 {
     type Output = SparseVec<Float>;
+
     fn add(
         self,
         rhs: T,
@@ -443,6 +444,7 @@ where
     T: AsRef<SparseVec<Float>>,
 {
     type Output = SparseVec<Float>;
+
     fn add(
         self,
         rhs: T,

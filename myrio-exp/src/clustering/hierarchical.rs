@@ -1,6 +1,9 @@
 // Imports
 use itertools::Itertools;
-use myrio_core::{constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::MyrSeq};
+use myrio_core::{
+    constants::Q_TO_BP_CALL_CORRECT_PROB_MAP,
+    data::{Float, MyrSeq},
+};
 
 use crate::{DFArray, compute_dense_kmer_counts, simfunc::SimilarityFunction};
 
@@ -11,7 +14,7 @@ impl Clusterer {
         myrseqs: Vec<MyrSeq>,
         k: usize,
         t1_cutoff: f64,
-        t2_cutoff: f64,
+        t2_cutoff: Float,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
         if crate::K_DENSE_VALID_RANGE.contains(&k) {
@@ -51,7 +54,7 @@ impl Clusterer {
         myrseqs: Vec<MyrSeq>,
         k: usize,
         t1_cutoff: f64,
-        t2_cutoff: f64,
+        t2_cutoff: Float,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
         struct Cluster {
@@ -107,7 +110,7 @@ impl Clusterer {
         myrseqs: Vec<MyrSeq>,
         k: usize,
         t1_cutoff: f64,
-        t2_cutoff: f64,
+        t2_cutoff: Float,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
         unimplemented!()

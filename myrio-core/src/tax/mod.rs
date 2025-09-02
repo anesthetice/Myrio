@@ -20,7 +20,7 @@ use myrio_proc::gen_match_k_sparse;
 use thiserror::Error;
 
 use crate::{
-    data::{MyrSeq, SFVec},
+    data::{Float, MyrSeq, SFVec},
     tax::clade::Rank,
 };
 
@@ -71,7 +71,7 @@ pub fn compute_sparse_kmer_counts_for_fasta_seq(
         .map(|iupac| iupac.to_dna_ext())
         .collect_vec();
 
-    let mut pairs: Vec<(usize, f64)> = Vec::new();
+    let mut pairs: Vec<(usize, Float)> = Vec::new();
 
     macro_rules! body {
         ($expanded:expr, $K:expr) => {{
@@ -80,7 +80,7 @@ pub fn compute_sparse_kmer_counts_for_fasta_seq(
                 for window in group.windows($K) {
                     let combinations =
                         window.iter().map(|avec| avec.iter()).multi_cartesian_product().collect_vec();
-                    let weight: f64 = 1.0 / combinations.len() as f64;
+                    let weight: Float = 1.0 / combinations.len() as Float;
 
                     combinations.into_iter().for_each(|comb| {
                         let kmer_seq: Seq<Dna> = Seq::from(comb);
@@ -93,6 +93,10 @@ pub fn compute_sparse_kmer_counts_for_fasta_seq(
         }};
     }
     gen_match_k_sparse!(expanded);
+    if pairs.is_empty() {
+        // Not completely ideal, but trimming empty sfvec entries from the compute tree is even more annoying
+        return unsafe { SFVec::new_unchecked(vec![0], vec![1.0], 1, 0.0) };
+    }
     SFVec::from_unsorted_pairs(pairs, 4_usize.pow(k as u32), 0.0)
 }
 

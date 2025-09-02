@@ -13,7 +13,10 @@ use itertools::Itertools;
 use myrio_proc::gen_match_k_sparse;
 use thiserror::Error;
 
-use crate::{constants::Q_TO_BP_CALL_CORRECT_PROB_MAP, data::SFVec};
+use crate::{
+    constants::Q_TO_BP_CALL_CORRECT_PROB_MAP,
+    data::{SFVec, sparse::Float},
+};
 
 /// The main data structure used by Myrio, an efficient representation of an FASTQ record
 #[cfg_attr(test, derive(PartialEq))]
@@ -85,7 +88,7 @@ impl MyrSeq {
             .collect_vec();
 
         let mut nb_hck: usize = 0; // number of high-confidence k-mers
-        let mut pairs: Vec<(usize, f64)> = Vec::new();
+        let mut pairs: Vec<(usize, Float)> = Vec::new();
 
         macro_rules! body {
             ($seq:expr, $K:expr) => {{

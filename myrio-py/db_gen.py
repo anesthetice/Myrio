@@ -31,7 +31,7 @@ def _(mo):
             * BS: marker_coode
 
 
-    Data downloaded from 
+    Data downloaded from
     """
     )
     return
@@ -59,7 +59,10 @@ def _(raw_df):
 
 @app.cell
 def _(pl, raw_df):
-    df = raw_df.filter(pl.col("nuc").str.len_bytes() > 20)
+    df = raw_df.filter(
+        pl.col("nuc").str.len_bytes() > 20,
+        pl.col("family").is_not_null(),
+    )
     df
     return (df,)
 
@@ -79,10 +82,17 @@ def _(df_ITS, df_matK, df_rbcL, df_trnH_psbA, pl):
         data = []
         for row in df.rows():
             pid, p, c, o, f, g, s, seq, _ = row
-            seq = seq.upper()
             # seq_lb = '\n'.join(seq[i:i+80] for i in range(0, len(seq), 80))
-            s = f">BOLD_PROCESS_ID={pid}|tax={{p:{p}, c:{c}, o:{o}, f:{f}, g:{g}, s:{s}}}\n{seq}"
-            data.append(s)
+            string = f">BOLD_PROCESS_ID={pid}|tax={{"
+            for clade, name in zip(["p", "c", "o", "f", "g", "s"], [p, c, o, f, g, s]):
+                if name is not None:
+                    if clade != "s":
+                        string += f"{clade}:{name}, "
+                    else:
+                        string += f"{clade}:{name}"
+            string += "}\n"
+            string += seq.upper()
+            data.append(string)
 
         data = "\n".join(data)
         file = open(filepath, "w", encoding="utf-8")
@@ -94,6 +104,11 @@ def _(df_ITS, df_matK, df_rbcL, df_trnH_psbA, pl):
     process_and_save_df_to_fasta(df_matK, "./data/BOLD_Plantae_20250831_matK.fasta")
     process_and_save_df_to_fasta(df_rbcL, "./data/BOLD_Plantae_20250831_rbcL.fasta")
     process_and_save_df_to_fasta(df_trnH_psbA, "./data/BOLD_Plantae_20250831_trnH-psbA.fasta")
+    return
+
+
+@app.cell
+def _():
     return
 
 

@@ -1,56 +1,48 @@
 // Imports
-use std::f64;
-
 use itertools::Itertools;
 use nutype::nutype;
 
-use crate::data::SFVec;
+use crate::data::{Float, SFVec};
 
 pub type SimFunc = fn(&SFVec, &SFVec) -> SimScore;
 
 #[nutype(
-    default = 0_f64,
+    default = 0_f32,
     new_unchecked,
     validate(finite),
     derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deref, TryFrom, Display, Default)
 )]
-pub struct SimScore(f64);
+pub struct SimScore(f32);
 
+#[derive(Debug, Clone, Copy)]
 pub enum Similarity {
-    /// Inner bool should be set to `true` if we expect pre-normalized input
-    Cosine(bool),
-    /// Inner bool should be set to `true` if we expect pre-normalized input
+    Cosine,
     /// Called both the `Jaccard index` and the `Tanimoto coefficient`
     /// See `https://link.springer.com/article/10.1007/s10910-010-9668-4`for more info
-    JacardTanimoto(bool),
+    JacardTanimoto,
     Overlap,
 }
 
 impl Similarity {
-    pub fn is_helped_by_normalization(&self) -> bool {
-        matches!(self, Self::Cosine(_) | Self::JacardTanimoto(_))
+    pub fn normalization_improves_performance(&self) -> bool {
+        matches!(self, Self::Cosine | Self::JacardTanimoto)
     }
 
-    pub fn normalized_input(&mut self) {
-        match self {
-            Self::Cosine(normalized) => *normalized = true,
-            Self::JacardTanimoto(normalized) => *normalized = true,
-            Self::Overlap => (),
-        }
-    }
-
-    pub fn to_simfunc(&self) -> SimFunc {
-        match self {
-            Self::Cosine(true) => cosine_pre_normalized,
-            Self::Cosine(false) => cosine,
-            Self::JacardTanimoto(true) => jacard_tanimoto_pre_normalized,
-            Self::JacardTanimoto(false) => jacard_tanimoto,
-            Self::Overlap => overlap,
+    pub fn to_simfunc(
+        &self,
+        is_input_normalized: bool,
+    ) -> SimFunc {
+        match (self, is_input_normalized) {
+            (Self::Cosine, true) => cosine_pre_normalized,
+            (Self::Cosine, false) => cosine,
+            (Self::JacardTanimoto, true) => jacard_tanimoto_pre_normalized,
+            (Self::JacardTanimoto, false) => jacard_tanimoto,
+            (Self::Overlap, _) => overlap,
         }
     }
 
     pub fn dist(score: SimScore) -> SimScore {
-        // match self if necessary, currently isn't AFAIK
+        // might be necessary to `match self` if other similarity methods are added, currently isn't
         unsafe { SimScore::new_unchecked(1.0 - *score) }
     }
 }
@@ -146,7 +138,7 @@ fn overlap(
     let min_max = a.merge_and_apply(b, |x, y| (x.min(y), x.max(y)));
     let (min_s, max_s) = min_max.sval();
 
-    let nb_sparse = min_max.count() as f64;
+    let nb_sparse = min_max.count() as Float;
     let sum_min = min_max.values().map(|(min, _)| min).sum1().unwrap_or(0.0) + min_s * nb_sparse;
     let sum_max = min_max.values().map(|(_, max)| max).sum1().unwrap_or(0.0) + max_s * nb_sparse;
 
@@ -161,7 +153,7 @@ fn overlap(
     let min_max = a.merge_and_apply(b, |x, y| (x.min(y), x.max(y)));
     let (min_s, max_s) = min_max.sval();
 
-    let nb_sparse = min_max.count() as f64;
+    let nb_sparse = min_max.count() as Float;
     let sum_min = min_max.values().map(|(min, _)| min).sum1().unwrap_or(0.0) + min_s * nb_sparse;
     let sum_max = min_max.values().map(|(_, max)| max).sum1().unwrap_or(0.0) + max_s * nb_sparse;
 
@@ -173,7 +165,6 @@ fn overlap(
 
 #[cfg(test)]
 mod test {
-    use std::f64;
 
     use bio_seq::prelude::*;
 

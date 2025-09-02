@@ -10,7 +10,7 @@ use itertools::Itertools;
 use myrio_proc::impl_ops_for_svec;
 
 /// A sparse vector containing floats, similar to `HashMap<usize,Float>` but without the need for hashing
-pub type Float = f64;
+pub type Float = f32;
 pub type SFVec = SparseVec<Float>;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -511,7 +511,7 @@ unsafe fn merge_sorted_unique(
 
 #[cfg(test)]
 mod test {
-    use std::f64::consts::E;
+    use std::f32::consts::E;
 
     use super::*;
     use crate::assert_float_eq;
@@ -552,6 +552,6 @@ mod test {
 
         assert_float_eq!(sfvec.sum(), 18.0);
         assert_float_eq!(sfvec.mean(), 18.0 / 5.0);
-        assert_float_eq!(sfvec.norm_l2(), 80_f64.sqrt())
+        assert_float_eq!(sfvec.norm_l2(), 80_f32.sqrt())
     }
 }

@@ -4,26 +4,24 @@ use std::{
 };
 
 use itertools::Itertools;
-use rayon::{
-    iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator},
-    slice::ParallelSlice,
-};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
-    data::{MyrSeq, SFVec},
+    data::{Float, MyrSeq, SFVec},
     similarity::{SimFunc, SimScore, Similarity},
 };
 
+#[derive(Debug, Clone)]
 pub struct ClusteringParameters {
-    k: usize,
-    t1: f64,
-    t2: usize,
-    similarity: Similarity,
-    cim: ClusterInitializationMethod,
-    eta_improvement: f64,
-    nb_iters_max: usize,
-    silhouette_std_deviation_factor_cutoff: f64,
-    multithreading_flag: bool,
+    pub k: usize,
+    pub t1: f64,
+    pub t2: usize,
+    pub similarity: Similarity,
+    pub cim: ClusterInitializationMethod,
+    pub eta_improvement: Float,
+    pub nb_iters_max: usize,
+    pub silhouette_std_deviation_cutoff_factor: Float,
+    pub multithreading_flag: bool,
 }
 
 impl ClusteringParameters {
@@ -33,9 +31,9 @@ impl ClusteringParameters {
         t2: usize,
         similarity: Similarity,
         cim: ClusterInitializationMethod,
-        eta_improvement: f64,
+        eta_improvement: Float,
         nb_iters_max: usize,
-        silhouette_std_deviation_factor_cutoff: f64,
+        silhouette_std_deviation_cutoff_factor: Float,
         multithreading_flag: bool,
     ) -> Self {
         Self {
@@ -46,14 +44,14 @@ impl ClusteringParameters {
             cim,
             eta_improvement,
             nb_iters_max,
-            silhouette_std_deviation_factor_cutoff,
+            silhouette_std_deviation_cutoff_factor,
             multithreading_flag,
         }
     }
 
     pub fn unshell(
         self
-    ) -> (usize, f64, usize, Similarity, ClusterInitializationMethod, f64, usize, f64, bool) {
+    ) -> (usize, f64, usize, Similarity, ClusterInitializationMethod, Float, usize, Float, bool) {
         (
             self.k,
             self.t1,
@@ -62,12 +60,13 @@ impl ClusteringParameters {
             self.cim,
             self.eta_improvement,
             self.nb_iters_max,
-            self.silhouette_std_deviation_factor_cutoff,
+            self.silhouette_std_deviation_cutoff_factor,
             self.multithreading_flag,
         )
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum ClusterInitializationMethod {
     FromCentroids(Vec<SFVec>),
     FromNumber(usize),
@@ -108,18 +107,18 @@ pub fn cluster(
         k,
         t1,
         t2,
-        mut similarity,
+        similarity,
         cim,
         eta_improvement,
         nb_iters_max,
-        silhouette_std_deviation_factor_cutoff,
+        silhouette_std_deviation_cutoff_factor,
         multithreading_flag,
     ) = params.unshell();
 
     let mut rejected: Vec<MyrSeq> = Vec::new();
 
     // Step 1, compute the k-mer counts of each myrseq, normalized either way (too bothersome later on otherwise)
-    let (mut myrseqs, mut kmer_norm_counts_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
+    let (myrseqs, kmer_norm_counts_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
         .into_iter()
         .filter_map(|myrseq| {
             let (kmer_norm_counts, nb_hck) = myrseq.compute_sparse_kmer_counts_normalized(k, t1);
@@ -132,9 +131,7 @@ pub fn cluster(
         })
         //.sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first
         .multiunzip();
-    similarity.normalized_input();
-
-    let simfunc: SimFunc = similarity.to_simfunc();
+    let simfunc: SimFunc = similarity.to_simfunc(true);
 
     // Step 2, initialize the clusters
     let mut clusters = match cim {
@@ -144,16 +141,18 @@ pub fn cluster(
             .collect_vec(),
         ClusterInitializationMethod::FromNumber(nb_clusters) => {
             let mut clusters: Vec<Cluster> = vec![Cluster::new(&kmer_norm_counts_vec[0])];
-            let max_nb_hck = nb_hck_vec[0] as f64;
+            let max_nb_hck = nb_hck_vec[0] as Float;
             while clusters.len() < nb_clusters {
                 let new_cluster_seeds = kmer_norm_counts_vec
                     .iter()
                     .zip_eq(nb_hck_vec.iter())
                     .min_by_key(|&(kcount, nb_hck)| {
-                        let mut score: f64 =
-                            clusters.iter().map(|cluster| *simfunc(&cluster.centroid_seeds, kcount)).sum();
+                        let mut score = clusters
+                            .iter()
+                            .map(|cluster| *simfunc(&cluster.centroid_seeds, kcount))
+                            .sum::<Float>();
                         // penalty (increases score) for seqs with a low number of high-confidence k-mers
-                        score = 0.7 * score + 0.3 * (1.0 - (*nb_hck as f64) / max_nb_hck);
+                        score = 0.7 * score + 0.3 * (1.0 - (*nb_hck as Float) / max_nb_hck);
                         SimScore::try_new(score).unwrap()
                     })
                     .unwrap()
@@ -168,8 +167,8 @@ pub fn cluster(
     // Step 3, main clustering loop
     if multithreading_flag {
         let mut target: Vec<(&SFVec, usize)> = Vec::with_capacity(kmer_norm_counts_vec.len());
-        let mut previous_mean_wcsss: f64 = 1E-6;
-        let mut improvement_score: f64 = f64::MAX;
+        let mut previous_mean_wcsss: Float = 1E-6;
+        let mut improvement_score: Float = Float::MAX;
         let mut nb_iters: usize = 0;
 
         while improvement_score > eta_improvement && nb_iters < nb_iters_max {
@@ -189,7 +188,7 @@ pub fn cluster(
             target.clear();
 
             let current_mean_wcsss =
-                clusters.iter().map(|cl| cl.wcsss(simfunc)).sum::<f64>() / nb_clusters as f64;
+                clusters.iter().map(|cl| cl.wcsss(simfunc)).sum::<Float>() / nb_clusters as Float;
             improvement_score = (current_mean_wcsss - previous_mean_wcsss) / previous_mean_wcsss;
             previous_mean_wcsss = current_mean_wcsss;
 
@@ -197,8 +196,8 @@ pub fn cluster(
             nb_iters += 1;
         }
     } else {
-        let mut previous_mean_wcsss: f64 = 1E-6;
-        let mut improvement_score: f64 = f64::MAX;
+        let mut previous_mean_wcsss: Float = 1E-6;
+        let mut improvement_score: Float = Float::MAX;
         let mut nb_iters: usize = 0;
 
         while improvement_score > eta_improvement && nb_iters < nb_iters_max {
@@ -212,7 +211,7 @@ pub fn cluster(
             });
 
             let current_mean_wcsss =
-                clusters.iter().map(|cl| cl.wcsss(simfunc)).sum::<f64>() / nb_clusters as f64;
+                clusters.iter().map(|cl| cl.wcsss(simfunc)).sum::<Float>() / nb_clusters as Float;
             improvement_score = (current_mean_wcsss - previous_mean_wcsss) / previous_mean_wcsss;
             previous_mean_wcsss = current_mean_wcsss;
 
@@ -245,12 +244,12 @@ pub fn cluster(
             if silhouette_scores.is_empty() {
                 return myrseq_cluster;
             }
-            let n: f64 = silhouette_scores.len() as f64;
-            let mean: f64 = silhouette_scores.iter().sum::<f64>() / n;
-            let std: f64 =
-                (n.powi(-1) * silhouette_scores.iter().map(|x| (x - mean).powi(2)).sum::<f64>()).sqrt();
+            let n = silhouette_scores.len() as Float;
+            let mean = silhouette_scores.iter().sum::<Float>() / n;
+            let std =
+                (n.powi(-1) * silhouette_scores.iter().map(|x| (x - mean).powi(2)).sum::<Float>()).sqrt();
 
-            let left_cutoff = mean - std * silhouette_std_deviation_factor_cutoff;
+            let left_cutoff = mean - std * silhouette_std_deviation_cutoff_factor;
 
             myrseq_cluster
                 .into_iter()
@@ -302,31 +301,31 @@ impl<'a> Cluster<'a> {
     fn wcsss(
         &self,
         simfunc: SimFunc,
-    ) -> f64 {
+    ) -> Float {
         self.elements
             .iter()
             .map(|&sfvec| *simfunc(sfvec, &self.centroid_seeds))
-            .sum1()
+            .sum1::<Float>()
             .unwrap_or_default()
     }
 
     fn compute_silhouette_scores_vec(
         clusters: &[Self],
         simfunc: SimFunc,
-    ) -> Vec<Vec<f64>> {
+    ) -> Vec<Vec<Float>> {
         #[rustfmt::skip]
-        fn inner(cluster: &Cluster, neighbor: &Cluster, index: usize, simfunc: SimFunc) -> f64 {
+        fn inner(cluster: &Cluster, neighbor: &Cluster, index: usize, simfunc: SimFunc) -> Float {
             let i = cluster.elements[index];
 
             let a = cluster.elements.iter()
                 .map(|&e| *Similarity::dist(simfunc(i, e)))
-                .sum::<f64>()
+                .sum::<Float>()
                 .sub(1.0)
-                .div((cluster.elements.len() - 1) as f64);
+                .div((cluster.elements.len() - 1) as Float);
             let b = neighbor.elements.iter()
                 .map(|&e| *Similarity::dist(simfunc(i, e)))
-                .sum::<f64>()
-                .div(neighbor.elements.len() as f64);
+                .sum::<Float>()
+                .div(neighbor.elements.len() as Float);
 
             (b - a) / a.max(b)
         }

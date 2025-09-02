@@ -1,7 +1,10 @@
 // Imports
 use std::f64;
 
-use myrio_core::{data::SFVec, similarity::SimScore};
+use myrio_core::{
+    data::{Float, SFVec},
+    similarity::SimScore,
+};
 
 use crate::DFArray;
 
@@ -22,13 +25,14 @@ impl SimilarityFunction {
     ) -> SimScore {
         match &self {
             Self::Cosine => SimScore::try_new(
-                a.dot(b) / (a.mapv(|val| val * val).sum().sqrt() * b.mapv(|val| val * val).sum().sqrt()),
+                a.dot(b) as Float
+                    / (a.mapv(|val| val * val).sum().sqrt() * b.mapv(|val| val * val).sum().sqrt()) as Float,
             )
             .unwrap(),
             Self::Overlap => {
                 let mut sum_min: f64 = 0.0;
                 ndarray::Zip::from(a).and(b).for_each(|&x, &y| sum_min += x.min(y));
-                SimScore::try_new(sum_min).unwrap()
+                SimScore::try_new(sum_min as Float).unwrap()
             }
             Self::OverlapNorm => {
                 let (mut sum_min, mut sum_max) = (0.0, 0.0);
@@ -38,7 +42,7 @@ impl SimilarityFunction {
                     sum_max += x.max(y);
                 });
 
-                SimScore::try_new(sum_min / sum_max).unwrap()
+                SimScore::try_new((sum_min / sum_max) as Float).unwrap()
             }
         }
     }

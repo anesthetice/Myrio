@@ -20,13 +20,13 @@ pub fn process_run(
     let tree_filepaths = gather_trees(&mut mat, "trees")?;
 
     const K_CLUSTER: usize = 6;
-    const K_SEARCH: usize = 20;
+    const K_SEARCH: usize = 22;
     const REPR_SAMPLES: usize = 200;
     const CACHE_OPT: CacheOptions = CacheOptions::Disabled;
 
     const T1: f64 = 0.2;
     const T2: usize = 5;
-    const SIMILARITY: Similarity = Similarity::Cosine(true);
+    const SIMILARITY: Similarity = Similarity::Cosine;
     const MULTITHREADING_FLAG: bool = true;
 
     let myrseqs: Vec<MyrSeq> = myrio_core::io::read_fastq_from_file(input_filepath)?;
@@ -60,7 +60,7 @@ pub fn process_run(
     let spinner = myrio_core::utils::simple_spinner(Some("Clustering...".to_string()), Some(200), None);
 
     let cim = ClusterInitializationMethod::FromCentroids(
-        compute_trees.iter().map(TaxTreeCompute::get_kmer_normcounts_repr).collect_vec(),
+        compute_trees.iter().map(TaxTreeCompute::get_kmer_norm_counts_repr).collect_vec(),
     );
     let params =
         ClusteringParameters::new(K_CLUSTER, T1, T2, SIMILARITY, cim, 1E-4, 10, 1.2, MULTITHREADING_FLAG);
@@ -80,8 +80,8 @@ pub fn process_run(
     spinner.finish_with_message("Finished clustering");
 
     for (ctree, query) in compute_trees.into_iter().zip_eq(queries) {
-        let res_tree = TaxTreeResults::from_compute_tree(query, ctree, SIMILARITY.to_simfunc(), None)?;
-        res_tree.test();
+        let res_tree = TaxTreeResults::from_compute_tree(query, ctree, SIMILARITY, None)?;
+        println!("{}", res_tree.cut(5));
     }
 
     Ok(())

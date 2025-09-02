@@ -11,6 +11,6 @@ pub mod utils;
 #[macro_export]
 macro_rules! assert_float_eq {
     ($lhs: expr, $rhs: expr) => {
-        assert!(($lhs - $rhs).abs() < f64::EPSILON)
+        assert!(($lhs - $rhs).abs() < f32::EPSILON)
     };
 }

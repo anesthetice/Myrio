@@ -8,6 +8,8 @@ use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
+use crate::data::Float;
+use crate::similarity::Similarity;
 use crate::{
     data::SFVec,
     similarity::{SimFunc, SimScore},
@@ -20,7 +22,7 @@ use crate::{
 
 #[derive(Clone, Copy)]
 pub struct BranchExtra {
-    mean: f64,
+    pub mean: Float,
 }
 
 impl std::fmt::Display for BranchExtra {
@@ -33,16 +35,17 @@ impl std::fmt::Display for BranchExtra {
 }
 
 pub struct TaxTreeResults {
-    core: TaxTreeCore<BranchExtra, SimScore>,
+    pub core: TaxTreeCore<BranchExtra, SimScore>,
 }
 
 impl TaxTreeResults {
     pub fn from_compute_tree(
         query: SFVec,
         compute: TaxTreeCompute,
-        simfunc: SimFunc,
+        similarity: Similarity,
         multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
+        let simfunc: SimFunc = similarity.to_simfunc(true);
         let payloads_len = compute.core.payloads.len();
         let pb = crate::utils::simple_progressbar(payloads_len, "Computing similarity scores", multi);
         let mut payloads: Vec<SimScore> = Vec::with_capacity(payloads_len);
@@ -58,7 +61,7 @@ impl TaxTreeResults {
             store_node: Node<()>,
             above: &mut Vec<Node<BranchExtra>>,
             simscores: &[SimScore],
-        ) -> f64 {
+        ) -> Float {
             match store_node {
                 Node::Branch(branch) => {
                     let mut current: Vec<Node<BranchExtra>> = Vec::with_capacity(branch.children.len());
@@ -96,15 +99,18 @@ impl TaxTreeResults {
         })
     }
 
-    pub fn test(&self) {
+    pub fn cut(
+        &self,
+        nb_best: usize,
+    ) -> Self {
         let best = self
             .core
             .gather_leaves()
             .iter()
             .map(|&leaf| (leaf.payload_id, self.core.payloads[leaf.payload_id]))
-            .sorted_by_key(|&(pid, score)| score)
+            .sorted_by_key(|&(_, score)| score)
             .rev()
-            .take(5)
+            .take(nb_best)
             .fold(SFVec::new(usize::MAX), |mut acc, (pid, score)| {
                 acc.insert(pid, *score);
                 acc
@@ -150,15 +156,22 @@ impl TaxTreeResults {
             dive_recursive(root, &mut roots, &mut new_payloads, &best);
         }
 
-        let display_tree = TaxTreeResults {
+        TaxTreeResults {
             core: TaxTreeCore {
                 gene: self.core.gene.clone(),
                 highest_rank: self.core.highest_rank,
                 roots: roots.into_boxed_slice(),
                 payloads: new_payloads.into_boxed_slice(),
             },
-        };
+        }
+    }
+}
 
-        println!("{}", display_tree.core);
+impl std::fmt::Display for TaxTreeResults {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        writeln!(f, "{}", self.core)
     }
 }

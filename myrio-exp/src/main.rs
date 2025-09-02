@@ -8,7 +8,7 @@ use bio_seq::prelude::*;
 use myrio_core::{clustering::ClusterInitializationMethod, data::MyrSeq, similarity::Similarity};
 use myrio_exp::{
     clustering::partition::compute_cluster_cost,
-    scripts::load_testset,
+    scripts::{grid_search_optimization, load_testset},
     simfunc::SimFunc,
     simseq::{Generator, distr::DiscreteDistribution},
     tax::basic_test,
@@ -16,8 +16,7 @@ use myrio_exp::{
 use rand::{SeedableRng, seq::IndexedRandom};
 
 fn main() -> anyhow::Result<()> {
-    cluster_simple_test();
-    Ok(())
+    grid_search_optimization()
 }
 
 fn cluster_simple_test() {
@@ -40,7 +39,7 @@ fn cluster_simple_test() {
         6,
         0.2,
         5,
-        Similarity::Cosine(false),
+        Similarity::Cosine,
         ClusterInitializationMethod::FromNumber(4),
         1E-3,
         10,
@@ -67,7 +66,7 @@ fn cluster_simple_test() {
         6,
         0.2,
         5,
-        Similarity::Cosine(false),
+        Similarity::Cosine,
         ClusterInitializationMethod::FromNumber(4),
         1E-6,
         10,

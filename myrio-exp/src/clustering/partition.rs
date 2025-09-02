@@ -3,7 +3,7 @@ use std::{collections::HashMap, f64};
 
 use itertools::Itertools;
 use myrio_core::{
-    data::{MyrSeq, SFVec},
+    data::{Float, MyrSeq, SFVec},
     similarity::SimScore,
 };
 
@@ -64,21 +64,21 @@ impl Clusterer {
 
         // Step 2, initialize the clusters
         let mut clusters: Vec<Cluster> = vec![Cluster::new(&kcounts[0])];
-        let max_nb_hck = nb_hcks[0] as f64;
+        let max_nb_hck = nb_hcks[0] as Float;
         while clusters.len() < nb_clusters {
             let new_cluster_seeds = kcounts
                 .iter()
                 .zip_eq(nb_hcks.iter())
                 .min_by_key(|&(kcount, nb_hck)| {
-                    let mut score: f64 = clusters
+                    let mut score: Float = clusters
                         .iter()
                         .map(|cluster| *similarity_function.compute_dense(&cluster.centroid_seeds, kcount))
                         .sum();
 
                     // mean similarity score
-                    score /= clusters.len() as f64;
+                    score /= clusters.len() as Float;
                     // penalty (increases score) for seqs with a low number of high-confidence k-mers
-                    score = 0.7 * score + 0.3 * (1.0 - (*nb_hck as f64) / max_nb_hck);
+                    score = 0.7 * score + 0.3 * (1.0 - (*nb_hck as Float) / max_nb_hck);
                     SimScore::try_new(score).unwrap()
                 })
                 .unwrap()
@@ -147,7 +147,7 @@ impl Clusterer {
                     return Self { centroid_seeds: self.centroid_seeds, elements: Vec::new() };
                 }
 
-                let n = self.elements.len() as f64;
+                let n = self.elements.len() as Float;
                 let new_centroid_seeds: SFVec =
                     self.elements.into_iter().fold::<SFVec, _>(SFVec::new(countmap_size), |acc, x| {
                         acc.merge_and_apply(x, |a, b| a + b)
@@ -171,21 +171,21 @@ impl Clusterer {
 
         // Step 2, initialize the clusters
         let mut clusters: Vec<Cluster> = vec![Cluster::new(&kcounts[0])];
-        let max_nb_hck = nb_hcks[0] as f64;
+        let max_nb_hck = nb_hcks[0] as Float;
         while clusters.len() < nb_clusters {
             let new_cluster_seeds = kcounts
                 .iter()
                 .zip_eq(nb_hcks.iter())
                 .min_by_key(|&(kcount, nb_hck)| {
-                    let mut score: f64 = clusters
+                    let mut score: Float = clusters
                         .iter()
                         .map(|cluster| *similarity_function.compute_sparse(&cluster.centroid_seeds, kcount))
                         .sum();
 
                     // mean similarity score
-                    score /= clusters.len() as f64;
+                    score /= clusters.len() as Float;
                     // penalty (increases score) for seqs with a low number of high-confidence k-mers
-                    score = 0.7 * score + 0.3 * (1.0 - (*nb_hck as f64) / max_nb_hck);
+                    score = 0.7 * score + 0.3 * (1.0 - (*nb_hck as Float) / max_nb_hck);
                     SimScore::try_new(score).unwrap()
                 })
                 .unwrap()

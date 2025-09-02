@@ -9,9 +9,10 @@ use crate::{
     tax::{compute_sparse_kmer_counts_for_fasta_seq, core::TaxTreeCore, store::TaxTreeStore},
 };
 
+#[derive(Clone)]
 pub struct TaxTreeCompute {
     pub(crate) core: TaxTreeCore<(), SFVec>,
-    pub(crate) kmer_normcounts_repr: SFVec,
+    pub(crate) kmer_norm_counts_repr: SFVec,
     pub(crate) k_search: usize,
 }
 
@@ -21,8 +22,8 @@ pub enum CacheOptions {
 }
 
 impl TaxTreeCompute {
-    pub fn get_kmer_normcounts_repr(&self) -> SFVec {
-        self.kmer_normcounts_repr.clone()
+    pub fn get_kmer_norm_counts_repr(&self) -> SFVec {
+        self.kmer_norm_counts_repr.clone()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -36,7 +37,7 @@ impl TaxTreeCompute {
         rng: &mut impl rand::Rng,
         multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
-        let mut kmer_normcounts_repr =
+        let mut kmer_norm_counts_repr =
             if let Some(sfvec_idx) = store.pre_computed.iter().copied().position(|k| k_cluster == k) {
                 (0..repr_samples)
                     .map(|_| unsafe {
@@ -51,7 +52,7 @@ impl TaxTreeCompute {
                     })
                     .fold(SFVec::new(0), |acc, x| acc + x)
             };
-        kmer_normcounts_repr.normalize_l2();
+        kmer_norm_counts_repr.normalize_l2();
 
         #[rustfmt::skip]
         let sfvec_idx = store
@@ -88,7 +89,7 @@ impl TaxTreeCompute {
                 roots: store.core.roots,
                 payloads: payloads.into_boxed_slice(),
             },
-            kmer_normcounts_repr,
+            kmer_norm_counts_repr,
             k_search,
         })
     }

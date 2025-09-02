@@ -3,25 +3,25 @@ use bincode::{BorrowDecode, Decode, Encode};
 
 use crate::tax::clade::Rank;
 
-pub(crate) struct Branch<B> {
-    pub(crate) name: Box<str>,
-    pub(crate) children: Box<[Node<B>]>,
-    pub(crate) extra: B,
+pub struct Branch<B> {
+    pub name: Box<str>,
+    pub children: Box<[Node<B>]>,
+    pub extra: B,
 }
 
 #[derive(Clone, Encode, Decode)]
-pub(crate) struct Leaf {
-    pub(crate) name: Box<str>,
-    pub(crate) payload_id: usize,
+pub struct Leaf {
+    pub name: Box<str>,
+    pub payload_id: usize,
 }
 
-pub(crate) enum Node<B> {
+pub enum Node<B> {
     Branch(Branch<B>),
     Leaf(Leaf),
 }
 
 impl<B> Node<B> {
-    pub(crate) fn new_branch(
+    pub fn new_branch(
         name: Box<str>,
         children: Box<[Node<B>]>,
         extra: B,
@@ -29,14 +29,14 @@ impl<B> Node<B> {
         Self::Branch(Branch { name, children, extra })
     }
 
-    pub(crate) fn new_leaf(
+    pub fn new_leaf(
         name: Box<str>,
         payload_id: usize,
     ) -> Self {
         Self::Leaf(Leaf { name, payload_id })
     }
 
-    pub(crate) fn gather_leaves<'a>(
+    pub fn gather_leaves<'a>(
         &'a self,
         output: &mut Vec<&'a Leaf>,
     ) {
@@ -51,15 +51,26 @@ impl<B> Node<B> {
     }
 }
 
-pub(crate) struct TaxTreeCore<B, L> {
-    pub(crate) gene: String,
-    pub(crate) highest_rank: Rank,
-    pub(crate) roots: Box<[Node<B>]>,
-    pub(crate) payloads: Box<[L]>,
+impl<B: Clone> std::clone::Clone for Node<B> {
+    fn clone(&self) -> Self {
+        match &self {
+            Self::Branch(branch) => {
+                Self::new_branch(branch.name.clone(), branch.children.clone(), branch.extra.clone())
+            }
+            Self::Leaf(leaf) => Self::Leaf(leaf.clone()),
+        }
+    }
+}
+
+pub struct TaxTreeCore<B, L> {
+    pub gene: String,
+    pub highest_rank: Rank,
+    pub roots: Box<[Node<B>]>,
+    pub payloads: Box<[L]>,
 }
 
 impl<B, L> TaxTreeCore<B, L> {
-    pub(crate) fn new(
+    pub fn new(
         gene: String,
         highest_rank: Rank,
         roots: Box<[Node<B>]>,
@@ -74,6 +85,56 @@ impl<B, L> TaxTreeCore<B, L> {
             root.gather_leaves(&mut output);
         }
         output
+    }
+
+    pub fn gather_branches_at_rank(
+        &self,
+        rank: Rank,
+    ) -> Vec<&Branch<B>> {
+        if rank > self.highest_rank {
+            return Vec::with_capacity(0);
+        }
+
+        fn dive_recursive<'a, B>(
+            node: &'a Node<B>,
+            current_height: usize,
+            desired_height: usize,
+            output: &mut Vec<&'a Branch<B>>,
+        ) {
+            if let Node::Branch(branch) = node {
+                if current_height == desired_height {
+                    output.push(branch);
+                } else {
+                    for child in branch.children.iter() {
+                        dive_recursive(child, current_height - 1, desired_height, output);
+                    }
+                }
+            }
+        }
+
+        let current_height = self.highest_rank as usize;
+        let desired_height = rank as usize;
+        let mut output = Vec::new();
+        for root in self.roots.iter() {
+            dive_recursive(root, current_height, desired_height, &mut output);
+        }
+
+        output
+    }
+}
+
+impl<B, L> core::clone::Clone for TaxTreeCore<B, L>
+where
+    B: Clone,
+    L: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            gene: self.gene.clone(),
+            highest_rank: self.highest_rank,
+            roots: self.roots.to_vec().into_boxed_slice(),
+            payloads: self.payloads.clone(),
+        }
     }
 }
 
@@ -354,7 +415,7 @@ mod test {
             payloads: [0.1, 0.2, 0.0, 0.0, 0.9].into()
         };
 
-        eprintln!("{}", tree);
+        eprintln!("{tree}");
 
         let expected = indoc! {"
             Root (Test)

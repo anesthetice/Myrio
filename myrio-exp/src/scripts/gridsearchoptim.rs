@@ -2,7 +2,7 @@ use std::io::Write;
 
 use itertools::Itertools;
 use myrio_core::{
-    clustering::{ClusterInitializationMethod, ClusteringParameters},
+    clustering::ClusteringParameters,
     data::{Float, MyrSeq, SFVec},
     similarity::{SimFunc, SimScore, Similarity},
     tax::{
@@ -128,17 +128,17 @@ fn single(
 ) -> anyhow::Result<String> {
     let cluster_simfunc = cluster_similarity.to_simfunc(true);
 
-    let cluster_params = ClusteringParameters::new(
-        cluster_k,
-        cluster_t1,
-        cluster_t2,
-        cluster_similarity,
-        ClusterInitializationMethod::FromNumber(NB_CLUSTERS),
-        cluster_eta_improvement_value,
-        NB_ITERS_MAX,
-        cluster_ssdcf,
-        MULTITHREADING_FLAG,
-    );
+    let cluster_params = ClusteringParameters {
+        k: cluster_k,
+        t1: cluster_t1,
+        t2: cluster_t2,
+        similarity: cluster_similarity,
+        intial_centroids: Vec::new(),
+        expected_nb_of_clusters: 4,
+        eta_improvement: cluster_eta_improvement_value,
+        nb_iters_max: NB_ITERS_MAX,
+        silhouette_std_deviation_cutoff_factor: cluster_ssdcf,
+    };
 
     // gather compute trees
     let mut rng = rand::rngs::StdRng::try_from_os_rng()?;
@@ -180,14 +180,14 @@ fn single(
                         .map(|myrseq| myrseq.compute_sparse_kmer_counts(search_k, cluster_t1).0)
                         .collect_vec();
                     let search_queries =
-                        myrio_core::clustering::compute_cluster_centroid_without_parallelism(&search_elements);
+                        myrio_core::clustering::compute_cluster_centroid(&search_elements);
 
                     let match_elements = myrseqs
                         .iter()
                         .map(|myrseq| myrseq.compute_sparse_kmer_counts(cluster_k, cluster_t1).0)
                         .collect_vec();
                     let match_queries =
-                        myrio_core::clustering::compute_cluster_centroid_without_parallelism(&match_elements);
+                        myrio_core::clustering::compute_cluster_centroid(&match_elements);
 
                     (search_queries, match_queries)
                 })
@@ -197,7 +197,7 @@ fn single(
             let query_idx = match_queries
                 .iter()
                 .enumerate()
-                .max_by_key(|(_, q)| cluster_simfunc(&ttcompute.get_kmer_norm_counts_repr(), q))
+                .max_by_key(|(_, q)| cluster_simfunc(ttcompute.get_kmer_normalized_counts_fingerprint(), q))
                 .unwrap()
                 .0;
 

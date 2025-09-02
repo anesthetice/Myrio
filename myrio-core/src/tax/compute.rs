@@ -12,7 +12,7 @@ use crate::{
 #[derive(Clone)]
 pub struct TaxTreeCompute {
     pub(crate) core: TaxTreeCore<(), SFVec>,
-    pub(crate) kmer_norm_counts_repr: SFVec,
+    pub(crate) kmer_normalized_counts_fingerprint: SFVec,
     pub(crate) k_search: usize,
 }
 
@@ -22,8 +22,8 @@ pub enum CacheOptions {
 }
 
 impl TaxTreeCompute {
-    pub fn get_kmer_norm_counts_repr(&self) -> SFVec {
-        self.kmer_norm_counts_repr.clone()
+    pub fn get_kmer_normalized_counts_fingerprint(&self) -> &SFVec {
+        &self.kmer_normalized_counts_fingerprint
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -37,11 +37,11 @@ impl TaxTreeCompute {
         rng: &mut impl rand::Rng,
         multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
-        let mut kmer_norm_counts_repr =
-            if let Some(sfvec_idx) = store.pre_computed.iter().copied().position(|k| k_cluster == k) {
+        let kmer_normalized_counts_fingerprint =
+            if let Some(sfvec_idx) = store.k_precomputed.iter().copied().position(|k| k_cluster == k) {
                 (0..repr_samples)
                     .map(|_| unsafe {
-                        store.core.payloads.choose(rng).unwrap().pre_comp.get_unchecked(sfvec_idx)
+                        store.core.payloads.choose(rng).unwrap().kmer_counts_vec.get_unchecked(sfvec_idx)
                     })
                     .fold(SFVec::new(0), |acc, x| acc + x)
             } else {
@@ -51,12 +51,12 @@ impl TaxTreeCompute {
                         compute_sparse_kmer_counts_for_fasta_seq(seq, k_cluster, max_consecutive_N_before_gap)
                     })
                     .fold(SFVec::new(0), |acc, x| acc + x)
-            };
-        kmer_norm_counts_repr.normalize_l2();
+            }
+            .into_normalized_l2();
 
         #[rustfmt::skip]
         let sfvec_idx = store
-            .pre_computed
+            .k_precomputed
             .iter()
             .copied()
             .position(|k| k_search == k)
@@ -65,7 +65,7 @@ impl TaxTreeCompute {
                     CacheOptions::Enabled { zstd_compression_level, zstd_multithreading_opt } => {
                         store.compute_and_append_kmer_counts(k_search, max_consecutive_N_before_gap, multi);
                         store.encode_to_file(zstd_compression_level, zstd_multithreading_opt, multi)?;
-                        Ok::<usize, Error>(store.pre_computed.len())
+                        Ok::<usize, Error>(store.k_precomputed.len())
                     },
                     CacheOptions::Disabled => {
                         store.compute_and_overwrite_kmer_counts(k_search, max_consecutive_N_before_gap, multi);
@@ -79,7 +79,7 @@ impl TaxTreeCompute {
             .core
             .payloads
             .into_iter()
-            .map(|mut sp| sp.pre_comp.swap_remove(sfvec_idx))
+            .map(|mut sp| sp.kmer_counts_vec.swap_remove(sfvec_idx).into_normalized_l2())
             .collect_vec();
 
         Ok(Self {
@@ -89,7 +89,7 @@ impl TaxTreeCompute {
                 roots: store.core.roots,
                 payloads: payloads.into_boxed_slice(),
             },
-            kmer_norm_counts_repr,
+            kmer_normalized_counts_fingerprint,
             k_search,
         })
     }

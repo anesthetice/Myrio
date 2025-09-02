@@ -4,7 +4,9 @@ use std::{
 };
 
 use itertools::Itertools;
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 
 use crate::{
     data::{Float, MyrSeq, SFVec},
@@ -13,117 +15,72 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct ClusteringParameters {
+    /// k-mer length, `6` seems to be the most sensible value for clustering
     pub k: usize,
+    /// Score cutoff threshold i.e., if the product of error probabilities of the nucleotides in a k-mer is below this threshold, then it is ignored
     pub t1: f64,
+    /// Minimum number of valid k-mers for a sequence to not be discarded
     pub t2: usize,
+    /// The type of similarity to use
     pub similarity: Similarity,
-    pub cim: ClusterInitializationMethod,
+    /// Can be empty, should be normalized
+    pub intial_centroids: Vec<SFVec>,
+    /// Total number of clusters expected, should logically be greater or equal to `initial_centroids.len()`
+    pub expected_nb_of_clusters: usize,
+    /// Fraction to stop the main clustering iteration (not recommended to be above `1E-2`)
     pub eta_improvement: Float,
+    /// Maximum number of iterations before stopping
     pub nb_iters_max: usize,
+    /// For the thinning step, within the semi-final clusters, any sequence for which the silhouette score is below `mean - ssdcf_factor * std` will be discarded
     pub silhouette_std_deviation_cutoff_factor: Float,
-    pub multithreading_flag: bool,
 }
 
-impl ClusteringParameters {
-    pub fn new(
-        k: usize,
-        t1: f64,
-        t2: usize,
-        similarity: Similarity,
-        cim: ClusterInitializationMethod,
-        eta_improvement: Float,
-        nb_iters_max: usize,
-        silhouette_std_deviation_cutoff_factor: Float,
-        multithreading_flag: bool,
-    ) -> Self {
-        Self {
-            k,
-            t1,
-            t2,
-            similarity,
-            cim,
-            eta_improvement,
-            nb_iters_max,
-            silhouette_std_deviation_cutoff_factor,
-            multithreading_flag,
-        }
-    }
-
-    pub fn unshell(
-        self
-    ) -> (usize, f64, usize, Similarity, ClusterInitializationMethod, Float, usize, Float, bool) {
-        (
-            self.k,
-            self.t1,
-            self.t2,
-            self.similarity,
-            self.cim,
-            self.eta_improvement,
-            self.nb_iters_max,
-            self.silhouette_std_deviation_cutoff_factor,
-            self.multithreading_flag,
-        )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ClusterInitializationMethod {
-    FromCentroids(Vec<SFVec>),
-    FromNumber(usize),
-}
-
-pub struct ClusteringResults {
+pub struct ClusteringOutput {
     pub clusters: Vec<Vec<MyrSeq>>,
     pub rejected: Vec<MyrSeq>,
 }
 
-pub fn compute_cluster_centroid_with_parallelism<T>(elements: &[T]) -> SFVec
+/// The input `members` should ideally not be normalized
+pub fn compute_cluster_centroid<T>(members: &[T]) -> SFVec
 where
     T: AsRef<SFVec> + Sync,
 {
-    elements
+    members
         .par_iter()
         .fold(|| SFVec::new(0), |a, b| a + b.as_ref())
         .reduce(|| SFVec::new(0), |a, b| a + b)
-        .normalize_l2_alt()
-}
-
-#[rustfmt::skip]
-pub fn compute_cluster_centroid_without_parallelism<T>(elements: &[T]) -> SFVec
-where
-    T: AsRef<SFVec>,
-{
-    elements
-        .iter()
-        .fold(SFVec::new(0), |acc, x| acc + x)
-        .normalize_l2_alt()
+        .into_normalized_l2()
 }
 
 pub fn cluster(
     myrseqs: Vec<MyrSeq>,
     params: ClusteringParameters,
-) -> ClusteringResults {
-    let (
+) -> ClusteringOutput {
+    let ClusteringParameters {
         k,
         t1,
         t2,
         similarity,
-        cim,
+        intial_centroids,
+        expected_nb_of_clusters,
         eta_improvement,
         nb_iters_max,
         silhouette_std_deviation_cutoff_factor,
-        multithreading_flag,
-    ) = params.unshell();
+    } = params;
+
+    if intial_centroids.is_empty() && expected_nb_of_clusters == 0 {
+        panic!("Ensure `initial_centroids` is not empty or `expected_nb_of_clusters` > 0")
+    }
 
     let mut rejected: Vec<MyrSeq> = Vec::new();
 
     // Step 1, compute the k-mer counts of each myrseq, normalized either way (too bothersome later on otherwise)
-    let (myrseqs, kmer_norm_counts_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
+    let (myrseqs, kmer_counts_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
         .into_iter()
         .filter_map(|myrseq| {
-            let (kmer_norm_counts, nb_hck) = myrseq.compute_sparse_kmer_counts_normalized(k, t1);
+            let (kmer_counts, nb_hck) = myrseq.compute_sparse_kmer_counts(k, t1);
             if nb_hck > t2 {
-                Some((myrseq, kmer_norm_counts, nb_hck))
+                Some((myrseq, kmer_counts, nb_hck))
             } else {
                 rejected.push(myrseq);
                 None
@@ -131,110 +88,103 @@ pub fn cluster(
         })
         //.sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first
         .multiunzip();
+
+    // We keep both the non-normalized kmer counts (for cluster members) but also the normalized ones (for more efficient computation)
+    let kmer_counts_normalized_vec =
+        kmer_counts_vec.clone().into_iter().map(SFVec::into_normalized_l2).collect_vec();
+
     let simfunc: SimFunc = similarity.to_simfunc(true);
 
     // Step 2, initialize the clusters
-    let mut clusters = match cim {
-        ClusterInitializationMethod::FromCentroids(centroids) => centroids
-            .into_iter()
-            .map(|centroid| Cluster { centroid_seeds: centroid, elements: Vec::new() })
-            .collect_vec(),
-        ClusterInitializationMethod::FromNumber(nb_clusters) => {
-            let mut clusters: Vec<Cluster> = vec![Cluster::new(&kmer_norm_counts_vec[0])];
-            let max_nb_hck = nb_hck_vec[0] as Float;
-            while clusters.len() < nb_clusters {
-                let new_cluster_seeds = kmer_norm_counts_vec
+    let mut clusters = intial_centroids
+        .into_iter()
+        .map(|centroid| Cluster { centroid, members: Vec::new(), members_normalized: Vec::new() })
+        .collect_vec();
+
+    let (max_nb_hck_idx, max_nb_hck) =
+        nb_hck_vec.iter().enumerate().max_by_key(|(_, nb_hck)| **nb_hck).unwrap();
+    let max_nb_hck = *max_nb_hck as Float;
+
+    if clusters.is_empty() {
+        clusters.push(Cluster::from_normalized_centroid(&kmer_counts_normalized_vec[max_nb_hck_idx]));
+    }
+
+    while clusters.len() < expected_nb_of_clusters {
+        let centroid_for_new_cluster = kmer_counts_normalized_vec
+            .iter()
+            .zip_eq(nb_hck_vec.iter())
+            .min_by_key(|&(kmer_counts_normalized, nb_hck)| {
+                let mut score = clusters
                     .iter()
-                    .zip_eq(nb_hck_vec.iter())
-                    .min_by_key(|&(kcount, nb_hck)| {
-                        let mut score = clusters
-                            .iter()
-                            .map(|cluster| *simfunc(&cluster.centroid_seeds, kcount))
-                            .sum::<Float>();
-                        // penalty (increases score) for seqs with a low number of high-confidence k-mers
-                        score = 0.7 * score + 0.3 * (1.0 - (*nb_hck as Float) / max_nb_hck);
-                        SimScore::try_new(score).unwrap()
-                    })
-                    .unwrap()
-                    .0;
-                clusters.push(Cluster::new(new_cluster_seeds));
-            }
-            clusters
-        }
-    };
-    let nb_clusters = clusters.len();
+                    .map(|cluster| *simfunc(&cluster.centroid, kmer_counts_normalized))
+                    .sum::<Float>()
+                    .div(clusters.len() as Float);
+                // penalty (increases score) for seqs with a low number of high-confidence k-mers
+                score = 0.85 * score + 0.15 * (1.0 - (*nb_hck as Float) / max_nb_hck);
+                SimScore::try_new(score).unwrap()
+            })
+            .unwrap()
+            .0;
+        clusters.push(Cluster::from_normalized_centroid(centroid_for_new_cluster));
+    }
 
     // Step 3, main clustering loop
-    if multithreading_flag {
-        let mut target: Vec<(&SFVec, usize)> = Vec::with_capacity(kmer_norm_counts_vec.len());
-        let mut previous_mean_wcsss: Float = 1E-6;
-        let mut improvement_score: Float = Float::MAX;
-        let mut nb_iters: usize = 0;
+    let mut target: Vec<(usize, usize)> = Vec::with_capacity(kmer_counts_normalized_vec.len());
+    let mut previous_mean_wcsss: Float = 1E-6;
+    let mut improvement_score: Float = Float::MAX;
+    let mut nb_iters: usize = 0;
 
-        while improvement_score > eta_improvement && nb_iters < nb_iters_max {
-            kmer_norm_counts_vec
-                .par_iter()
-                .map(|kmer_norm_counts| {
-                    let cl_idx = clusters
-                        .iter()
-                        .enumerate()
-                        .max_by_key(|(_, cluster)| simfunc(&cluster.centroid_seeds, kmer_norm_counts))
-                        .unwrap()
-                        .0;
-                    (kmer_norm_counts, cl_idx)
-                })
-                .collect_into_vec(&mut target);
-            target.iter().for_each(|(sfvec, cl_idx)| clusters[*cl_idx].elements.push(sfvec));
-            target.clear();
-
-            let current_mean_wcsss =
-                clusters.iter().map(|cl| cl.wcsss(simfunc)).sum::<Float>() / nb_clusters as Float;
-            improvement_score = (current_mean_wcsss - previous_mean_wcsss) / previous_mean_wcsss;
-            previous_mean_wcsss = current_mean_wcsss;
-
-            clusters = clusters.into_iter().map(Cluster::recenter_without_parallelism).collect_vec();
-            nb_iters += 1;
-        }
-    } else {
-        let mut previous_mean_wcsss: Float = 1E-6;
-        let mut improvement_score: Float = Float::MAX;
-        let mut nb_iters: usize = 0;
-
-        while improvement_score > eta_improvement && nb_iters < nb_iters_max {
-            kmer_norm_counts_vec.iter().for_each(|kmer_norm_counts| {
-                clusters
-                    .iter_mut()
-                    .max_by_key(|cluster| simfunc(&cluster.centroid_seeds, kmer_norm_counts))
+    while improvement_score > eta_improvement && nb_iters < nb_iters_max {
+        kmer_counts_normalized_vec
+            .par_iter()
+            .enumerate()
+            .map(|(kc_idx, kmer_counts_normalized)| {
+                let cl_idx = clusters
+                    .iter()
+                    .enumerate()
+                    .max_by_key(|(_, cluster)| simfunc(&cluster.centroid, kmer_counts_normalized))
                     .unwrap()
-                    .elements
-                    .push(kmer_norm_counts);
-            });
+                    .0;
+                (kc_idx, cl_idx)
+            })
+            .collect_into_vec(&mut target);
 
-            let current_mean_wcsss =
-                clusters.iter().map(|cl| cl.wcsss(simfunc)).sum::<Float>() / nb_clusters as Float;
-            improvement_score = (current_mean_wcsss - previous_mean_wcsss) / previous_mean_wcsss;
-            previous_mean_wcsss = current_mean_wcsss;
+        target.iter().for_each(|&(kc_idx, cl_idx)| unsafe {
+            clusters
+                .get_unchecked_mut(cl_idx)
+                .push(kmer_counts_vec.get_unchecked(kc_idx), kmer_counts_normalized_vec.get_unchecked(kc_idx))
+        });
+        target.clear();
 
-            #[cfg(debug_assertions)]
-            eprintln!("improvement score: {improvement_score}");
+        let current_mean_wcsss =
+            clusters.iter().map(|cl| cl.wcsss(simfunc)).sum::<Float>() / expected_nb_of_clusters as Float;
+        improvement_score = (current_mean_wcsss - previous_mean_wcsss) / previous_mean_wcsss;
+        previous_mean_wcsss = current_mean_wcsss;
 
-            clusters = clusters.into_iter().map(Cluster::recenter_without_parallelism).collect_vec();
-            nb_iters += 1;
-        }
+        #[cfg(debug_assertions)]
+        println!("improvement score: {improvement_score}");
+
+        clusters = clusters.into_iter().map(Cluster::recenter).collect_vec();
+        nb_iters += 1;
     }
 
     // Step 4 and 5, silhouette thinning and simply computing the output
     // (could also add multi-threading to this part in the future)
     let mut clustered_myrseqs: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
-    for (myrseq, kmer_norm_counts) in myrseqs.into_iter().zip_eq(kmer_norm_counts_vec.iter()) {
-        let (idx, cluster) = clusters
+    for ((myrseq, kmer_counts_normalized), kmer_counts) in myrseqs
+        .into_iter()
+        .zip_eq(kmer_counts_normalized_vec.iter())
+        .zip_eq(kmer_counts_vec.iter())
+    {
+        let (cl_idx, cluster) = clusters
             .iter_mut()
             .enumerate()
-            .max_by_key(|(_, cluster)| simfunc(&cluster.centroid_seeds, kmer_norm_counts))
+            .max_by_key(|(_, cluster)| simfunc(&cluster.centroid, kmer_counts_normalized))
             .unwrap();
-        cluster.elements.push(kmer_norm_counts);
-        clustered_myrseqs[idx].push(myrseq);
+        cluster.push(kmer_counts, kmer_counts_normalized);
+        unsafe { clustered_myrseqs.get_unchecked_mut(cl_idx).push(myrseq) };
     }
+
     let silhouette_scores_vec = Cluster::compute_silhouette_scores_vec(&clusters, simfunc);
 
     let output = clustered_myrseqs
@@ -250,6 +200,7 @@ pub fn cluster(
                 (n.powi(-1) * silhouette_scores.iter().map(|x| (x - mean).powi(2)).sum::<Float>()).sqrt();
 
             let left_cutoff = mean - std * silhouette_std_deviation_cutoff_factor;
+            println!("mean={mean}, std={std}, left_cutoff={left_cutoff:.3}");
 
             myrseq_cluster
                 .into_iter()
@@ -266,35 +217,41 @@ pub fn cluster(
         })
         .collect_vec();
 
-    ClusteringResults { clusters: output, rejected }
+    ClusteringOutput { clusters: output, rejected }
 }
 
 struct Cluster<'a> {
-    centroid_seeds: SFVec,
-    elements: Vec<&'a SFVec>,
+    /// Should be normalized
+    centroid: SFVec,
+    members: Vec<&'a SFVec>,
+    members_normalized: Vec<&'a SFVec>,
 }
 
 impl<'a> Cluster<'a> {
-    fn new(seeds: &'a SFVec) -> Self {
-        Self { centroid_seeds: seeds.clone(), elements: vec![seeds] }
+    fn from_normalized_centroid(centroid: &'a SFVec) -> Self {
+        Self {
+            centroid: centroid.clone().into_normalized_l2(),
+            members: Vec::new(),
+            members_normalized: Vec::new(),
+        }
     }
 
-    fn recenter_with_parallelism(self) -> Self {
-        if self.elements.is_empty() {
-            return Self { centroid_seeds: self.centroid_seeds, elements: Vec::new() };
+    fn recenter(self) -> Self {
+        if self.members.is_empty() {
+            return Self { centroid: self.centroid, members: Vec::new(), members_normalized: Vec::new() };
         }
-        let new_centroid_seeds: SFVec = compute_cluster_centroid_with_parallelism(&self.elements[..]);
+        let new_centroid: SFVec = compute_cluster_centroid(&self.members[..]);
 
-        Self { centroid_seeds: new_centroid_seeds, elements: Vec::new() }
+        Self { centroid: new_centroid, members: Vec::new(), members_normalized: Vec::new() }
     }
 
-    fn recenter_without_parallelism(self) -> Self {
-        if self.elements.is_empty() {
-            return Self { centroid_seeds: self.centroid_seeds, elements: Vec::new() };
-        }
-        let new_centroid_seeds: SFVec = compute_cluster_centroid_without_parallelism(&self.elements[..]);
-
-        Self { centroid_seeds: new_centroid_seeds, elements: Vec::new() }
+    fn push(
+        &mut self,
+        kmer_counts: &'a SFVec,
+        kmer_counts_normalized: &'a SFVec,
+    ) {
+        self.members.push(kmer_counts);
+        self.members_normalized.push(kmer_counts_normalized);
     }
 
     /// Within-cluster sum of similarity scores
@@ -302,9 +259,9 @@ impl<'a> Cluster<'a> {
         &self,
         simfunc: SimFunc,
     ) -> Float {
-        self.elements
+        self.members_normalized
             .iter()
-            .map(|&sfvec| *simfunc(sfvec, &self.centroid_seeds))
+            .map(|&sfvec| *simfunc(sfvec, &self.centroid))
             .sum1::<Float>()
             .unwrap_or_default()
     }
@@ -315,40 +272,46 @@ impl<'a> Cluster<'a> {
     ) -> Vec<Vec<Float>> {
         #[rustfmt::skip]
         fn inner(cluster: &Cluster, neighbor: &Cluster, index: usize, simfunc: SimFunc) -> Float {
-            let i = cluster.elements[index];
+            let i = cluster.members_normalized[index];
 
-            let a = cluster.elements.iter()
+            let a = cluster.members_normalized.iter()
                 .map(|&e| *Similarity::dist(simfunc(i, e)))
                 .sum::<Float>()
                 .sub(1.0)
-                .div((cluster.elements.len() - 1) as Float);
-            let b = neighbor.elements.iter()
+                .div((cluster.members_normalized.len() - 1) as Float);
+            let b = neighbor.members_normalized.iter()
                 .map(|&e| *Similarity::dist(simfunc(i, e)))
                 .sum::<Float>()
-                .div(neighbor.elements.len() as Float);
+                .div(neighbor.members_normalized.len() as Float);
 
             (b - a) / a.max(b)
         }
 
         let mut output = Vec::with_capacity(clusters.len());
 
-        for (i, cluster) in clusters.iter().enumerate() {
-            let neighbor = clusters
-                .iter()
-                .enumerate()
-                .filter(|(j, _)| *j != i)
-                .max_by_key(|(_, other_cluster)| {
-                    simfunc(&cluster.centroid_seeds, &other_cluster.centroid_seeds)
-                })
-                .unwrap()
-                .1;
+        clusters
+            .par_iter()
+            .enumerate()
+            .map(|(i, cluster)| {
+                let neighbor = clusters
+                    .iter()
+                    .enumerate()
+                    .filter(|(j, _)| *j != i)
+                    .max_by_key(|(_, other_cluster)| simfunc(&cluster.centroid, &other_cluster.centroid))
+                    .unwrap()
+                    .1;
 
-            output.push(
-                (0..cluster.elements.len())
-                    .map(|index| inner(cluster, neighbor, index, simfunc))
-                    .collect_vec(),
-            );
-        }
+                let mut silscores: Vec<Float> = vec![0.0; cluster.members.len()];
+
+                silscores
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(index, value)| *value = inner(cluster, neighbor, index, simfunc));
+
+                silscores
+            })
+            .collect_into_vec(&mut output);
+
         output
     }
 }

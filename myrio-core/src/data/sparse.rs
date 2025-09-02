@@ -307,7 +307,7 @@ impl SparseVec<Float> {
         self.div_assign(magn);
     }
 
-    pub fn normalize_l2_alt(mut self) -> Self {
+    pub fn into_normalized_l2(mut self) -> Self {
         self.normalize_l2();
         self
     }

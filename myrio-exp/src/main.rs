@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use anyhow::Ok;
 use bio_seq::prelude::*;
-use myrio_core::{clustering::ClusterInitializationMethod, data::MyrSeq, similarity::Similarity};
+use myrio_core::{clustering::ClusteringParameters, data::MyrSeq, similarity::Similarity};
 use myrio_exp::{
     clustering::partition::compute_cluster_cost,
     scripts::{grid_search_optimization, load_testset},
@@ -16,6 +16,8 @@ use myrio_exp::{
 use rand::{SeedableRng, seq::IndexedRandom};
 
 fn main() -> anyhow::Result<()> {
+    cluster_simple_test();
+    return Ok(());
     grid_search_optimization()
 }
 
@@ -35,19 +37,19 @@ fn cluster_simple_test() {
     ]
     .concat();
 
-    let params = myrio_core::clustering::ClusteringParameters::new(
-        6,
-        0.2,
-        5,
-        Similarity::Cosine,
-        ClusterInitializationMethod::FromNumber(4),
-        1E-3,
-        10,
-        1.0,
-        false,
-    );
+    let cluster_params = ClusteringParameters {
+        k: 6,
+        t1: 0.2,
+        t2: 10,
+        similarity: Similarity::Cosine,
+        intial_centroids: Vec::new(),
+        expected_nb_of_clusters: 4,
+        eta_improvement: 1E-3,
+        nb_iters_max: 10,
+        silhouette_std_deviation_cutoff_factor: 3.0,
+    };
 
-    let clusters = myrio_core::clustering::cluster(myrseqs, params);
+    let clusters = myrio_core::clustering::cluster(myrseqs, cluster_params);
 
     for (idx, cluster) in clusters.clusters.iter().enumerate() {
         let mut id_count_map: HashMap<&str, usize> = HashMap::new();
@@ -57,24 +59,6 @@ fn cluster_simple_test() {
         }
         println!("cluster {idx}: {id_count_map:?}")
     }
-
-    let myrseqs = myrio_core::io::read_fastq_from_file(
-        "./ignore/queries/Solanum_lycopersicummatK_rbcL_ITS_barcode11.fastq",
-    )
-    .unwrap();
-    let params = myrio_core::clustering::ClusteringParameters::new(
-        6,
-        0.2,
-        5,
-        Similarity::Cosine,
-        ClusterInitializationMethod::FromNumber(4),
-        1E-6,
-        10,
-        1.0,
-        false,
-    );
-
-    let clusters = myrio_core::clustering::cluster(myrseqs, params);
 }
 
 /*

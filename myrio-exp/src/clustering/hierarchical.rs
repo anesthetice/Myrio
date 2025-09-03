@@ -13,7 +13,7 @@ impl Clusterer {
     pub fn cluster(
         myrseqs: Vec<MyrSeq>,
         k: usize,
-        t1_cutoff: f64,
+        t1_cutoff: Float,
         t2_cutoff: Float,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
@@ -37,9 +37,9 @@ impl Clusterer {
             })
             .concat();
 
-        let prob_mean: f64 = probs.iter().sum::<f64>() / probs.len() as f64;
-        let prob_std = (probs.iter().map(|&p| (p - prob_mean) * (p - prob_mean)).sum::<f64>()
-            / (probs.len() - 1) as f64)
+        let prob_mean = probs.iter().sum::<Float>() / probs.len() as Float;
+        let prob_std = (probs.iter().map(|&p| (p - prob_mean) * (p - prob_mean)).sum::<Float>()
+            / (probs.len() - 1) as Float)
             .sqrt();
 
         println!("mean: {prob_mean:.2}\nstd: {prob_std:.2}");
@@ -53,7 +53,7 @@ impl Clusterer {
     pub fn _cluster_dense(
         myrseqs: Vec<MyrSeq>,
         k: usize,
-        t1_cutoff: f64,
+        t1_cutoff: Float,
         t2_cutoff: Float,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {
@@ -109,7 +109,7 @@ impl Clusterer {
     pub fn _cluster_sparse(
         myrseqs: Vec<MyrSeq>,
         k: usize,
-        t1_cutoff: f64,
+        t1_cutoff: Float,
         t2_cutoff: Float,
         similarity_function: SimilarityFunction,
     ) -> Vec<Vec<MyrSeq>> {

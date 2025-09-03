@@ -17,10 +17,19 @@ use bio_seq::{
 };
 use itertools::Itertools;
 use myrio_proc::gen_match_k_sparse;
+use rand::{
+    SeedableRng,
+    rngs::{SmallRng, StdRng},
+    seq::IndexedRandom,
+};
+use rayon::{
+    iter::{IntoParallelIterator, ParallelBridge, ParallelIterator},
+    slice::ParallelSlice,
+};
 use thiserror::Error;
 
 use crate::{
-    data::{Float, MyrSeq, SFVec},
+    data::{Float, MyrSeq, SFVec, SparseVec},
     tax::clade::Rank,
 };
 
@@ -40,8 +49,101 @@ pub enum Error {
     HighestRankMismatch(Rank, Rank, usize),
 }
 
+pub fn kmer_store_counts_to_kmer_counts(input: (SparseVec<u16>, Float)) -> SFVec {
+    let (svec, rescale_factor) = input;
+    svec.apply_into(|val| val as Float * rescale_factor)
+}
+
+pub fn compute_kmer_counts_for_fasta_seq(
+    seq: &SeqSlice<Iupac>,
+    k: usize,
+    nb_bootstrap_resamples: usize,
+    high_pass_filter_flag: bool,
+    rng: &mut impl rand::Rng,
+) -> SFVec {
+    let input =
+        compute_kmer_store_counts_for_fasta_seq(seq, k, nb_bootstrap_resamples, high_pass_filter_flag, rng);
+    kmer_store_counts_to_kmer_counts(input)
+}
+
+pub fn compute_kmer_store_counts_for_fasta_seq(
+    seq: &SeqSlice<Iupac>,
+    k: usize,
+    nb_bootstrap_resamples: usize,
+    high_pass_filter_flag: bool,
+    rng: &mut impl rand::Rng,
+) -> (SparseVec<u16>, Float) {
+    fn sample_iupac_nc(
+        nc: &Iupac,
+        rng: &mut impl rand::Rng,
+    ) -> Dna {
+        match nc {
+            Iupac::A => Dna::A,
+            Iupac::C => Dna::C,
+            Iupac::G => Dna::G,
+            Iupac::T => Dna::T,
+            Iupac::R => unsafe { *[Dna::A, Dna::G].choose(rng).unwrap_unchecked() },
+            Iupac::Y => unsafe { *[Dna::C, Dna::T].choose(rng).unwrap_unchecked() },
+            Iupac::S => unsafe { *[Dna::C, Dna::G].choose(rng).unwrap_unchecked() },
+            Iupac::W => unsafe { *[Dna::A, Dna::T].choose(rng).unwrap_unchecked() },
+            Iupac::K => unsafe { *[Dna::G, Dna::T].choose(rng).unwrap_unchecked() },
+            Iupac::M => unsafe { *[Dna::A, Dna::C].choose(rng).unwrap_unchecked() },
+            Iupac::B => unsafe { *[Dna::C, Dna::G, Dna::T].choose(rng).unwrap_unchecked() },
+            Iupac::D => unsafe { *[Dna::A, Dna::G, Dna::T].choose(rng).unwrap_unchecked() },
+            Iupac::H => unsafe { *[Dna::A, Dna::C, Dna::T].choose(rng).unwrap_unchecked() },
+            Iupac::V => unsafe { *[Dna::A, Dna::C, Dna::G].choose(rng).unwrap_unchecked() },
+            Iupac::N => unsafe { *[Dna::A, Dna::C, Dna::G, Dna::T].choose(rng).unwrap_unchecked() },
+            Iupac::X => unreachable!(),
+        }
+    }
+    let base_nucleotides = seq.iter().filter(|nc| !matches!(nc, Iupac::X)).collect_vec();
+    if base_nucleotides.len() < k {
+        // Not completely ideal, but trimming empty sfvec entries from the compute tree is even more annoying
+        return unsafe { (SparseVec::new_unchecked(vec![0], vec![1], 1, 0), 1.0) };
+    }
+
+    let nb_kmers_per_seq = 2 * (base_nucleotides.len() - k + 1);
+    let mut singles: Vec<usize> = Vec::with_capacity(nb_bootstrap_resamples * nb_kmers_per_seq);
+
+    macro_rules! body {
+        ($seq:expr, $K:expr) => {{
+            unsafe {
+                let ptr: *mut usize = singles.as_mut_ptr();
+                let mut idx: usize = 0;
+                for _ in 0..nb_bootstrap_resamples {
+                    let seq: Seq<Dna> =
+                        Seq::from(&base_nucleotides.iter().map(|nc| sample_iupac_nc(nc, rng)).collect_vec());
+                    for key in
+                        seq.kmers::<$K>().chain(seq.to_revcomp().kmers::<$K>()).map(|kmer| usize::from(&kmer))
+                    {
+                        ptr.add(idx).write(key);
+                        idx += 1;
+                    }
+                }
+                singles.set_len(idx);
+            }
+        }};
+    }
+    gen_match_k_sparse!(_);
+
+    let mut sparse_vec = SparseVec::from_unsorted_singles(singles, 1_u16, 4_usize.pow(k as u32), 0_u16);
+
+    if high_pass_filter_flag {
+        let dim = sparse_vec.dim();
+        let cutoff = ((nb_bootstrap_resamples + 5) >> 3) as u16; // Equivalent to `(nb_boostraps + 5) / 8` then floor but much more efficient
+        let (keys, values): (Vec<usize>, Vec<u16>) =
+            sparse_vec.iter_owned().filter(|(_, v)| v > &cutoff).multiunzip();
+
+        sparse_vec = unsafe { SparseVec::new_unchecked(keys, values, dim, 0_u16) }
+    }
+    let rescale_factor: Float =
+        nb_kmers_per_seq as Float / sparse_vec.values().copied().map(u32::from).sum::<u32>() as Float;
+
+    (sparse_vec, rescale_factor)
+}
+
 #[allow(non_snake_case)]
-pub fn compute_sparse_kmer_counts_for_fasta_seq(
+pub fn compute_sparse_kmer_counts_for_fasta_seq_old(
     seq: &SeqSlice<Iupac>,
     k: usize,
     max_consecutive_N_before_gap: usize,

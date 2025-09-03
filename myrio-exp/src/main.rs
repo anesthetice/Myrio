@@ -1,11 +1,16 @@
 #![allow(unused)]
 
 // Imports
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::AddAssign};
 
 use anyhow::Ok;
 use bio_seq::prelude::*;
-use myrio_core::{clustering::ClusteringParameters, data::MyrSeq, similarity::Similarity};
+use itertools::Itertools;
+use myrio_core::{
+    clustering::ClusteringParameters,
+    data::{Float, MyrSeq},
+    similarity::{SimScore, Similarity},
+};
 use myrio_exp::{
     clustering::partition::compute_cluster_cost,
     scripts::{grid_search_optimization, load_testset},
@@ -13,11 +18,9 @@ use myrio_exp::{
     simseq::{Generator, distr::DiscreteDistribution},
     tax::basic_test,
 };
-use rand::{SeedableRng, seq::IndexedRandom};
+use rand::{SeedableRng, rngs::StdRng, seq::IndexedRandom};
 
 fn main() -> anyhow::Result<()> {
-    cluster_simple_test();
-    return Ok(());
     grid_search_optimization()
 }
 

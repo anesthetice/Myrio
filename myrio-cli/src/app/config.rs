@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub zstd_compression_level: i32,
     pub zstd_multithreading_opt: Option<u32>,
-    pub fasta_expansion_max_consecutive_N_before_gap: usize,
+    pub nb_bootstrap_resamples: usize,
 }
 
 impl Config {
@@ -66,7 +66,7 @@ impl From<ConfigPrecursor> for Config {
         Self {
             zstd_compression_level: value.zstd_compression_level,
             zstd_multithreading_opt,
-            fasta_expansion_max_consecutive_N_before_gap: value.fasta_expansion_max_consecutive_N_before_gap,
+            nb_bootstrap_resamples: value.nb_bootstrap_resamples,
         }
     }
 }
@@ -77,16 +77,12 @@ impl From<ConfigPrecursor> for Config {
 pub struct ConfigPrecursor {
     pub zstd_compression_level: i32,
     pub zstd_multithreading_flag: bool,
-    pub fasta_expansion_max_consecutive_N_before_gap: usize,
+    pub nb_bootstrap_resamples: usize,
 }
 
 impl Default for ConfigPrecursor {
     fn default() -> Self {
-        Self {
-            zstd_compression_level: 15,
-            zstd_multithreading_flag: true,
-            fasta_expansion_max_consecutive_N_before_gap: 3,
-        }
+        Self { zstd_compression_level: 15, zstd_multithreading_flag: true, nb_bootstrap_resamples: 32 }
     }
 }
 

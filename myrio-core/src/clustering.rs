@@ -18,7 +18,7 @@ pub struct ClusteringParameters {
     /// k-mer length, `6` seems to be the most sensible value for clustering
     pub k: usize,
     /// Score cutoff threshold i.e., if the product of error probabilities of the nucleotides in a k-mer is below this threshold, then it is ignored
-    pub t1: f64,
+    pub t1: Float,
     /// Minimum number of valid k-mers for a sequence to not be discarded
     pub t2: usize,
     /// The type of similarity to use
@@ -78,7 +78,7 @@ pub fn cluster(
     let (myrseqs, kmer_counts_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
         .into_iter()
         .filter_map(|myrseq| {
-            let (kmer_counts, nb_hck) = myrseq.compute_sparse_kmer_counts(k, t1);
+            let (kmer_counts, nb_hck) = myrseq.compute_kmer_counts(k, t1);
             if nb_hck > t2 {
                 Some((myrseq, kmer_counts, nb_hck))
             } else {
@@ -181,6 +181,7 @@ pub fn cluster(
             .enumerate()
             .max_by_key(|(_, cluster)| simfunc(&cluster.centroid, kmer_counts_normalized))
             .unwrap();
+
         cluster.push(kmer_counts, kmer_counts_normalized);
         unsafe { clustered_myrseqs.get_unchecked_mut(cl_idx).push(myrseq) };
     }
@@ -200,6 +201,8 @@ pub fn cluster(
                 (n.powi(-1) * silhouette_scores.iter().map(|x| (x - mean).powi(2)).sum::<Float>()).sqrt();
 
             let left_cutoff = mean - std * silhouette_std_deviation_cutoff_factor;
+
+            #[cfg(debug_assertions)]
             println!("mean={mean}, std={std}, left_cutoff={left_cutoff:.3}");
 
             myrseq_cluster

@@ -1,12 +1,15 @@
 // Imports
 use indicatif::MultiProgress;
 use itertools::Itertools;
-use rand::seq::IndexedRandom;
+use rand::{SeedableRng, rngs::SmallRng, seq::IndexedRandom};
 
 use super::Error;
 use crate::{
-    data::SFVec,
-    tax::{compute_sparse_kmer_counts_for_fasta_seq, core::TaxTreeCore, store::TaxTreeStore},
+    data::{Float, SFVec},
+    tax::{
+        compute_kmer_counts_for_fasta_seq, core::TaxTreeCore, kmer_store_counts_to_kmer_counts,
+        store::TaxTreeStore,
+    },
 };
 
 #[derive(Clone)]
@@ -32,26 +35,23 @@ impl TaxTreeCompute {
         k_cluster: usize,
         k_search: usize,
         repr_samples: usize,
-        max_consecutive_N_before_gap: usize,
+        nb_bootstrap_resamples: usize,
         cache_opt: CacheOptions,
         rng: &mut impl rand::Rng,
         multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
-        let kmer_normalized_counts_fingerprint =
-            if let Some(sfvec_idx) = store.k_precomputed.iter().copied().position(|k| k_cluster == k) {
-                (0..repr_samples)
-                    .map(|_| unsafe {
-                        store.core.payloads.choose(rng).unwrap().kmer_counts_vec.get_unchecked(sfvec_idx)
-                    })
-                    .fold(SFVec::new(0), |acc, x| acc + x)
-            } else {
-                (0..repr_samples)
-                    .map(|_| {
-                        let seq = &store.core.payloads.choose(rng).unwrap().seq;
-                        compute_sparse_kmer_counts_for_fasta_seq(seq, k_cluster, max_consecutive_N_before_gap)
-                    })
-                    .fold(SFVec::new(0), |acc, x| acc + x)
-            }
+        let kmer_normalized_counts_fingerprint = (0..repr_samples)
+            .map(|_| {
+                let seq = &store.core.payloads.choose(rng).unwrap().seq;
+                compute_kmer_counts_for_fasta_seq(
+                    seq,
+                    k_cluster,
+                    nb_bootstrap_resamples,
+                    true,
+                    &mut SmallRng::from_os_rng(),
+                )
+            })
+            .fold(SFVec::new(0), |acc, x| acc + x)
             .into_normalized_l2();
 
         #[rustfmt::skip]
@@ -63,12 +63,12 @@ impl TaxTreeCompute {
             .map_or_else(
                 || match cache_opt {
                     CacheOptions::Enabled { zstd_compression_level, zstd_multithreading_opt } => {
-                        store.compute_and_append_kmer_counts(k_search, max_consecutive_N_before_gap, multi);
+                        store.compute_and_append_kmer_counts(k_search, nb_bootstrap_resamples, multi);
                         store.encode_to_file(zstd_compression_level, zstd_multithreading_opt, multi)?;
                         Ok::<usize, Error>(store.k_precomputed.len())
                     },
                     CacheOptions::Disabled => {
-                        store.compute_and_overwrite_kmer_counts(k_search, max_consecutive_N_before_gap, multi);
+                        store.compute_and_overwrite_kmer_counts(k_search, nb_bootstrap_resamples, multi);
                         Ok::<usize, Error>(0_usize)
                     }
                 },
@@ -79,7 +79,10 @@ impl TaxTreeCompute {
             .core
             .payloads
             .into_iter()
-            .map(|mut sp| sp.kmer_counts_vec.swap_remove(sfvec_idx).into_normalized_l2())
+            .map(|mut sp| {
+                let (svec, _) = sp.kmer_store_counts_vec.swap_remove(sfvec_idx);
+                svec.apply_into(Float::from).into_normalized_l2()
+            })
             .collect_vec();
 
         Ok(Self {

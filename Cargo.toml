@@ -16,7 +16,7 @@ readme = true
 version = "0.1.0"
 
 [workspace.dependencies]
-myrio-core = { version = "0.1.0", path = "myrio-core" }
+myrio-core = { version = "0.1.0", path = "myrio-core", default-features = true }
 myrio-proc = { version = "0.1.0", path = "myrio-proc" }
 
 anyhow = { version = "1.0" }

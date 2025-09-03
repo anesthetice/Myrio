@@ -8,11 +8,9 @@ use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
-use crate::data::Float;
-use crate::similarity::Similarity;
 use crate::{
-    data::SFVec,
-    similarity::{SimFunc, SimScore},
+    data::{Float, SFVec},
+    similarity::{SimFunc, SimScore, Similarity},
     tax::{
         Error,
         compute::TaxTreeCompute,

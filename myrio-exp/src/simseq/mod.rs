@@ -193,7 +193,7 @@ impl Generator {
                 let mut idx = 0;
                 while idx < seq.len() {
                     let p_error = myrio_core::constants::Q_TO_BP_CALL_ERROR_PROB_MAP[q_scores[idx] as usize];
-                    if rng.sample(rand::distr::Bernoulli::new(p_error).unwrap()) {
+                    if rng.sample(rand::distr::Bernoulli::new(p_error as f64).unwrap()) {
                         // An error has "occurred", now we determine which type
                         match [ErrorType::Indel, ErrorType::Insertion, ErrorType::Snp]
                             .choose_weighted(rng, error_type_to_weight)

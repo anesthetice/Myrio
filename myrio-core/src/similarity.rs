@@ -176,8 +176,8 @@ mod test {
         let myrseq_1 = MyrSeq::create("", None, dna!["ACTG"], &[0; 4]);
         let myrseq_2 = MyrSeq::create("", None, dna!["ACTC"], &[0; 4]);
 
-        let mut a = myrseq_1.compute_sparse_kmer_counts(2, f64::MIN).0;
-        let mut b = myrseq_2.compute_sparse_kmer_counts(2, f64::MIN).0;
+        let mut a = myrseq_1.compute_kmer_counts(2, Float::MIN).0;
+        let mut b = myrseq_2.compute_kmer_counts(2, Float::MIN).0;
         let cosine = cosine(&a, &b);
         assert_float_eq!(*cosine, 2.0 / 3.0);
         let overlap = overlap(&a, &b);

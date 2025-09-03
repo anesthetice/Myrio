@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{io::Write, panic::catch_unwind};
 
 use itertools::Itertools;
 use myrio_core::{
@@ -35,21 +35,15 @@ const TREE_FILEPATHS: [&str; 4] = [
 
 const NB_CLUSTERS: usize = 4;
 const NB_ITERS_MAX: usize = 10;
-const MULTITHREADING_FLAG: bool = true;
-const REPR_SAMPLES: usize = 200;
+const REPR_SAMPLES: usize = 500;
+const NB_BOOTSTRAP_RESAMPLES: usize = 5;
 const CACHE_OPT: CacheOptions = CacheOptions::Disabled;
 
 pub fn grid_search_optimization() -> anyhow::Result<()> {
-    let expected_species_and_myrseqs_vec = INPUTS
-        .into_iter()
-        .map(|(expected_species, filepath)| {
-            (expected_species, myrio_core::io::read_fastq_from_file(filepath).unwrap())
-        })
-        .collect_vec();
-
     let cluster_k_values: Vec<usize> = vec![5, 6, 7];
-    let cluster_t1_values: Vec<f64> = vec![0.2];
+    let cluster_t1_values: Vec<Float> = vec![0.2];
     let cluster_t2_values: Vec<usize> = vec![20];
+    let cluster_initial_centroids_flag_values: Vec<bool> = vec![true, false];
     let cluster_similarity_values: Vec<Similarity> =
         vec![Similarity::Cosine, Similarity::JacardTanimoto, Similarity::Overlap];
     let cluster_eta_improvement_values: Vec<Float> = vec![1E-4];
@@ -60,14 +54,15 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
         vec![Similarity::Cosine, Similarity::JacardTanimoto, Similarity::Overlap];
 
     let mut file = std::fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
+        .create(true)
+        .append(true)
         .open("grid_search_optimization_results.md")?;
 
     itertools::iproduct!(
         cluster_k_values,
         cluster_t1_values,
         cluster_t2_values,
+        cluster_initial_centroids_flag_values,
         cluster_similarity_values,
         cluster_eta_improvement_values,
         cluster_ssdcf_values,
@@ -82,6 +77,7 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
                 cluster_k,
                 cluster_t1,
                 cluster_t2,
+                cluster_initial_centroids_flag,
                 cluster_similarity,
                 cluster_eta_improvement_value,
                 cluster_ssdcf,
@@ -89,24 +85,38 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
                 search_similarity,
             ),
         )| {
-            let print = format!("## Entry {id}\nclustering parameters: (k={cluster_k}, t1={cluster_t1}, t2={cluster_t2}, sim={cluster_similarity:?}, η={cluster_eta_improvement_value:.4E}, ssdcf={cluster_ssdcf:.3})\nsearch parameters: (k={search_k}, sim={search_similarity:?})");
-            let _ = file.write_all(print.as_bytes()).inspect_err(|e| {eprintln!("{e}")});
-            println!("{print}");
+            const ID_TO_START_AT: usize = 0;
+            #[allow(clippy::absurd_extreme_comparisons)]
+            if id < ID_TO_START_AT {
+                return;
+            }
 
-            let results = single(cluster_k, cluster_t1, cluster_t2, cluster_similarity, cluster_eta_improvement_value, cluster_ssdcf, search_k, search_similarity);
+            let print = format!("## Entry {id}\nclustering parameters: (k={cluster_k}, t1={cluster_t1}, t2={cluster_t2}, ic={cluster_initial_centroids_flag}, sim={cluster_similarity:?}, η={cluster_eta_improvement_value:.4E}, ssdcf={cluster_ssdcf:.3})\nsearch parameters: (k={search_k}, sim={search_similarity:?})\n");
+            let _ = file.write_all(print.as_bytes()).inspect_err(|e| {eprintln!("File issue: {e}")});
+            print!("{print}");
+
+            let panic_results = catch_unwind(|| single(cluster_k, cluster_t1, cluster_t2, cluster_initial_centroids_flag, cluster_similarity, cluster_eta_improvement_value, cluster_ssdcf, search_k, search_similarity));
+
+            let results = match panic_results {
+                Ok(results) => results,
+                Err(_) => {
+                    println!("PANIC OCCURED\n");
+                    let _ = file.write_all(b"PANIC OCCURED\n").inspect_err(|e| {eprintln!("File issue: {e}")});
+                    return;
+                }
+            };
 
             match results {
                 Ok(output) => {
                     println!("{output}");
-                    let _ = file.write_all(output.as_bytes()).inspect_err(|e| {eprintln!("{e}")});
+                    let _ = file.write_all(output.as_bytes()).inspect_err(|e| {eprintln!("File issue: {e}")});
+                    let _ = file.sync_data().inspect_err(|e| {eprintln!("File sync failed: {e}")});
                 },
                 Err(e) => {
                     eprintln!("Error occured: {e}\n\n");
-                    let _ = writeln!(&mut file, "Error occured: {e}\n\n").inspect_err(|e| {eprintln!("{e}")});
+                    let _ = writeln!(&mut file, "Error occured: {e}\n\n").inspect_err(|e| {eprintln!("File issue: {e}")});
                 }
             }
-
-
         }
     );
 
@@ -117,8 +127,9 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
 fn single(
     //
     cluster_k: usize,
-    cluster_t1: f64,
+    cluster_t1: Float,
     cluster_t2: usize,
+    cluster_initial_centroids_flag: bool,
     cluster_similarity: Similarity,
     cluster_eta_improvement_value: Float,
     cluster_ssdcf: Float,
@@ -128,20 +139,8 @@ fn single(
 ) -> anyhow::Result<String> {
     let cluster_simfunc = cluster_similarity.to_simfunc(true);
 
-    let cluster_params = ClusteringParameters {
-        k: cluster_k,
-        t1: cluster_t1,
-        t2: cluster_t2,
-        similarity: cluster_similarity,
-        intial_centroids: Vec::new(),
-        expected_nb_of_clusters: 4,
-        eta_improvement: cluster_eta_improvement_value,
-        nb_iters_max: NB_ITERS_MAX,
-        silhouette_std_deviation_cutoff_factor: cluster_ssdcf,
-    };
-
     // gather compute trees
-    let mut rng = rand::rngs::StdRng::try_from_os_rng()?;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(0);
 
     let ttcompute_vec = TREE_FILEPATHS
         .iter()
@@ -151,7 +150,7 @@ fn single(
                 cluster_k,
                 search_k,
                 REPR_SAMPLES,
-                3,
+                NB_BOOTSTRAP_RESAMPLES,
                 CACHE_OPT,
                 &mut rng,
                 None,
@@ -162,12 +161,31 @@ fn single(
     let mut total_score: f64 = 0.0;
     let mut output: String = String::new();
 
+    let cluster_intial_centroids = if cluster_initial_centroids_flag {
+        ttcompute_vec
+            .iter()
+            .map(TaxTreeCompute::get_kmer_normalized_counts_fingerprint)
+            .cloned()
+            .collect_vec()
+    } else {
+        Vec::new()
+    };
+
+    let cluster_params = ClusteringParameters {
+        k: cluster_k,
+        t1: cluster_t1,
+        t2: cluster_t2,
+        similarity: cluster_similarity,
+        intial_centroids: cluster_intial_centroids,
+        expected_nb_of_clusters: NB_CLUSTERS,
+        eta_improvement: cluster_eta_improvement_value,
+        nb_iters_max: NB_ITERS_MAX,
+        silhouette_std_deviation_cutoff_factor: cluster_ssdcf,
+    };
+
     for (expected_species, filepath) in INPUTS.into_iter() {
         let expected_genus = expected_species.split_once(" ").unwrap().0;
         let myrseqs = myrio_core::io::read_fastq_from_file(filepath)?;
-
-        output.push_str(expected_species);
-        output.push_str(": ");
 
         #[rustfmt::skip]
         let (mut search_queries, mut match_queries): (Vec<SFVec>, Vec<SFVec>) =
@@ -177,14 +195,14 @@ fn single(
                 .map(|myrseqs| {
                     let search_elements = myrseqs
                         .iter()
-                        .map(|myrseq| myrseq.compute_sparse_kmer_counts(search_k, cluster_t1).0)
+                        .map(|myrseq| myrseq.compute_kmer_counts(search_k, cluster_t1).0)
                         .collect_vec();
                     let search_queries =
                         myrio_core::clustering::compute_cluster_centroid(&search_elements);
 
                     let match_elements = myrseqs
                         .iter()
-                        .map(|myrseq| myrseq.compute_sparse_kmer_counts(cluster_k, cluster_t1).0)
+                        .map(|myrseq| myrseq.compute_kmer_counts(cluster_k, cluster_t1).0)
                         .collect_vec();
                     let match_queries =
                         myrio_core::clustering::compute_cluster_centroid(&match_elements);
@@ -193,16 +211,21 @@ fn single(
                 })
                 .multiunzip();
 
-        for ttcompute in ttcompute_vec.iter() {
-            let query_idx = match_queries
-                .iter()
-                .enumerate()
-                .max_by_key(|(_, q)| cluster_simfunc(ttcompute.get_kmer_normalized_counts_fingerprint(), q))
-                .unwrap()
-                .0;
-
-            let query = search_queries.remove(query_idx);
-            match_queries.remove(query_idx);
+        for (idx, ttcompute) in ttcompute_vec.iter().enumerate() {
+            let query = if cluster_initial_centroids_flag {
+                search_queries[idx].clone()
+            } else {
+                let query_idx = match_queries
+                    .iter()
+                    .enumerate()
+                    .max_by_key(|(_, q)| {
+                        cluster_simfunc(ttcompute.get_kmer_normalized_counts_fingerprint(), q)
+                    })
+                    .unwrap()
+                    .0;
+                match_queries.remove(query_idx);
+                search_queries.remove(query_idx)
+            };
 
             let ttresults_best =
                 TaxTreeResults::from_compute_tree(query, ttcompute.clone(), search_similarity, None)?.cut(5);
@@ -223,38 +246,42 @@ fn single(
                 .map(|leaf| &*leaf.name)
                 .collect_vec();
 
-            println!("{}{best_genus}\n{best_species_vec:?}\n", ttresults_best.core);
+            //println!("{}\nbest genus = {best_genus}\nbest species = {best_species_vec:?}\n", ttresults_best.core);
 
             let mut score: f64 = 0.0;
 
-            output += "(";
+            if idx == 0 {
+                output += &format!("{expected_species:<20}:  ");
+            }
+
+            output += "( ";
             output += &ttresults_best.core.gene;
-            output += " ";
+            output += " | ";
 
             if best_genus == expected_genus {
                 score += 1.0;
-                output.push_str("✅g ");
+                output.push_str("genus:✅ | ");
             } else {
-                output.push_str("❌g ");
+                output.push_str("genus:❌ | ");
             }
 
             if best_species_vec[0] == expected_species {
                 score += 2.0;
-                output.push_str("👑s) ");
+                output.push_str("species:🥇 ) ");
             } else if best_species_vec[0..3].contains(&expected_species) {
                 score += 1.0;
-                output.push_str("3️⃣s) ");
+                output.push_str("species:🥈 ) ");
             } else if best_species_vec.contains(&expected_genus) {
                 score += 0.5;
-                output.push_str("5️⃣s) ");
+                output.push_str("species:🥉 ) ");
             } else {
-                output.push_str("❌s) ");
+                output.push_str("species:❌ ) ");
             }
 
             total_score += score;
         }
+
         output.push('\n');
-        println!("{output}");
     }
 
     output += &format!("=> score = {total_score}\n\n");

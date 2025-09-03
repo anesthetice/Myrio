@@ -49,12 +49,12 @@ fn sparse_cosine(bencher: Bencher) {
     let mut rng = rand::rngs::SmallRng::seed_from_u64(SEED);
     let a: SFVec = black_box(
         MyrSeq::create("a", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_sparse_kmer_counts(K, 0.0)
+            .compute_kmer_counts(K, 0.0)
             .0,
     );
     let b: SFVec = black_box(
         MyrSeq::create("b", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_sparse_kmer_counts(K, 0.0)
+            .compute_kmer_counts(K, 0.0)
             .0,
     );
 
@@ -99,12 +99,12 @@ fn sparse_overlap(bencher: Bencher) {
     let mut rng = rand::rngs::SmallRng::seed_from_u64(SEED);
     let a: SFVec = black_box(
         MyrSeq::create("a", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_sparse_kmer_counts(K, 0.0)
+            .compute_kmer_counts(K, 0.0)
             .0,
     );
     let b: SFVec = black_box(
         MyrSeq::create("b", None, &Generator::generate_core_sequence(LENGTH, &mut rng), &vec![1; LENGTH])
-            .compute_sparse_kmer_counts(K, 0.0)
+            .compute_kmer_counts(K, 0.0)
             .0,
     );
 

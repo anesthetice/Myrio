@@ -14,14 +14,15 @@ use bio_seq::prelude::*;
 use indicatif::{MultiProgress, ParallelProgressIterator};
 use itertools::Itertools;
 use once_cell::unsync::OnceCell;
+use rand::{SeedableRng, rngs::SmallRng};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
-    data::SFVec,
+    data::{Float, SFVec, SparseVec},
     tax::{
         Error,
         clade::{self, Rank},
-        compute_sparse_kmer_counts_for_fasta_seq,
+        compute_kmer_counts_for_fasta_seq, compute_kmer_store_counts_for_fasta_seq,
         core::{Leaf, Node, TaxTreeCore},
     },
 };
@@ -29,15 +30,15 @@ use crate::{
 #[derive(Encode, Decode)]
 pub struct StorePayload {
     pub(crate) seq: Seq<Iupac>,
-    pub(crate) kmer_counts_vec: Vec<SFVec>,
+    pub(crate) kmer_store_counts_vec: Vec<(SparseVec<u16>, Float)>,
 }
 
 impl StorePayload {
     fn new(
         seq: Seq<Iupac>,
-        kmer_counts_vec: Vec<SFVec>,
+        kmer_store_counts_vec: Vec<(SparseVec<u16>, Float)>,
     ) -> Self {
-        Self { seq, kmer_counts_vec }
+        Self { seq, kmer_store_counts_vec }
     }
 }
 
@@ -140,7 +141,7 @@ impl TaxTreeStore {
         store_filepath: PathBuf,
         gene: impl ToString,
         // the first element is the list of `k` for which to pre-compute sparse k-mer counts,
-        // the second element is the `max_consecutive_N_before_cutoff` parameter
+        // the second element is the `nb_bootstrap_resamples` parameter
         pre_compute_kmer_counts: Option<(&[usize], usize)>,
     ) -> Result<Self, Error> {
         /// Phylogenetic rank name stack (i.e., 'species' is at the top of the stack (end of vector), and 'domain' is at the bottom of the stack (start of vector))
@@ -263,17 +264,15 @@ impl TaxTreeStore {
 
         spinner.finish();
 
-        if let Some((k_values, max_consecutive_N_before_gap)) = pre_compute_kmer_counts {
+        if let Some((k_values, nb_bootstrap_resamples)) = pre_compute_kmer_counts {
             let mut tax_tree_store = Self {
                 core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
                 filepath: store_filepath,
-                k_precomputed: pre_compute_kmer_counts
-                    .map(|(k_values, _)| k_values.into())
-                    .unwrap_or_default(),
+                k_precomputed: k_values.to_vec(),
             };
 
             for &k in k_values {
-                tax_tree_store.compute_and_append_kmer_counts(k, max_consecutive_N_before_gap, None)
+                tax_tree_store.compute_and_append_kmer_counts(k, nb_bootstrap_resamples, None)
             }
 
             Ok(tax_tree_store)
@@ -281,9 +280,7 @@ impl TaxTreeStore {
             Ok(Self {
                 core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
                 filepath: store_filepath,
-                k_precomputed: pre_compute_kmer_counts
-                    .map(|(k_values, _)| k_values.into())
-                    .unwrap_or_default(),
+                k_precomputed: Vec::new(),
             })
         }
     }
@@ -300,35 +297,53 @@ impl TaxTreeStore {
     }
 
     pub fn shrink(&mut self) {
-        self.core.payloads.iter_mut().for_each(|sp| sp.kmer_counts_vec.clear());
+        self.core.payloads.iter_mut().for_each(|sp| sp.kmer_store_counts_vec.clear());
         self.k_precomputed.clear();
     }
 
     pub(crate) fn compute_and_append_kmer_counts(
         &mut self,
         k: usize,
-        max_consecutive_N_before_gap: usize,
+        nb_bootstrap_resamples: usize,
         multi: Option<&indicatif::MultiProgress>,
     ) {
-        let pb = crate::utils::simple_progressbar(self.core.payloads.len(), format!("for k={k}"), multi);
+        let pb = crate::utils::simple_progressbar(
+            self.core.payloads.len(),
+            format!("computing counts for k={k}"),
+            multi,
+        );
         self.core.payloads.par_iter_mut().progress_with(pb).for_each(|sp| {
-            let kmer_counts =
-                compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap);
-            sp.kmer_counts_vec.push(kmer_counts);
+            let kmer_counts = compute_kmer_store_counts_for_fasta_seq(
+                &sp.seq,
+                k,
+                nb_bootstrap_resamples,
+                true,
+                &mut SmallRng::from_os_rng(),
+            );
+            sp.kmer_store_counts_vec.push(kmer_counts);
         });
     }
 
     pub(crate) fn compute_and_overwrite_kmer_counts(
         &mut self,
         k: usize,
-        max_consecutive_N_before_gap: usize,
+        nb_bootstrap_resamples: usize,
         multi: Option<&indicatif::MultiProgress>,
     ) {
-        let pb = crate::utils::simple_progressbar(self.core.payloads.len(), format!("for k={k}"), multi);
+        let pb = crate::utils::simple_progressbar(
+            self.core.payloads.len(),
+            format!("computing counts for k={k}"),
+            multi,
+        );
         self.core.payloads.par_iter_mut().progress_with(pb).for_each(|sp| {
-            let kmer_counts =
-                compute_sparse_kmer_counts_for_fasta_seq(&sp.seq, k, max_consecutive_N_before_gap);
-            let pre_comp = &mut sp.kmer_counts_vec;
+            let kmer_counts = compute_kmer_store_counts_for_fasta_seq(
+                &sp.seq,
+                k,
+                nb_bootstrap_resamples,
+                true,
+                &mut SmallRng::from_os_rng(),
+            );
+            let pre_comp = &mut sp.kmer_store_counts_vec;
             *pre_comp = vec![kmer_counts]
         });
     }

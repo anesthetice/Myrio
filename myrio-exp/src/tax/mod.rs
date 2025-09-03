@@ -34,7 +34,7 @@ pub fn basic_test() -> anyhow::Result<()> {
             let seq: Seq<DnaCodec> = Seq::from_str(&l2).with_context(|| line_idx.to_string()).unwrap();
             let len = seq.len();
             let mseq = MyrSeq::new(id, desc, seq, vec![1; len]);
-            let kmer_counts = mseq.compute_sparse_kmer_counts(K, 0.0).0;
+            let kmer_counts = mseq.compute_kmer_counts(K, 0.0).0;
             (mseq.id, mseq.description, kmer_counts)
         })
         .collect_vec();

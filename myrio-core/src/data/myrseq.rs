@@ -73,10 +73,10 @@ impl MyrSeq {
     }
 
     /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `f64` values which correspond to the weighted number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are used.
-    pub fn compute_sparse_kmer_counts(
+    pub fn compute_kmer_counts(
         &self,
         k: usize,
-        cutoff: f64,
+        cutoff: Float,
     ) -> (SFVec, usize) {
         let conf_score_per_kmer = self
             .quality
@@ -84,11 +84,11 @@ impl MyrSeq {
             .map(|q| Q_TO_BP_CALL_CORRECT_PROB_MAP[*q as usize])
             .collect_vec()
             .windows(k)
-            .map(|vals| vals.iter().product::<f64>())
+            .map(|vals| vals.iter().product::<Float>())
             .collect_vec();
 
         let mut nb_hck: usize = 0; // number of high-confidence k-mers
-        let mut pairs: Vec<(usize, Float)> = Vec::new();
+        let mut singles: Vec<usize> = Vec::new();
 
         macro_rules! body {
             ($seq:expr, $K:expr) => {{
@@ -96,18 +96,27 @@ impl MyrSeq {
                 for (idx, (kmer, kmer_rc)) in $seq.kmers::<$K>().zip_eq($seq.to_revcomp().kmers::<$K>()).enumerate() {
                     // Note: `kmer_rc` is not the reverse complement of `kmer`, it's the `idx`-th k-mer of the reverse complement of the sequence.
                     if conf_score_per_kmer[idx] > cutoff {
-                        pairs.push((usize::from(&kmer), 1.0));
+                        singles.push(usize::from(&kmer));
                         nb_hck += 1;
                     }
                     if conf_score_per_kmer[nb_kmers - 1 - idx] > cutoff {
-                        pairs.push((usize::from(&kmer_rc), 1.0));
+                        singles.push(usize::from(&kmer_rc));
                         nb_hck += 1;
                     }
                 }
             }};
         }
         gen_match_k_sparse!(self.sequence);
-        (SFVec::from_unsorted_pairs(pairs, 4_usize.pow(k as u32), 0.0), nb_hck)
+        (SFVec::from_unsorted_singles(singles, 1.0, 4_usize.pow(k as u32), 0.0), nb_hck)
+    }
+
+    pub fn pre_process(
+        input: Vec<MyrSeq>,
+        min_mean_qual: Float,
+        max_qual: usize,
+        min_length: usize,
+    ) -> Vec<MyrSeq> {
+        todo!()
     }
 
     pub fn encode_vec<W: std::io::Write>(

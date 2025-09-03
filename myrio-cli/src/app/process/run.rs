@@ -2,6 +2,7 @@ use indicatif::MultiProgress;
 use itertools::Itertools;
 use myrio_core::{
     clustering::ClusteringParameters,
+    data::Float,
     similarity::{SimFunc, Similarity},
     tax::{
         compute::{CacheOptions, TaxTreeCompute},
@@ -20,11 +21,11 @@ pub fn process_run(
     let tree_filepaths = gather_trees(&mut mat, "trees")?;
 
     const K_CLUSTER: usize = 6;
-    const K_SEARCH: usize = 18;
+    const K_SEARCH: usize = 19;
     const REPR_SAMPLES: usize = 500;
     const CACHE_OPT: CacheOptions = CacheOptions::Disabled;
 
-    const T1: f64 = 0.2;
+    const T1: Float = 0.2;
     const T2: usize = 5;
     const SIMILARITY: Similarity = Similarity::JacardTanimoto;
 
@@ -46,7 +47,7 @@ pub fn process_run(
                 K_CLUSTER,
                 K_SEARCH,
                 REPR_SAMPLES,
-                config.fasta_expansion_max_consecutive_N_before_gap,
+                config.nb_bootstrap_resamples,
                 CACHE_OPT,
                 &mut rng,
                 Some(&multi),
@@ -93,14 +94,13 @@ pub fn process_run(
 
     // The nice "default way" where we can use cluster centroids
     if !mat.get_flag("no-initial-centroids") {
-        println!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         let queries = myrio_core::clustering::cluster(myrseqs, params)
             .clusters
             .into_iter()
             .map(|myrseqs| {
                 let elements = myrseqs
                     .into_iter()
-                    .map(|myrseq| myrseq.compute_sparse_kmer_counts(K_SEARCH, T1).0)
+                    .map(|myrseq| myrseq.compute_kmer_counts(K_SEARCH, T1).0)
                     .collect_vec();
                 myrio_core::clustering::compute_cluster_centroid(&elements)
             })
@@ -108,7 +108,7 @@ pub fn process_run(
 
         spinner.finish_with_message("Finished clustering");
 
-        for (ttcompute, query) in ttcompute_vec.into_iter().zip_eq(queries) {
+        for (ttcompute, query) in ttcompute_vec.into_iter().zip(queries) {
             let ttresults_best =
                 TaxTreeResults::from_compute_tree(query, ttcompute.clone(), SIMILARITY, None)?.cut(5);
             println!("{}", ttresults_best.core);
@@ -122,14 +122,14 @@ pub fn process_run(
                 .map(|myrseqs| {
                     let search_elements = myrseqs
                         .iter()
-                        .map(|myrseq| myrseq.compute_sparse_kmer_counts(K_SEARCH, T1).0)
+                        .map(|myrseq| myrseq.compute_kmer_counts(K_SEARCH, T1).0)
                         .collect_vec();
                     let search_queries =
                         myrio_core::clustering::compute_cluster_centroid(&search_elements);
 
                     let match_elements = myrseqs
                         .iter()
-                        .map(|myrseq| myrseq.compute_sparse_kmer_counts(K_CLUSTER, T1).0)
+                        .map(|myrseq| myrseq.compute_kmer_counts(K_CLUSTER, T1).0)
                         .collect_vec();
                     let match_queries =
                         myrio_core::clustering::compute_cluster_centroid(&match_elements);

@@ -120,6 +120,10 @@ where
         self.keys.iter().zip_eq(self.values.iter())
     }
 
+    pub fn iter_owned(self) -> impl Iterator<Item = (usize, T)> {
+        self.keys.into_iter().zip_eq(self.values)
+    }
+
     pub fn keys(&self) -> impl Iterator<Item = &usize> {
         self.keys.iter()
     }
@@ -147,6 +151,20 @@ where
     {
         op(&mut self.sval);
         self.values.iter_mut().for_each(op);
+    }
+
+    pub fn apply_into<F, O>(
+        self,
+        op: F,
+    ) -> SparseVec<O>
+    where
+        F: Fn(T) -> O,
+        O: Debug + Clone + Copy + Default + PartialOrd,
+    {
+        let sval = op(self.sval);
+        unsafe {
+            SparseVec::new_unchecked(self.keys, self.values.into_iter().map(op).collect_vec(), self.dim, sval)
+        }
     }
 
     pub fn merge_and_apply<F, O>(
@@ -220,7 +238,9 @@ where
 
             // tell Vec how many elements we actually wrote
             ck.set_len(written);
+            ck.shrink_to_fit();
             cv.set_len(written);
+            cv.shrink_to_fit();
         }
         let dim = self.dim.max(other.dim);
         let sval = op(asval, bsval);
@@ -233,6 +253,54 @@ impl<T> SparseVec<T>
 where
     T: Debug + Clone + Copy + Default + PartialOrd + AddAssign,
 {
+    /// The input `singles` represents a long vector of unsorted keys (with duplicates)
+    pub fn from_unsorted_singles(
+        mut singles: Vec<usize>,
+        value: T,
+        dim: usize,
+        sval: T,
+    ) -> Self {
+        singles.sort_unstable();
+        let capacity = singles.len();
+
+        let mut keys: Vec<usize> = Vec::with_capacity(capacity);
+        let mut values: Vec<T> = Vec::with_capacity(capacity);
+
+        if capacity == 0 {
+            return Self { keys, values, dim, sval };
+        }
+
+        unsafe {
+            let k_ptr: *mut usize = keys.as_mut_ptr();
+            let v_ptr: *mut T = values.as_mut_ptr();
+
+            let mut idx: usize = 0;
+
+            let mut prev_key = *singles.get_unchecked(0);
+            k_ptr.write(prev_key);
+            let mut val_to_write: T = value;
+
+            singles.into_iter().skip(1).for_each(|key| {
+                if prev_key != key {
+                    v_ptr.add(idx).write(val_to_write);
+                    idx += 1;
+                    k_ptr.add(idx).write(key);
+                    val_to_write = value;
+                    prev_key = key;
+                } else {
+                    val_to_write += value;
+                }
+            });
+            v_ptr.add(idx).write(val_to_write);
+            keys.set_len(idx + 1);
+            keys.shrink_to_fit();
+            values.set_len(idx + 1);
+            values.shrink_to_fit();
+        }
+
+        Self { keys, values, dim, sval }
+    }
+
     pub fn from_unsorted_pairs(
         mut pairs: Vec<(usize, T)>,
         dim: usize,
@@ -270,9 +338,9 @@ where
             });
             v_ptr.add(idx).write(val_to_write);
             keys.set_len(idx + 1);
-            //keys.shrink_to_fit();
+            keys.shrink_to_fit();
             values.set_len(idx + 1);
-            //values.shrink_to_fit();
+            values.shrink_to_fit();
         }
 
         Self { keys, values, dim, sval }
@@ -544,6 +612,20 @@ mod test {
         assert_float_eq!(c[2], 4.0);
         assert_float_eq!(c[3], 6.0);
         assert_float_eq!(c[4], 5.0);
+    }
+
+    #[test]
+    fn from_unsorted_test() {
+        let pairs: Vec<(usize, i32)> = vec![(10, 1), (2, 4), (1, 1), (10, 7), (10, 2), (3, 9)];
+        let sfvec = SparseVec::from_unsorted_pairs(pairs, 100, 0);
+        let sfvec_expected =
+            unsafe { SparseVec::new_unchecked(vec![1, 2, 3, 10], vec![1, 4, 9, 10], 100, 0) };
+        assert_eq!(sfvec, sfvec_expected);
+
+        let singles: Vec<usize> = vec![5, 5, 3, 1, 5, 3, 3, 2, 1, 2, 2];
+        let sfvec = SparseVec::from_unsorted_singles(singles, 1, 100, 0);
+        let sfvec_expected = unsafe { SparseVec::new_unchecked(vec![1, 2, 3, 5], vec![2, 3, 3, 3], 100, 0) };
+        assert_eq!(sfvec, sfvec_expected);
     }
 
     #[test]

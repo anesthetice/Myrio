@@ -9,7 +9,7 @@ pub mod tax;
 // Imports
 use bio_seq::prelude::*;
 use itertools::Itertools;
-use myrio_core::data::MyrSeq;
+use myrio_core::data::{Float, MyrSeq};
 use myrio_proc::gen_match_k_dense;
 
 pub type DFArray = ndarray::Array1<f64>;
@@ -21,7 +21,7 @@ pub const K_DENSE_VALID_RANGE_ERROR_MSG: &str =
 pub fn compute_dense_kmer_counts(
     myrseq: &MyrSeq,
     k: usize,
-    cutoff: f64,
+    cutoff: Float,
 ) -> (DFArray, usize) {
     let conf_score_per_kmer = myrseq
         .quality
@@ -29,7 +29,7 @@ pub fn compute_dense_kmer_counts(
         .map(|q| myrio_core::constants::Q_TO_BP_CALL_CORRECT_PROB_MAP[*q as usize])
         .collect_vec()
         .windows(k)
-        .map(|vals| vals.iter().product::<f64>())
+        .map(|vals| vals.iter().product::<Float>())
         .collect_vec();
 
     macro_rules! body {

@@ -40,9 +40,8 @@ fn process_tree_new(
         })?;
 
     let pre_compute_k_values: Option<Vec<usize>> = mat.remove_many("pre-compute").map(|vals| vals.collect());
-    let pre_compute_kcounts = pre_compute_k_values
-        .as_deref()
-        .map(|k_values| (k_values, config.fasta_expansion_max_consecutive_N_before_gap));
+    let pre_compute_kcounts =
+        pre_compute_k_values.as_deref().map(|k_values| (k_values, config.nb_bootstrap_resamples));
 
     let tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
 

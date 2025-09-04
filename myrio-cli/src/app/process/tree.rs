@@ -45,7 +45,7 @@ fn process_tree_new(
 
     let tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
 
-    tree.encode_to_file(config.zstd_compression_level, config.zstd_multithreading_opt, None)?;
+    tree.encode_to_file(config.zstd_compression_level, None)?;
 
     Ok(())
 }
@@ -58,7 +58,7 @@ fn process_tree_shrink(
     for filepath in tree_filepaths.into_iter() {
         let mut ttstore = TaxTreeStore::decode_from_file(&filepath)?;
         ttstore.shrink();
-        ttstore.encode_to_file(config.zstd_compression_level, config.zstd_multithreading_opt, None)?;
+        ttstore.encode_to_file(config.zstd_compression_level, None)?;
     }
     Ok(())
 }

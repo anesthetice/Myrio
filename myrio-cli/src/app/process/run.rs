@@ -1,3 +1,5 @@
+use std::ops::{Div, DivAssign};
+
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use myrio_core::{
@@ -109,8 +111,25 @@ pub fn process_run(
         spinner.finish_with_message("Finished clustering");
 
         for (ttcompute, query) in ttcompute_vec.into_iter().zip(queries) {
-            let ttresults_best =
-                TaxTreeResults::from_compute_tree(query, ttcompute.clone(), SIMILARITY, None)?.cut(5);
+            let ttresults_full =
+                TaxTreeResults::from_compute_tree(query, ttcompute.clone(), SIMILARITY, None)?;
+
+            /*
+            use std::io::Write;
+            let mut file =
+                std::fs::OpenOptions::new().write(true).create(true).truncate(true).open("./output.txt")?;
+            writeln!(file, "{ttresults_full}")?;
+            file.sync_all()?;
+            drop(file);
+            break;
+            */
+
+            let mut ttresults_best = ttresults_full.cut(10);
+
+            ttresults_best.core.payloads.iter_mut().for_each(|a| *a = a.exp().try_into().unwrap());
+            let sum = ttresults_best.core.payloads.iter().map(|s| **s).sum::<Float>();
+            ttresults_best.core.payloads.iter_mut().for_each(|a| *a = a.div(sum).try_into().unwrap());
+
             println!("{}", ttresults_best.core);
         }
     } else {

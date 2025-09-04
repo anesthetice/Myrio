@@ -20,7 +20,7 @@ pub struct TaxTreeCompute {
 }
 
 pub enum CacheOptions {
-    Enabled { zstd_compression_level: i32, zstd_multithreading_opt: Option<u32> },
+    Enabled { zstd_compression_level: i32 },
     Disabled,
 }
 
@@ -61,9 +61,9 @@ impl TaxTreeCompute {
             .position(|k| k_search == k)
             .map_or_else(
                 || match cache_opt {
-                    CacheOptions::Enabled { zstd_compression_level, zstd_multithreading_opt } => {
+                    CacheOptions::Enabled { zstd_compression_level } => {
                         store.compute_and_append_kmer_counts(k_search, nb_bootstrap_resamples, multi);
-                        store.encode_to_file(zstd_compression_level, zstd_multithreading_opt, multi)?;
+                        store.encode_to_file(zstd_compression_level, multi)?;
                         Ok::<usize, Error>(store.k_precomputed.len())
                     },
                     CacheOptions::Disabled => {

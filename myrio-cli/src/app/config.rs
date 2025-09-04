@@ -3,12 +3,23 @@ use std::io::{Read, Write};
 use serde::{Deserialize, Serialize};
 
 #[allow(non_snake_case)]
-#[derive(Debug, Clone, Deserialize)]
-#[serde(from = "ConfigPrecursor")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub zstd_compression_level: i32,
-    pub zstd_multithreading_opt: Option<u32>,
     pub nb_bootstrap_resamples: usize,
+    pub cluster_k_default: usize,
+    pub search_k_default: usize,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            zstd_compression_level: 9,
+            nb_bootstrap_resamples: 32,
+            cluster_k_default: 6,
+            search_k_default: 18,
+        }
+    }
 }
 
 impl Config {
@@ -17,9 +28,9 @@ impl Config {
             Ok(config) => config,
             Err(err) => {
                 eprintln!("Warning: failed to load configuration from file, '{err}'");
-                let config = ConfigPrecursor::default();
+                let config = Config::default();
                 let Ok(downcast_error) = err.downcast::<std::io::Error>() else {
-                    return config.into();
+                    return config;
                 };
                 if downcast_error.kind() == std::io::ErrorKind::NotFound {
                     match config.to_file(filepath) {
@@ -34,7 +45,7 @@ impl Config {
                         ),
                     }
                 }
-                config.into()
+                config
             }
         }
     }
@@ -46,55 +57,16 @@ impl Config {
             .read(true)
             .open(filepath)?
             .read_to_end(&mut buffer)?;
-        Ok(ijson::from_value(&serde_json::from_slice(&buffer)?)?)
+        Ok(toml::from_slice(&buffer)?)
     }
-}
 
-impl From<ConfigPrecursor> for Config {
-    fn from(value: ConfigPrecursor) -> Self {
-        let zstd_multithreading_opt = if value.zstd_multithreading_flag {
-            match std::thread::available_parallelism() {
-                Ok(num) => Some(usize::from(num) as u32),
-                Err(e) => {
-                    eprintln!("Failed to get available parallelism for zstd, {e}");
-                    None
-                }
-            }
-        } else {
-            None
-        };
-        Self {
-            zstd_compression_level: value.zstd_compression_level,
-            zstd_multithreading_opt,
-            nb_bootstrap_resamples: value.nb_bootstrap_resamples,
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default, rename = "config")]
-pub struct ConfigPrecursor {
-    pub zstd_compression_level: i32,
-    pub zstd_multithreading_flag: bool,
-    pub nb_bootstrap_resamples: usize,
-}
-
-impl Default for ConfigPrecursor {
-    fn default() -> Self {
-        Self { zstd_compression_level: 15, zstd_multithreading_flag: true, nb_bootstrap_resamples: 32 }
-    }
-}
-
-impl ConfigPrecursor {
     fn to_file(
         &self,
         filepath: &std::path::Path,
     ) -> anyhow::Result<()> {
         let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(filepath)?;
-
-        file.write_all(&serde_json::to_vec_pretty(&ijson::to_value(self)?)?)?;
-        file.flush()?;
+        file.write_all(toml::to_string_pretty(&self)?.as_bytes())?;
+        file.sync_all()?;
         Ok(())
     }
 }

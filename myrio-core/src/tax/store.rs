@@ -56,13 +56,9 @@ impl TaxTreeStore {
     pub fn encode<W: std::io::Write>(
         &self,
         zstd_compression_level: i32,
-        zstd_multithreading_opt: Option<u32>,
         output: W,
     ) -> Result<W, Error> {
         let mut encoder = zstd::Encoder::new(output, zstd_compression_level)?;
-        if let Some(n_workers) = zstd_multithreading_opt {
-            encoder.multithread(n_workers)?;
-        }
         bincode::encode_into_std_write(self, &mut encoder, Self::BINCODE_CONFIG)?;
         encoder.finish().map_err(Error::from)
     }
@@ -70,7 +66,6 @@ impl TaxTreeStore {
     pub fn encode_to_file(
         &self,
         zstd_compression_level: i32,
-        zstd_multithreading_opt: Option<u32>,
         multi: Option<&MultiProgress>,
     ) -> Result<(), Error> {
         let spinner = crate::utils::simple_spinner(
@@ -84,7 +79,6 @@ impl TaxTreeStore {
         );
         let file = self.encode(
             zstd_compression_level,
-            zstd_multithreading_opt,
             std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(&self.filepath)?,
         )?;
         file.sync_all()?;

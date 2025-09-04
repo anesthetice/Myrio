@@ -29,7 +29,7 @@ impl App {
             })?;
         }
 
-        let config = config::Config::load(&_conf_dir.join("myrio.conf.json"));
+        let config = config::Config::load(&_conf_dir.join("myrio.conf.toml"));
 
         Ok(Self { config })
     }

@@ -348,6 +348,51 @@ where
 }
 
 impl SparseVec<Float> {
+    pub fn dot_zero(
+        &self,
+        rhs: &Self,
+    ) -> Float {
+        let (ak, av, bk, bv): (&[usize], &[Float], &[usize], &[Float]) = {
+            if self.count() <= rhs.count() {
+                (&self.keys, &self.values, &rhs.keys, &rhs.values)
+            } else {
+                (&rhs.keys, &rhs.values, &self.keys, &self.values)
+            }
+        };
+
+        let mut dot_product: Float = 0.0;
+
+        unsafe {
+            let mut i: usize = 0;
+            let mut j: usize = 0;
+
+            'outer: while i < ak.len() {
+                let ak_i = ak.get_unchecked(i);
+
+                'inner: loop {
+                    if j >= bk.len() {
+                        break 'outer;
+                    }
+                    let bk_j = bk.get_unchecked(j);
+                    match bk_j.cmp(ak_i) {
+                        Ordering::Less => {
+                            j += 1;
+                            continue 'inner;
+                        }
+                        Ordering::Equal => {
+                            dot_product += av.get_unchecked(i) * bv.get_unchecked(j);
+                            j += 1;
+                            break 'inner;
+                        }
+                        Ordering::Greater => break 'inner,
+                    }
+                }
+                i += 1;
+            }
+        }
+        dot_product
+    }
+
     pub fn sum(&self) -> Float {
         self.values.iter().sum1::<Float>().unwrap_or_default() + self.sval * self.nb_sparse() as Float
     }
@@ -635,5 +680,20 @@ mod test {
         assert_float_eq!(sfvec.sum(), 18.0);
         assert_float_eq!(sfvec.mean(), 18.0 / 5.0);
         assert_float_eq!(sfvec.norm_l2(), 80_f32.sqrt())
+    }
+
+    #[test]
+    fn dot_zero_test() {
+        let lhs = unsafe { SFVec::new_unchecked(vec![1, 3, 5], vec![1.0; 3], 0, 0.0) };
+        let rhs = unsafe { SFVec::new_unchecked(vec![1, 2, 3, 4, 5], vec![1.0; 5], 0, 0.0) };
+        assert_eq!(lhs.dot_zero(&rhs), 3.0);
+
+        let lhs = unsafe { SFVec::new_unchecked(vec![10], vec![1.0], 0, 0.0) };
+        let rhs = unsafe { SFVec::new_unchecked(vec![1, 2, 3, 4, 5], vec![1.0; 5], 0, 0.0) };
+        assert_eq!(lhs.dot_zero(&rhs), 0.0);
+
+        let lhs = unsafe { SFVec::new_unchecked(vec![4, 8], vec![1.0; 2], 0, 0.0) };
+        let rhs = unsafe { SFVec::new_unchecked(vec![1, 6, 8], vec![1.0; 3], 0, 0.0) };
+        assert_eq!(lhs.dot_zero(&rhs), 1.0);
     }
 }

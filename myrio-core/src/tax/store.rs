@@ -317,7 +317,6 @@ impl TaxTreeStore {
                 &sp.seq,
                 k,
                 nb_bootstrap_resamples,
-                true,
                 &mut SmallRng::from_os_rng(),
             );
             sp.kmer_store_counts_vec.push(kmer_counts);
@@ -340,7 +339,6 @@ impl TaxTreeStore {
                 &sp.seq,
                 k,
                 nb_bootstrap_resamples,
-                true,
                 &mut SmallRng::from_os_rng(),
             );
             let pre_comp = &mut sp.kmer_store_counts_vec;

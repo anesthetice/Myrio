@@ -30,12 +30,12 @@ rayon = { version = "1.11" }
 thiserror = { version = "2.0" }
 
 [profile.dev]
-opt-level = 1
+opt-level = 2
 
 [profile.release]
 opt-level = 3
 lto = true
-panic = "abort"
+panic = "unwind"
 strip = "symbols"
 codegen-units = 1
 

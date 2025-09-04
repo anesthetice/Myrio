@@ -52,8 +52,7 @@ fn cosine(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
-    (dot / (a.norm_l2() * b.norm_l2())).try_into().unwrap_or_default()
+    (a.dot_zero(b) / (a.norm_l2() * b.norm_l2())).try_into().unwrap_or_default()
 }
 
 #[cfg(debug_assertions)]
@@ -61,8 +60,7 @@ fn cosine(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
-    (dot / (a.norm_l2() * b.norm_l2()))
+    (a.dot_zero(b) / (a.norm_l2() * b.norm_l2()))
         .try_into()
         .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
         .unwrap_or_default()
@@ -73,7 +71,7 @@ fn cosine_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    unsafe { SimScore::new_unchecked(a.merge_and_apply(b, |x, y| x * y).sum()) }
+    unsafe { SimScore::new_unchecked(a.dot_zero(b)) }
 }
 
 #[cfg(debug_assertions)]
@@ -81,8 +79,7 @@ fn cosine_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    a.merge_and_apply(b, |x, y| x * y)
-        .sum()
+    a.dot_zero(b)
         .try_into()
         .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
         .unwrap_or_default()
@@ -93,7 +90,7 @@ fn jacard_tanimoto(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    let dot = a.dot_zero(b);
     (dot / (a.norm_l2_squared() + b.norm_l2_squared() - dot)).try_into().unwrap_or_default()
 }
 
@@ -102,7 +99,7 @@ fn jacard_tanimoto(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    let dot = a.dot_zero(b);
     (dot / (a.norm_l2_squared() + b.norm_l2_squared() - dot))
         .try_into()
         .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
@@ -114,7 +111,7 @@ fn jacard_tanimoto_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    let dot = a.dot_zero(b);
     (dot / (2.0 - dot)).try_into().unwrap_or_default()
 }
 
@@ -123,7 +120,7 @@ fn jacard_tanimoto_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.merge_and_apply(b, |x, y| x * y).sum();
+    let dot = a.dot_zero(b);
     (dot / (2.0 - dot))
         .try_into()
         .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))

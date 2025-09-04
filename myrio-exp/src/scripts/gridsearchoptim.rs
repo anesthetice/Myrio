@@ -47,9 +47,9 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
     let cluster_similarity_values: Vec<Similarity> =
         vec![Similarity::Cosine, Similarity::JacardTanimoto, Similarity::Overlap];
     let cluster_eta_improvement_values: Vec<Float> = vec![1E-4];
-    let cluster_ssdcf_values: Vec<Float> = vec![0.4, 0.8, 1.2, 1.6, 2.0, 100.0];
+    let cluster_ssdcf_values: Vec<Float> = vec![0.5, 1.0, 1.5, 3.0];
 
-    let search_k_values: Vec<usize> = vec![16, 18, 20, 22, 24, 28];
+    let search_k_values: Vec<usize> = vec![18, 20, 22, 25, 28];
     let search_similarity_values: Vec<Similarity> =
         vec![Similarity::Cosine, Similarity::JacardTanimoto, Similarity::Overlap];
 
@@ -85,7 +85,7 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
                 search_similarity,
             ),
         )| {
-            const ID_TO_START_AT: usize = 0;
+            const ID_TO_START_AT: usize = 387;
             #[allow(clippy::absurd_extreme_comparisons)]
             if id < ID_TO_START_AT {
                 return;
@@ -95,6 +95,7 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
             let _ = file.write_all(print.as_bytes()).inspect_err(|e| {eprintln!("File issue: {e}")});
             print!("{print}");
 
+            /*
             let panic_results = catch_unwind(|| single(cluster_k, cluster_t1, cluster_t2, cluster_initial_centroids_flag, cluster_similarity, cluster_eta_improvement_value, cluster_ssdcf, search_k, search_similarity));
 
             let results = match panic_results {
@@ -105,6 +106,9 @@ pub fn grid_search_optimization() -> anyhow::Result<()> {
                     return;
                 }
             };
+            */
+
+            let results = single(cluster_k, cluster_t1, cluster_t2, cluster_initial_centroids_flag, cluster_similarity, cluster_eta_improvement_value, cluster_ssdcf, search_k, search_similarity);
 
             match results {
                 Ok(output) => {

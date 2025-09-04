@@ -58,11 +58,9 @@ pub fn compute_kmer_counts_for_fasta_seq(
     seq: &SeqSlice<Iupac>,
     k: usize,
     nb_bootstrap_resamples: usize,
-    high_pass_filter_flag: bool,
     rng: &mut impl rand::Rng,
 ) -> SFVec {
-    let input =
-        compute_kmer_store_counts_for_fasta_seq(seq, k, nb_bootstrap_resamples, high_pass_filter_flag, rng);
+    let input = compute_kmer_store_counts_for_fasta_seq(seq, k, nb_bootstrap_resamples, rng);
     kmer_store_counts_to_kmer_counts(input)
 }
 
@@ -70,7 +68,6 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
     seq: &SeqSlice<Iupac>,
     k: usize,
     nb_bootstrap_resamples: usize,
-    high_pass_filter_flag: bool,
     rng: &mut impl rand::Rng,
 ) -> (SparseVec<u16>, Float) {
     fn sample_iupac_nc(
@@ -106,7 +103,7 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
     let mut singles: Vec<usize> = Vec::with_capacity(nb_bootstrap_resamples * nb_kmers_per_seq);
 
     macro_rules! body {
-        ($seq:expr, $K:expr) => {{
+        ($_:expr, $K:expr) => {{
             unsafe {
                 let ptr: *mut usize = singles.as_mut_ptr();
                 let mut idx: usize = 0;
@@ -126,20 +123,25 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
     }
     gen_match_k_sparse!(_);
 
-    let mut sparse_vec = SparseVec::from_unsorted_singles(singles, 1_u16, 4_usize.pow(k as u32), 0_u16);
+    let temp_svec = SparseVec::from_unsorted_singles(singles, 1_u16, usize::MAX, 0_u16);
+    let cutoff = ((nb_bootstrap_resamples + 5) >> 3) as u16; // Equivalent to `(nb_boostraps + 5) / 8` then floor but much more efficient
 
-    if high_pass_filter_flag {
-        let dim = sparse_vec.dim();
-        let cutoff = ((nb_bootstrap_resamples + 5) >> 3) as u16; // Equivalent to `(nb_boostraps + 5) / 8` then floor but much more efficient
-        let (keys, values): (Vec<usize>, Vec<u16>) =
-            sparse_vec.iter_owned().filter(|(_, v)| v > &cutoff).multiunzip();
+    // We strip out any k-mer that was encountered less or equal times to the cutoff
+    let (keys, values): (Vec<usize>, Vec<u16>) =
+        temp_svec.iter_owned().filter(|(_, v)| v > &cutoff).multiunzip();
 
-        sparse_vec = unsafe { SparseVec::new_unchecked(keys, values, dim, 0_u16) }
+    if keys.is_empty() {
+        // Not completely ideal, but trimming empty sfvec entries from the compute tree is even more annoying
+        return unsafe { (SparseVec::new_unchecked(vec![0], vec![1], 1, 0), 1.0) };
     }
-    let rescale_factor: Float =
-        nb_kmers_per_seq as Float / sparse_vec.values().copied().map(u32::from).sum::<u32>() as Float;
 
-    (sparse_vec, rescale_factor)
+    let svec = unsafe { SparseVec::new_unchecked(keys, values, 4_usize.pow(k as u32), 0_u16) };
+
+    // Later multiplying each value by the `rescale_factor` yields the properly scaled k-mer count map
+    let rescale_factor: Float =
+        nb_kmers_per_seq as Float / svec.values().copied().map(u32::from).sum::<u32>() as Float;
+
+    (svec, rescale_factor)
 }
 
 #[allow(non_snake_case)]

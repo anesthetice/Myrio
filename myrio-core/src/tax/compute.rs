@@ -47,7 +47,6 @@ impl TaxTreeCompute {
                     seq,
                     k_cluster,
                     nb_bootstrap_resamples,
-                    true,
                     &mut SmallRng::from_os_rng(),
                 )
             })

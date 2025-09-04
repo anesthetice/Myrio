@@ -8,6 +8,7 @@ use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
+use crate::data::SparseVec;
 use crate::{
     data::{Float, SFVec},
     similarity::{SimFunc, SimScore, Similarity},
@@ -47,11 +48,12 @@ impl TaxTreeResults {
         let payloads_len = compute.core.payloads.len();
         let pb = crate::utils::simple_progressbar(payloads_len, "Computing similarity scores", multi);
         let mut payloads: Vec<SimScore> = Vec::with_capacity(payloads_len);
+
         #[rustfmt::skip]
         compute.core.payloads
             .into_par_iter()
             .progress_with(pb)
-            .map(|sfvec| simfunc(&query, &sfvec))
+            .map(|sfvec| simfunc(&sfvec, &query))
             .collect_into_vec(&mut payloads);
 
         let mut roots = Vec::with_capacity(compute.core.roots.len());
@@ -101,15 +103,15 @@ impl TaxTreeResults {
         &self,
         nb_best: usize,
     ) -> Self {
-        let best = self
+        let best: SparseVec<SimScore> = self
             .core
             .gather_leaves()
             .iter()
-            .map(|&leaf| (leaf.payload_id, self.core.payloads[leaf.payload_id]))
+            .map(|&leaf| (leaf.payload_id, unsafe { self.core.payloads.get_unchecked(leaf.payload_id) }))
             .sorted_by_key(|&(_, score)| score)
             .rev()
             .take(nb_best)
-            .fold(SFVec::new(usize::MAX), |mut acc, (pid, score)| {
+            .fold(SparseVec::new(usize::MAX), |mut acc, (pid, score)| {
                 acc.insert(pid, *score);
                 acc
             });
@@ -118,7 +120,7 @@ impl TaxTreeResults {
             node: &Node<BranchExtra>,
             above: &mut Vec<Node<BranchExtra>>,
             new_payloads: &mut Vec<SimScore>,
-            best: &SFVec,
+            best: &SparseVec<SimScore>,
         ) {
             match node {
                 Node::Branch(branch) => {
@@ -143,7 +145,7 @@ impl TaxTreeResults {
                 }
                 Node::Leaf(leaf) => {
                     above.push(Node::new_leaf(leaf.name.clone(), new_payloads.len()));
-                    new_payloads.push((*best.get(leaf.payload_id).unwrap()).try_into().unwrap());
+                    new_payloads.push(*best.get(leaf.payload_id).unwrap());
                 }
             }
         }

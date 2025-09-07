@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 // Imports
 use std::str::FromStr;
 

@@ -31,8 +31,9 @@ pub struct ClusteringParameters {
     pub eta_improvement: Float,
     /// Maximum number of iterations before stopping
     pub nb_iters_max: usize,
-    /// For the thinning step, within the semi-final clusters, any sequence for which the silhouette score is below `mean - ssdcf_factor * std` will be discarded
-    pub silhouette_std_deviation_cutoff_factor: Float,
+    /// If set to `Some(ssdcf_factor)`, then within the semi-final clusters, any sequence for which the silhouette score is below `mean - ssdcf_factor * std` will be discarded
+    /// Note that `ssdcf_factor` stands for "silhouette std deviation cutoff factor"
+    pub silhouette_trimming: Option<Float>,
 }
 
 pub struct ClusteringOutput {
@@ -65,7 +66,7 @@ pub fn cluster(
         expected_nb_of_clusters,
         eta_improvement,
         nb_iters_max,
-        silhouette_std_deviation_cutoff_factor,
+        silhouette_trimming,
     } = params;
 
     if intial_centroids.is_empty() && expected_nb_of_clusters == 0 {
@@ -119,8 +120,8 @@ pub fn cluster(
                     .map(|cluster| *simfunc(&cluster.centroid, kmer_counts_normalized))
                     .sum::<Float>()
                     .div(clusters.len() as Float);
-                // penalty (increases score) for seqs with a low number of high-confidence k-mers
-                score = 0.85 * score + 0.15 * (1.0 - (*nb_hck as Float) / max_nb_hck);
+                // add a penalty (increases score) for sequences with a low number of high-confidence k-mers
+                score = 0.8 * score + 0.2 * (1.0 - (*nb_hck as Float) / max_nb_hck);
                 SimScore::try_new(score).unwrap()
             })
             .unwrap()
@@ -168,6 +169,25 @@ pub fn cluster(
         nb_iters += 1;
     }
 
+    // Step 4 bypass if silhouette_trimming is set to `None`
+    if silhouette_trimming.is_none() {
+        let mut output: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
+        for (myrseq, kmer_counts_normalized) in myrseqs.into_iter().zip_eq(kmer_counts_normalized_vec.iter())
+        {
+            let idx = clusters
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, cluster)| simfunc(&cluster.centroid, kmer_counts_normalized))
+                .unwrap()
+                .0;
+            output[idx].push(myrseq);
+        }
+        return ClusteringOutput { clusters: output, rejected };
+    }
+
+    // "silhouette std deviation cutoff factor"
+    let ssdcf = silhouette_trimming.unwrap();
+
     // Step 4 and 5, silhouette thinning and simply computing the output
     // (could also add multi-threading to this part in the future)
     let mut clustered_myrseqs: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
@@ -200,7 +220,7 @@ pub fn cluster(
             let std =
                 (n.powi(-1) * silhouette_scores.iter().map(|x| (x - mean).powi(2)).sum::<Float>()).sqrt();
 
-            let left_cutoff = mean - std * silhouette_std_deviation_cutoff_factor;
+            let left_cutoff = mean - std * ssdcf;
 
             #[cfg(debug_assertions)]
             println!("mean={mean}, std={std}, left_cutoff={left_cutoff:.3}");

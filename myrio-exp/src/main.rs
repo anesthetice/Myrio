@@ -49,7 +49,7 @@ fn cluster_simple_test() {
         expected_nb_of_clusters: 4,
         eta_improvement: 1E-3,
         nb_iters_max: 10,
-        silhouette_std_deviation_cutoff_factor: 3.0,
+        silhouette_trimming: Some(3.0),
     };
 
     let clusters = myrio_core::clustering::cluster(myrseqs, cluster_params);

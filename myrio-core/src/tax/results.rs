@@ -1,9 +1,5 @@
-#![allow(non_snake_case)]
-
-use std::{ops::Neg, usize};
-
-use indicatif::MultiProgress;
 // Imports
+use indicatif::MultiProgress;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
@@ -40,23 +36,23 @@ pub struct TaxTreeResults {
 impl TaxTreeResults {
     pub fn from_compute_tree(
         query: SFVec,
-        compute: TaxTreeCompute,
+        ttcompute: TaxTreeCompute,
         similarity: Similarity,
         multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
         let simfunc: SimFunc = similarity.to_simfunc(true);
-        let payloads_len = compute.core.payloads.len();
+        let payloads_len = ttcompute.core.payloads.len();
         let pb = crate::utils::simple_progressbar(payloads_len, "Computing similarity scores", multi);
         let mut payloads: Vec<SimScore> = Vec::with_capacity(payloads_len);
 
         #[rustfmt::skip]
-        compute.core.payloads
+        ttcompute.core.payloads
             .into_par_iter()
             .progress_with(pb)
             .map(|sfvec| simfunc(&sfvec, &query))
             .collect_into_vec(&mut payloads);
 
-        let mut roots = Vec::with_capacity(compute.core.roots.len());
+        let mut roots = Vec::with_capacity(ttcompute.core.roots.len());
         fn dive_recursive(
             store_node: Node<()>,
             above: &mut Vec<Node<BranchExtra>>,
@@ -85,14 +81,14 @@ impl TaxTreeResults {
                 }
             }
         }
-        for store_node in compute.core.roots {
+        for store_node in ttcompute.core.roots {
             dive_recursive(store_node, &mut roots, &payloads);
         }
 
         Ok(Self {
             core: TaxTreeCore {
-                gene: compute.core.gene,
-                highest_rank: compute.core.highest_rank,
+                gene: ttcompute.core.gene,
+                highest_rank: ttcompute.core.highest_rank,
                 roots: roots.into_boxed_slice(),
                 payloads: payloads.into_boxed_slice(),
             },

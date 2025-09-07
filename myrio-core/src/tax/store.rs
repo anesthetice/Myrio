@@ -1,11 +1,8 @@
-#![allow(non_snake_case)]
-
 // Imports
 use std::{
     collections::HashMap,
     fs::OpenOptions,
     io::{Read, Write},
-    ops::Range,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -86,18 +83,24 @@ impl TaxTreeStore {
             let len = extracted_payloads.len();
             if len < 8 { len } else { len >> 3 }
         };
-        let mut encoded_chunk_vec = Vec::new();
+        let mut compressed_encoded_chunk_vec = Vec::new();
         extracted_payloads
             .par_chunks(chunk_size)
-            .map(|chunk| bincode::encode_to_vec(chunk, Self::BINCODE_CONFIG).unwrap())
-            .collect_into_vec(&mut encoded_chunk_vec);
+            .map(|chunk| {
+                zstd::encode_all(
+                    bincode::encode_to_vec(chunk, Self::BINCODE_CONFIG).unwrap().as_slice(),
+                    zstd_compression_level,
+                )
+                .unwrap()
+            })
+            .collect_into_vec(&mut compressed_encoded_chunk_vec);
 
         // Put the payloads back into our core
         let _ = std::mem::replace(&mut self.core.payloads, extracted_payloads);
 
         let header = TTSHeader {
             core_size: compressed_encoded_core.len(),
-            payloads_chunk_sizes: encoded_chunk_vec.iter().map(Vec::len).collect_vec(),
+            payloads_chunk_sizes: compressed_encoded_chunk_vec.iter().map(Vec::len).collect_vec(),
             k_precomputed: self.k_precomputed.clone(),
         };
         let encoded_header = bincode::encode_to_vec(&header, Self::BINCODE_CONFIG)?;
@@ -107,7 +110,7 @@ impl TaxTreeStore {
             &(encoded_header.len() as u64).to_le_bytes(),
             encoded_header.as_slice(),
             compressed_encoded_core.as_slice(),
-            encoded_chunk_vec.concat().as_slice(),
+            compressed_encoded_chunk_vec.concat().as_slice(),
         ]
         .concat())
     }
@@ -145,8 +148,9 @@ impl TaxTreeStore {
             .collect::<Result<Vec<&[u8]>, Error>>()?
             .into_par_iter()
             .map(|chunk| {
+                let decompressed = zstd::decode_all(chunk).unwrap();
                 bincode::decode_from_slice::<Vec<StorePayload>, bincode::config::Configuration>(
-                    chunk,
+                    decompressed.as_slice(),
                     Self::BINCODE_CONFIG,
                 )
                 .unwrap()

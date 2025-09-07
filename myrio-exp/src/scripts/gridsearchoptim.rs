@@ -36,7 +36,7 @@ const TREE_FILEPATHS: [&str; 4] = [
 const NB_CLUSTERS: usize = 4;
 const NB_ITERS_MAX: usize = 10;
 const REPR_SAMPLES: usize = 500;
-const NB_BOOTSTRAP_RESAMPLES: usize = 5;
+const NB_FASTA_RESAMPLES: usize = 5;
 const CACHE_OPT: CacheOptions = CacheOptions::Disabled;
 
 pub fn grid_search_optimization() -> anyhow::Result<()> {
@@ -152,9 +152,10 @@ fn single(
             TaxTreeCompute::from_store_tree(
                 TaxTreeStore::load_from_file(filepath)?,
                 cluster_k,
-                search_k,
                 REPR_SAMPLES,
-                NB_BOOTSTRAP_RESAMPLES,
+                NB_FASTA_RESAMPLES,
+                search_k,
+                NB_FASTA_RESAMPLES,
                 CACHE_OPT,
                 &mut rng,
                 None,
@@ -184,7 +185,7 @@ fn single(
         expected_nb_of_clusters: NB_CLUSTERS,
         eta_improvement: cluster_eta_improvement_value,
         nb_iters_max: NB_ITERS_MAX,
-        silhouette_std_deviation_cutoff_factor: cluster_ssdcf,
+        silhouette_trimming: Some(cluster_ssdcf),
     };
 
     for (expected_species, filepath) in INPUTS.into_iter() {

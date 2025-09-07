@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 // Modules
 pub mod clade;
 pub mod compute;
@@ -71,7 +69,7 @@ pub fn compute_kmer_counts_for_fasta_seq(
 pub fn compute_kmer_store_counts_for_fasta_seq(
     seq: &SeqSlice<Iupac>,
     k: usize,
-    nb_bootstrap_resamples: usize,
+    nb_resamples: usize,
     rng: &mut impl rand::Rng,
 ) -> (SparseVec<u16>, Float) {
     fn sample_iupac_nc(
@@ -104,14 +102,14 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
     }
 
     let nb_kmers_per_seq = 2 * (base_nucleotides.len() - k + 1);
-    let mut singles: Vec<usize> = Vec::with_capacity(nb_bootstrap_resamples * nb_kmers_per_seq);
+    let mut singles: Vec<usize> = Vec::with_capacity(nb_resamples * nb_kmers_per_seq);
 
     macro_rules! body {
         ($_:expr, $K:expr) => {{
             unsafe {
                 let ptr: *mut usize = singles.as_mut_ptr();
                 let mut idx: usize = 0;
-                for _ in 0..nb_bootstrap_resamples {
+                for _ in 0..nb_resamples {
                     let seq: Seq<Dna> =
                         Seq::from(&base_nucleotides.iter().map(|nc| sample_iupac_nc(nc, rng)).collect_vec());
                     for key in
@@ -128,7 +126,7 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
     gen_match_k_sparse!(_);
 
     let temp_svec = SparseVec::from_unsorted_singles(singles, 1_u16, usize::MAX, 0_u16);
-    let cutoff = ((nb_bootstrap_resamples + 5) >> 3) as u16; // Equivalent to `(nb_boostraps + 5) / 8` then floor but much more efficient
+    let cutoff = ((nb_resamples + 5) >> 3) as u16; // Equivalent to `(nb_boostraps + 5) / 8` then floor but much more efficient
 
     // We strip out any k-mer that was encountered less or equal times to the cutoff
     let (keys, values): (Vec<usize>, Vec<u16>) =

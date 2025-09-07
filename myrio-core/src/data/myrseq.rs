@@ -72,7 +72,7 @@ impl MyrSeq {
         }
     }
 
-    /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `f64` values which correspond to the weighted number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are used.
+    /// Computes the k-mer map. As each k-mer (e.g. `ACTG` if k=4) can be represented as a `usize`, the k-mer uses `usize` keys and returns `Float` values which correspond to the number of a specific k-mer found in the DNA sequence and its reverse complement. Note that only k-mers with a quality score higher than the cutoff are used.
     pub fn compute_kmer_counts(
         &self,
         k: usize,

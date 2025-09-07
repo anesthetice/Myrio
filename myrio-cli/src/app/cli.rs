@@ -32,6 +32,22 @@ pub fn build_cli() -> Command {
                 .action(ArgAction::Set),
         )
         .arg(
+            Arg::new("k-search")
+                .help("The length of each k-mer (i.e., `k` itself) used for sequence comparison")
+                .required(false)
+                .short('k')
+                .long("k-search")
+                .value_parser(vparser!(usize))
+                .action(ArgAction::Set)
+        )
+        .arg(
+            Arg::new("cache-counts")
+                .help("Flag that decides if newly-computed kmer counts are then cached")
+                .required(false)
+                .long("cache-counts")
+                .action(ArgAction::SetTrue)
+        )
+        .arg(
             Arg::new("nb-clusters")
                 .help("The number of clusters to expect")
                 .long_help("The number of clusters to expect, defaults to the number of `.myrtree` files found")
@@ -43,7 +59,7 @@ pub fn build_cli() -> Command {
         )
         .arg(
             Arg::new("no-initial-centroids")
-                .help("Flag that prevents the use of intial centroids when clustering, opting for matching afterwards")
+                .help("Flag that prevents the use of intial centroids derived from gene trees when clustering, instead matching afterwards")
                 .required(false)
                 .long("no-initial-centroids")
                 .action(ArgAction::SetTrue)

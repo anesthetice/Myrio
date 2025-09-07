@@ -11,6 +11,7 @@ pub fn process_tree(
     match subcommand.as_str() {
         "new" => process_tree_new(sub_mat, config),
         "shrink" => process_tree_shrink(sub_mat, config),
+        "expand" => process_tree_expand(sub_mat, config),
         _ => Ok(()),
     }
 }
@@ -39,9 +40,10 @@ fn process_tree_new(
             anyhow::Ok(Some(pathbuf))
         })?;
 
-    let pre_compute_k_values: Option<Vec<usize>> = mat.remove_many("pre-compute").map(|vals| vals.collect());
-    let pre_compute_kcounts =
-        pre_compute_k_values.as_deref().map(|k_values| (k_values, config.nb_bootstrap_resamples));
+    let k_precompute: Option<Vec<usize>> = mat.remove_many("pre-compute").map(|vals| vals.collect());
+    let pre_compute_kcounts = k_precompute
+        .as_deref()
+        .map(|k_values| (k_values, config.fasta_bootstrapping_nb_resamples_default));
 
     let mut tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
     tree.save_to_file(config.zstd_compression_level, None)?;
@@ -60,4 +62,12 @@ fn process_tree_shrink(
         ttstore.save_to_file(config.zstd_compression_level, None)?;
     }
     Ok(())
+}
+
+fn process_tree_expand(
+    mut mat: ArgMatches,
+    config: &Config,
+) -> anyhow::Result<()> {
+    let tree_filepaths = gather_trees(&mut mat, "trees")?;
+    todo!()
 }

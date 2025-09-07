@@ -7,26 +7,28 @@
    viewBox="0 0 512 512"
    version="1.1"
    id="svg1"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
      id="defs1">
+    <linearGradient
+       id="linearGradient3">
+      <stop
+         style="stop-color:#000000;stop-opacity:0;"
+         offset="0.94910133"
+         id="stop3" />
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="1"
+         id="stop4" />
+    </linearGradient>
     <clipPath
        clipPathUnits="userSpaceOnUse"
        id="clipPath128">
       <circle
          style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
          id="circle128"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath129">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle129"
          cx="256"
          cy="256"
          r="256" />
@@ -541,6 +543,15 @@
          cy="256"
          r="256" />
     </clipPath>
+    <radialGradient
+       xlink:href="#linearGradient3"
+       id="radialGradient4"
+       cx="256"
+       cy="256"
+       fx="256"
+       fy="256"
+       r="256"
+       gradientUnits="userSpaceOnUse" />
   </defs>
   <g
      id="g5"
@@ -1022,19 +1033,12 @@
        id="path123"
        clip-path="url(#clipPath131)" />
     <circle
-       style="fill:none;fill-opacity:1;stroke:#124734;stroke-width:30;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:0.253109"
+       style="fill:url(#radialGradient4);fill-opacity:1;stroke:none;stroke-width:30;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:0.253109"
        id="circle123"
        cx="256"
        cy="256"
        r="256"
        clip-path="url(#clipPath130)" />
-    <circle
-       style="fill:none;fill-opacity:1;stroke:#124734;stroke-width:50;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:0.249037"
-       id="circle124"
-       cx="256"
-       cy="256"
-       r="256"
-       clip-path="url(#clipPath129)" />
     <circle
        style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        id="circle125"

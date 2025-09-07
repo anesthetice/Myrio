@@ -47,6 +47,10 @@ pub enum Error {
     CladeParse(clade::ParsingError, usize),
     #[error("Expected the highest rank to be {0}, got {1} instead for the record starting on line {2}")]
     HighestRankMismatch(Rank, Rank, usize),
+    #[error("Expected to read {1} additional bytes from byte offset of {0}")]
+    MissingBytes(usize, usize),
+    #[error("Expected to find the TaxTreeStore magic number")]
+    NotATaxTreeStore,
 }
 
 pub fn kmer_store_counts_to_kmer_counts(input: (SparseVec<u16>, Float)) -> SFVec {

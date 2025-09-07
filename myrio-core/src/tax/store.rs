@@ -4,7 +4,8 @@
 use std::{
     collections::HashMap,
     fs::OpenOptions,
-    io::Read,
+    io::{Read, Write},
+    ops::Range,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -15,7 +16,10 @@ use indicatif::{MultiProgress, ParallelProgressIterator};
 use itertools::Itertools;
 use once_cell::unsync::OnceCell;
 use rand::{SeedableRng, rngs::SmallRng};
-use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
+use rayon::{
+    iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator},
+    slice::ParallelSlice,
+};
 
 use crate::{
     data::{Float, SFVec, SparseVec},
@@ -27,7 +31,7 @@ use crate::{
     },
 };
 
-#[derive(Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub struct StorePayload {
     pub(crate) seq: Seq<Iupac>,
     pub(crate) kmer_store_counts_vec: Vec<(SparseVec<u16>, Float)>,
@@ -49,54 +53,154 @@ pub struct TaxTreeStore {
     pub(crate) k_precomputed: Vec<usize>,
 }
 
+#[derive(Debug, Clone, Encode, Decode)]
+pub struct TTSHeader {
+    core_size: usize,
+    payloads_chunk_sizes: Vec<usize>,
+    k_precomputed: Vec<usize>,
+}
+
 impl TaxTreeStore {
+    const MAGIC_NUMBER: [u8; 8] = [77, 89, 82, 73, 79, 45, 206, 168]; // "MYRIO-Ψ"
+
     const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
     pub const FILE_EXTENSION: &str = "myrtree";
 
-    pub fn encode<W: std::io::Write>(
-        &self,
+    /// Self needs to be mutable so we can temporarily swap out the payloads
+    pub fn to_bytes(
+        &mut self,
         zstd_compression_level: i32,
-        output: W,
-    ) -> Result<W, Error> {
-        let mut encoder = zstd::Encoder::new(output, zstd_compression_level)?;
-        bincode::encode_into_std_write(self, &mut encoder, Self::BINCODE_CONFIG)?;
-        encoder.finish().map_err(Error::from)
+    ) -> Result<Vec<u8>, Error> {
+        // First we extract the payloads by swapping them with an empty boxed array
+        let extracted_payloads = std::mem::replace(&mut self.core.payloads, Box::new([]));
+
+        // Then we encode and compress the core (without any payloads)
+        let compressed_encoded_core = zstd::encode_all(
+            bincode::encode_to_vec(&self.core, Self::BINCODE_CONFIG)?.as_slice(),
+            zstd_compression_level,
+        )?;
+
+        // Now we encode the payloads into chunks in parallel
+        // We want roughly eight or so chunks, might make this editable in the future
+        let chunk_size = {
+            let len = extracted_payloads.len();
+            if len < 8 { len } else { len >> 3 }
+        };
+        let mut encoded_chunk_vec = Vec::new();
+        extracted_payloads
+            .par_chunks(chunk_size)
+            .map(|chunk| bincode::encode_to_vec(chunk, Self::BINCODE_CONFIG).unwrap())
+            .collect_into_vec(&mut encoded_chunk_vec);
+
+        // Put the payloads back into our core
+        let _ = std::mem::replace(&mut self.core.payloads, extracted_payloads);
+
+        let header = TTSHeader {
+            core_size: compressed_encoded_core.len(),
+            payloads_chunk_sizes: encoded_chunk_vec.iter().map(Vec::len).collect_vec(),
+            k_precomputed: self.k_precomputed.clone(),
+        };
+        let encoded_header = bincode::encode_to_vec(&header, Self::BINCODE_CONFIG)?;
+
+        Ok([
+            &Self::MAGIC_NUMBER,
+            &(encoded_header.len() as u64).to_le_bytes(),
+            encoded_header.as_slice(),
+            compressed_encoded_core.as_slice(),
+            encoded_chunk_vec.concat().as_slice(),
+        ]
+        .concat())
     }
 
-    pub fn encode_to_file(
-        &self,
+    /// Returns a result containing the tree `core` alongside the `k_precomputed` value
+    pub fn from_bytes(data: &[u8]) -> Result<(TaxTreeCore<(), StorePayload>, Vec<usize>), Error> {
+        let mut cursor: usize = 0;
+
+        let mut capture_and_advance = |by: usize| {
+            let bytes = data.get(cursor..cursor + by).ok_or(Error::MissingBytes(cursor, by));
+            cursor += by;
+            bytes
+        };
+
+        if capture_and_advance(Self::MAGIC_NUMBER.len())? != Self::MAGIC_NUMBER.as_slice() {
+            return Err(Error::NotATaxTreeStore);
+        }
+
+        let mut header_len: [u8; 8] = [0; 8];
+        header_len.copy_from_slice(capture_and_advance(8)?);
+        let header_len = u64::from_le_bytes(header_len) as usize;
+        let header: TTSHeader =
+            bincode::decode_from_slice(capture_and_advance(header_len)?, Self::BINCODE_CONFIG)?.0;
+
+        let mut core: TaxTreeCore<(), StorePayload> = bincode::decode_from_slice(
+            zstd::decode_all(capture_and_advance(header.core_size)?)?.as_slice(),
+            Self::BINCODE_CONFIG,
+        )?
+        .0;
+
+        let payloads: Box<[StorePayload]> = header
+            .payloads_chunk_sizes
+            .into_iter()
+            .map(capture_and_advance)
+            .collect::<Result<Vec<&[u8]>, Error>>()?
+            .into_par_iter()
+            .map(|chunk| {
+                bincode::decode_from_slice::<Vec<StorePayload>, bincode::config::Configuration>(
+                    chunk,
+                    Self::BINCODE_CONFIG,
+                )
+                .unwrap()
+                .0
+            })
+            .flatten_iter()
+            .collect::<Vec<StorePayload>>()
+            .into_boxed_slice();
+
+        let _ = std::mem::replace(&mut core.payloads, payloads);
+
+        Ok((core, header.k_precomputed))
+    }
+
+    pub fn save_to_file(
+        &mut self,
         zstd_compression_level: i32,
         multi: Option<&MultiProgress>,
     ) -> Result<(), Error> {
         let spinner = crate::utils::simple_spinner(
             Some(format!(
-                "Encoding the '{}' gene taxonomic tree to '{}'",
+                "Saving the '{}' gene taxonomic tree to '{}'",
                 self.core.gene,
                 self.filepath.display()
             )),
             Some(200),
             multi,
         );
-        let file = self.encode(
-            zstd_compression_level,
-            std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(&self.filepath)?,
-        )?;
-        file.sync_all()?;
-        spinner.finish();
 
+        let mut file =
+            std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(&self.filepath)?;
+        file.write_all(self.to_bytes(zstd_compression_level)?.as_slice())?;
+        file.sync_all()?;
+
+        spinner.finish();
         Ok(())
     }
 
-    pub fn decode<R: std::io::Read>(input: R) -> Result<Self, Error> {
-        let mut decoder = zstd::Decoder::new(input)?;
-        bincode::decode_from_std_read(&mut decoder, Self::BINCODE_CONFIG).map_err(Error::from)
-    }
-
-    pub fn decode_from_file<Q: AsRef<Path>>(filepath: Q) -> Result<Self, Error> {
+    pub fn load_from_file<Q: AsRef<Path>>(filepath: Q) -> Result<Self, Error> {
         let filepath = filepath.as_ref().to_path_buf();
-        let mut tree = Self::decode(std::fs::OpenOptions::new().read(true).open(&filepath)?)?;
-        tree.filepath = filepath;
-        Ok(tree)
+        let mut file = std::fs::OpenOptions::new().read(true).open(&filepath)?;
+
+        let mut buffer: Vec<u8> = match file.metadata() {
+            Ok(metadata) => Vec::with_capacity(metadata.len() as usize),
+            Err(e) => {
+                eprintln!("Failed to get file metadata, {e}");
+                Vec::new()
+            }
+        };
+        let _ = file.read_to_end(&mut buffer)?;
+
+        let (core, k_precomputed) = Self::from_bytes(&buffer)?;
+
+        Ok(Self { core, filepath, k_precomputed })
     }
 
     /// Very heavy, do this only once if possible
@@ -338,5 +442,57 @@ impl TaxTreeStore {
             let pre_comp = &mut sp.kmer_store_counts_vec;
             *pre_comp = vec![kmer_counts]
         });
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn to_and_from_bytes_round_trip_test() {
+        let leaves = (0..100_usize)
+            .map(|payload_id| Node::<()>::new_leaf(Box::from("test-leaf"), payload_id))
+            .collect_vec();
+        let branch = Node::<()>::new_branch(Box::from("test-branch"), leaves.into_boxed_slice(), ());
+
+        let sp_vec = (0..100_u16)
+            .map(|x| StorePayload {
+                seq: iupac!("ACTG").to_owned(),
+                kmer_store_counts_vec: vec![
+                    (
+                        unsafe { SparseVec::<u16>::new_unchecked(vec![1, 10, 200], vec![2, 5, 3], 100, x) },
+                        0.1
+                    );
+                    4
+                ],
+            })
+            .collect_vec();
+
+        let core = TaxTreeCore::<(), StorePayload> {
+            gene: String::from("test"),
+            highest_rank: Rank::Species,
+            roots: Box::from([branch]),
+            payloads: sp_vec.into_boxed_slice(),
+        };
+
+        let mut tree_original = TaxTreeStore {
+            core,
+            filepath: PathBuf::from("./notimportant.myrtree"),
+            k_precomputed: vec![1, 2, 3, 4],
+        };
+
+        let tree_reconstructed = {
+            let bytes = tree_original.to_bytes(3).unwrap();
+            let (core, k_precomputed) = TaxTreeStore::from_bytes(bytes.as_slice()).unwrap();
+            TaxTreeStore { core, filepath: PathBuf::from("./notimportant.myrtree"), k_precomputed }
+        };
+
+        // Sanity checks
+        assert_eq!(tree_original.core.gene, tree_reconstructed.core.gene);
+        assert_eq!(tree_original.core.highest_rank, tree_reconstructed.core.highest_rank);
+        assert_eq!(tree_original.k_precomputed, tree_reconstructed.k_precomputed);
+
+        assert_eq!(tree_original.core.payloads, tree_reconstructed.core.payloads);
     }
 }

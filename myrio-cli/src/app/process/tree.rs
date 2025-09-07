@@ -43,9 +43,8 @@ fn process_tree_new(
     let pre_compute_kcounts =
         pre_compute_k_values.as_deref().map(|k_values| (k_values, config.nb_bootstrap_resamples));
 
-    let tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
-
-    tree.encode_to_file(config.zstd_compression_level, None)?;
+    let mut tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
+    tree.save_to_file(config.zstd_compression_level, None)?;
 
     Ok(())
 }
@@ -56,9 +55,9 @@ fn process_tree_shrink(
 ) -> anyhow::Result<()> {
     let tree_filepaths = gather_trees(&mut mat, "trees")?;
     for filepath in tree_filepaths.into_iter() {
-        let mut ttstore = TaxTreeStore::decode_from_file(&filepath)?;
+        let mut ttstore = TaxTreeStore::load_from_file(&filepath)?;
         ttstore.shrink();
-        ttstore.encode_to_file(config.zstd_compression_level, None)?;
+        ttstore.save_to_file(config.zstd_compression_level, None)?;
     }
     Ok(())
 }

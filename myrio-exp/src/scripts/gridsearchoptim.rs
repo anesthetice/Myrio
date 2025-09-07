@@ -150,7 +150,7 @@ fn single(
         .iter()
         .map(|filepath| {
             TaxTreeCompute::from_store_tree(
-                TaxTreeStore::decode_from_file(filepath)?,
+                TaxTreeStore::load_from_file(filepath)?,
                 cluster_k,
                 search_k,
                 REPR_SAMPLES,

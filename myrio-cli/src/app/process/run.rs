@@ -23,7 +23,7 @@ pub fn process_run(
     let tree_filepaths = gather_trees(&mut mat, "trees")?;
 
     const K_CLUSTER: usize = 6;
-    const K_SEARCH: usize = 19;
+    const K_SEARCH: usize = 18;
     const REPR_SAMPLES: usize = 500;
     const CACHE_OPT: CacheOptions = CacheOptions::Disabled;
 
@@ -45,7 +45,7 @@ pub fn process_run(
                 Some(&multi),
             );
             let ttcompute = TaxTreeCompute::from_store_tree(
-                TaxTreeStore::decode_from_file(filepath)?,
+                TaxTreeStore::load_from_file(filepath)?,
                 K_CLUSTER,
                 K_SEARCH,
                 REPR_SAMPLES,
@@ -90,7 +90,7 @@ pub fn process_run(
         intial_centroids,
         expected_nb_of_clusters: nb_clusters,
         eta_improvement: 1E-4,
-        nb_iters_max: 6,
+        nb_iters_max: 20,
         silhouette_std_deviation_cutoff_factor: 1.6,
     };
 
@@ -124,11 +124,7 @@ pub fn process_run(
             break;
             */
 
-            let mut ttresults_best = ttresults_full.cut(10);
-
-            ttresults_best.core.payloads.iter_mut().for_each(|a| *a = a.exp().try_into().unwrap());
-            let sum = ttresults_best.core.payloads.iter().map(|s| **s).sum::<Float>();
-            ttresults_best.core.payloads.iter_mut().for_each(|a| *a = a.div(sum).try_into().unwrap());
+            let ttresults_best = ttresults_full.cut(10);
 
             println!("{}", ttresults_best.core);
         }

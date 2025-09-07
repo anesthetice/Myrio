@@ -24,3 +24,9 @@ regen-myrio-db:
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_matK.fasta -g "matK"
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_rbcL.fasta -g "rbcL"
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_trnH-psbA.fasta -g "trnH-psbA"
+
+regen-myrio-db-with-precomputation:
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_ITS.fasta -g "ITS" -k 18
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_matK.fasta -g "matK" -k 18
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_rbcL.fasta -g "rbcL" -k 18
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_trnH-psbA.fasta -g "trnH-psbA" -k 18

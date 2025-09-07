@@ -63,7 +63,7 @@ impl TaxTreeCompute {
                 || match cache_opt {
                     CacheOptions::Enabled { zstd_compression_level } => {
                         store.compute_and_append_kmer_counts(k_search, nb_bootstrap_resamples, multi);
-                        store.encode_to_file(zstd_compression_level, multi)?;
+                        store.save_to_file(zstd_compression_level, multi)?;
                         Ok::<usize, Error>(store.k_precomputed.len())
                     },
                     CacheOptions::Disabled => {

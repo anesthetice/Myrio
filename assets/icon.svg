@@ -15,8 +15,8 @@
     <linearGradient
        id="linearGradient3">
       <stop
-         style="stop-color:#000000;stop-opacity:0;"
-         offset="0.94910133"
+         style="stop-color:#192919;stop-opacity:0;"
+         offset="0.93381292"
          id="stop3" />
       <stop
          style="stop-color:#000000;stop-opacity:1;"
@@ -33,516 +33,6 @@
          cy="256"
          r="256" />
     </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath130">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle130"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath131">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle131"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath132">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle132"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath133">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle133"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath134">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle134"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath135">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle135"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath136">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle136"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath137">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle137"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath138">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle138"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath139">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle139"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath140">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle140"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath141">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle141"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath142">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle142"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath143">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle143"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath144">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle144"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath145">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle145"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath146">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle146"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath147">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle147"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath148">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle148"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath149">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle149"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath150">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle150"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath151">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle151"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath152">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle152"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath153">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle153"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath154">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle154"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath155">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle155"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath156">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle156"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath157">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle157"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath158">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle158"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath159">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle159"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath160">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle160"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath161">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle161"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath162">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle162"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath163">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle163"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath164">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle164"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath165">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle165"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath166">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle166"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath167">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle167"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath168">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle168"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath169">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle169"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath170">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle170"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath171">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle171"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath172">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle172"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath173">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle173"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath174">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle174"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath175">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle175"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath176">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle176"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath177">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle177"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath178">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle178"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath179">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle179"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
-    <clipPath
-       clipPathUnits="userSpaceOnUse"
-       id="clipPath180">
-      <circle
-         style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-         id="circle180"
-         cx="256"
-         cy="256"
-         r="256" />
-    </clipPath>
     <radialGradient
        xlink:href="#linearGradient3"
        id="radialGradient4"
@@ -552,231 +42,517 @@
        fy="256"
        r="256"
        gradientUnits="userSpaceOnUse" />
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath2">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle2"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath3">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle3"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath4">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle4"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath5">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle5"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath6">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle6"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath7">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle7"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath8">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle8"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath9">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle9"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath10">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle10"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath11">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle11"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath12">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle12"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath13">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle13"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath14">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle14"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath15">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle15"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath16">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle16"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath17">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle17"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath18">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle18"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath19">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle19"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath20">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle20"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath21">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle21"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath22">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle22"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath23">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle23"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath24">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle24"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath25">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle25"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath26">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle26"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath27">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle27"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath28">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle28"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath29">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle29"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath30">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle30"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath31">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle31"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath32">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle32"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath33">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle33"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath34">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle34"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath35">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle35"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath36">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle36"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath37">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle37"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath38">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle38"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath39">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle39"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath40">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle40"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath41">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle41"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath42">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle42"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath43">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle43"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath44">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle44"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath45">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle45"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath46">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle46"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath47">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle47"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath48">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle48"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath49">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle49"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath50">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle50"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath51">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle51"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath52">
+      <circle
+         style="fill:none;stroke:#ffffff;stroke-linecap:round;stroke-opacity:1"
+         id="circle52"
+         cx="256"
+         cy="256"
+         r="254" />
+    </clipPath>
   </defs>
-  <g
-     id="g5"
-     style="display:none">
-    <circle
-       style="fill:#124734;fill-opacity:1;stroke:none;stroke-width:3.77953;stroke-dasharray:none"
-       id="path5"
-       cx="256"
-       cy="256"
-       r="256" />
-    <path
-       style="fill:#124734;fill-opacity:1;stroke:none;stroke-width:3.77953;stroke-dasharray:none"
-       d="M 256,512 V 349 c 0,0 -34.30248,35.00863 -128,-93 -93.697522,-128.00863 0,-128 128,256 z"
-       id="path6" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 256,256.67976 c 0,0 20.45033,-21.19319 31.08535,-47.37616 5.80636,-14.295 42.23661,-16.38842 53.20977,-41.22254 C 350.50669,144.97056 384,128 384,128"
-       id="path21" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 256,255.32024 c 0,0 -0.83573,36.82575 25.29054,47.5993 14.26405,5.882 41.62032,3.43194 66.39598,14.53648 C 370.74261,327.78985 384,384 384,384"
-       id="path22" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 256.00287,255.32309 c 0,0 -26.93016,70.06919 -49.58657,34.02652 -8.21126,-13.06278 -57.6596,5.47663 -68.63331,30.31051 C 127.57091,342.7704 128,384 128,384"
-       id="path23" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 257.49472,253.17673 c 0,0 -14.06573,-34.04394 -42.31843,-33.38346 -15.42501,0.36059 -40.22755,-27.26699 -67.3773,-27.45339 -25.26542,-0.17348 -42.31743,-40.04567 -42.31743,-40.04567"
-       id="path23-7" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 181.48814,202.73547 c 0,0 67.01186,-53.06999 67.01186,-120.069994"
-       id="path27" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 160.40434,296.75189 c 0,0 -34.63379,-46.26937 -97.40434,-48.9288"
-       id="path28" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 347.68652,317.45602 C 347.68652,317.45602 234,373 256,430.5"
-       id="path29" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 340.29512,168.08106 c 0,0 12.98753,102.43005 90.70488,74.74203"
-       id="path30" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 365.20901,139.94574 c 0,0 -45.83597,-17.94574 -12.52249,-78.94574"
-       id="path31" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 128,384 c 0,0 -18.69924,-20.71007 -37.994282,-10.02199"
-       id="path32" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:11.0668;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 125.85425,384.39645 c 4.50677,7.1788 9.05919,11.72456 13.349,14.61158 16.28767,10.96149 28.96642,-1.6358 20.81063,14.82865"
-       id="path33" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:9.87099;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 385,386.5 c 0,0 -73.17966,19.46954 -27.55903,49"
-       id="path34" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 385,386.5 c 0,0 22.87128,-24.54334 37.43564,-5"
-       id="path35" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 384,128 c 28.95036,26.36773 -9.94051,31.53594 31.77879,26.36773"
-       id="path36" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 386.63916,126.75 c 0,0 -9,-20 6.25,-26.75"
-       id="path37" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 105.48156,152.29421 c 0,0 27.51844,-16.65312 27.51844,-31.79421"
-       id="path38" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 105.48156,152.29421 C 77.074639,123 71.251419,180.10475 65.053824,136.3971"
-       id="path39" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 63,247.82309 c 0,0 -45.832178,21.06306 -25.26339,35.09133 10.758321,7.33736 -22.493434,11.23834 -35.0297483,10.2149"
-       id="path40" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 63,247.82309 c 0,0 -8.842003,9.80541 -30.146569,6.61158 -8.572965,-1.2852 7.589401,-19.46388 -32.62398019,-9.27101"
-       id="path41" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 63,247.82309 c 0,0 -13.656261,-29.2184 -33.331203,-23.3608 -9.070342,2.7004 -10.348462,-14.83312 -24.9465675,-17.40595"
-       id="path42" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 160.01388,413.83668 c 0,0 5.45204,40.12174 -37.03092,60.89253"
-       id="path43" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 160.01388,413.83668 c 0,0 -61.047896,8.39139 -70.780888,36.39196"
-       id="path44" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 90.005718,373.97801 c 0,0 -53.113229,-26.49918 -66.809473,-11.49603 C 9.5,377.48512 14.75,407.25 14.75,407.25"
-       id="path45" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 90.005718,373.97801 -42.671302,30.328"
-       id="path46" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 90.005718,373.97801 c 0,0 18.969542,41.8527 -21.729504,56.07882"
-       id="path47" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 256,430.5 c 0,0 -63.21794,20.05223 -35.50366,79.02611"
-       id="path48" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 256,430.5 c 0,0 9.79682,11.6207 8.99472,32.1959 -0.3201,8.21106 -13.41296,19.56049 -15.94754,28.72058 -2.70385,9.77184 5.2024,17.20066 6.95282,20.58352"
-       id="path49" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 256,430.5 c 0,0 42.39906,6.49199 35.68155,20.98768 -6.71752,14.49569 10.28562,56.35159 10.28562,56.35159"
-       id="path50" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 357.44097,435.5 c -1.53614,-1.33566 -6.0059,35.50342 -15.25906,61.55742"
-       id="path51" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 357.44097,435.5 c 0,0 48.70079,-0.52201 54.37448,23.61954"
-       id="path52" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 422.43564,381.5 c 5.67607,-2.14429 -5.62033,18.31739 -3.5,29.5 2.31671,12.21833 30.51314,-11.88343 17.78847,26.31408"
-       id="path53" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 422.43564,381.5 c 0,0 50.23821,-20.57815 54.02629,4.62509"
-       id="path54" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 431,242.82309 512,256"
-       id="path55" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 431,242.82309 c 0,0 40.86366,-75.37195 72.57175,-51.97084"
-       id="path56" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 415.77879,154.36773 c 0,0 47.48947,27.19652 71.85534,-7.37062"
-       id="path57" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 415.77879,154.36773 454.61694,94.484333"
-       id="path58" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 392.88916,100 c 0,0 40.58079,-4.660424 44.81669,-24.330212"
-       id="path59" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 392.88916,100 396.6963,42.12959"
-       id="path60" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 352.68652,61 369.7206,26.645199"
-       id="path62" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 352.68652,61 c 0,0 -20.50942,-30.368387 -9.46772,-45.684193"
-       id="path63" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 248.5,82.665476 c 0,0 35.97013,-13.002492 39.04551,-80.7144493"
-       id="path64" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 248.5,82.665476 c 0,0 -21.68414,-26.803051 -39.17793,-31.880154 -11.23402,-3.260371 -17.2143,17.569803 -26.2666,10.203735 -12.27315,-9.986952 -11.43586,-20.876099 -13.03521,-46.118659"
-       id="path65" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 248.5,82.665476 234.5,0"
-       id="path66" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 65.053824,136.3971 32.019052,132.03011"
-       id="path67" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 65.053824,136.3971 c 0,0 10.570542,-14.36323 -10.311083,-38.610613"
-       id="path68" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 133,120.5 c 0,0 -61.296385,-7.75495 -49.064932,-54.051205"
-       id="path69" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 133,120.5 c 5,-7.00936 12.01079,-46.699104 -9.40614,-83.599552"
-       id="path70" />
-    <path
-       style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       d="m 357.44097,435.5 24.51105,43.37236"
-       id="path71" />
-    <circle
-       style="fill:none;fill-opacity:1;stroke:#124734;stroke-width:30;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:0.253109"
-       id="path73"
-       cx="256"
-       cy="256"
-       r="256" />
-    <circle
-       style="fill:none;fill-opacity:1;stroke:#124734;stroke-width:50;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:0.249037"
-       id="circle74"
-       cx="256"
-       cy="256"
-       r="256" />
-    <circle
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
-       id="path74"
-       cx="256"
-       cy="256"
-       r="256" />
-  </g>
   <g
      id="g125"
      style="display:inline">
@@ -786,261 +562,262 @@
        cx="256"
        cy="256"
        r="256"
-       clip-path="url(#clipPath180)" />
+       clip-path="url(#clipPath52)" />
     <path
        style="fill:#124734;fill-opacity:1;stroke:none;stroke-width:3.77953;stroke-dasharray:none"
        d="M 256,512 V 349 c 0,0 -34.30248,35.00863 -128,-93 -93.697522,-128.00863 0,-128 128,256 z"
        id="path75"
-       clip-path="url(#clipPath179)" />
+       clip-path="url(#clipPath51)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 256,256.67976 c 0,0 20.45033,-21.19319 31.08535,-47.37616 5.80636,-14.295 42.23661,-16.38842 53.20977,-41.22254 C 350.50669,144.97056 384,128 384,128"
        id="path76"
-       clip-path="url(#clipPath178)" />
+       clip-path="url(#clipPath50)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 256,255.32024 c 0,0 -0.83573,36.82575 25.29054,47.5993 14.26405,5.882 41.62032,3.43194 66.39598,14.53648 C 370.74261,327.78985 384,384 384,384"
        id="path77"
-       clip-path="url(#clipPath177)" />
+       clip-path="url(#clipPath49)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 256.00287,255.32309 c 0,0 -26.93016,70.06919 -49.58657,34.02652 -8.21126,-13.06278 -57.6596,5.47663 -68.63331,30.31051 C 127.57091,342.7704 128,384 128,384"
        id="path78"
-       clip-path="url(#clipPath176)" />
+       clip-path="url(#clipPath48)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:15;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 257.49472,253.17673 c 0,0 -14.06573,-34.04394 -42.31843,-33.38346 -15.42501,0.36059 -40.22755,-27.26699 -67.3773,-27.45339 -25.26542,-0.17348 -42.31743,-40.04567 -42.31743,-40.04567"
        id="path79"
-       clip-path="url(#clipPath175)" />
+       clip-path="url(#clipPath47)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 181.48814,202.73547 c 0,0 67.01186,-53.06999 67.01186,-120.069994"
        id="path80"
-       clip-path="url(#clipPath174)" />
+       clip-path="url(#clipPath46)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 160.40434,296.75189 c 0,0 -34.63379,-46.26937 -97.40434,-48.9288"
        id="path81"
-       clip-path="url(#clipPath173)" />
+       clip-path="url(#clipPath45)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 347.68652,317.45602 C 347.68652,317.45602 234,373 256,430.5"
        id="path82"
-       clip-path="url(#clipPath172)" />
+       clip-path="url(#clipPath44)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 340.29512,168.08106 c 0,0 12.98753,102.43005 90.70488,74.74203"
        id="path83"
-       clip-path="url(#clipPath171)" />
+       clip-path="url(#clipPath43)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 365.20901,139.94574 c 0,0 -45.83597,-17.94574 -12.52249,-78.94574"
        id="path84"
-       clip-path="url(#clipPath170)" />
+       clip-path="url(#clipPath42)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 128,384 c 0,0 -18.69924,-20.71007 -37.994282,-10.02199"
        id="path85"
-       clip-path="url(#clipPath169)" />
+       clip-path="url(#clipPath41)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:11.0668;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 125.85425,384.39645 c 4.50677,7.1788 9.05919,11.72456 13.349,14.61158 16.28767,10.96149 28.96642,-1.6358 20.81063,14.82865"
        id="path86"
-       clip-path="url(#clipPath168)" />
+       clip-path="url(#clipPath40)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:9.87099;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 385,386.5 c 0,0 -73.17966,19.46954 -27.55903,49"
        id="path87"
-       clip-path="url(#clipPath167)" />
+       clip-path="url(#clipPath39)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 385,386.5 c 0,0 22.87128,-24.54334 37.43564,-5"
        id="path88"
-       clip-path="url(#clipPath166)" />
+       clip-path="url(#clipPath38)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 384,128 c 28.95036,26.36773 -9.94051,31.53594 31.77879,26.36773"
        id="path89"
-       clip-path="url(#clipPath165)" />
+       clip-path="url(#clipPath37)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 386.63916,126.75 c 0,0 -9,-20 6.25,-26.75"
        id="path90"
-       clip-path="url(#clipPath164)" />
+       clip-path="url(#clipPath36)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 105.48156,152.29421 c 0,0 27.51844,-16.65312 27.51844,-31.79421"
        id="path91"
-       clip-path="url(#clipPath163)" />
+       clip-path="url(#clipPath35)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 105.48156,152.29421 C 77.074639,123 71.251419,180.10475 65.053824,136.3971"
        id="path92"
-       clip-path="url(#clipPath162)" />
+       clip-path="url(#clipPath34)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 63,247.82309 c 0,0 -45.832178,21.06306 -25.26339,35.09133 10.758321,7.33736 -22.493434,11.23834 -35.0297483,10.2149"
        id="path93"
-       clip-path="url(#clipPath161)" />
+       clip-path="url(#clipPath33)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 63,247.82309 c 0,0 -8.842003,9.80541 -30.146569,6.61158 -8.572965,-1.2852 7.589401,-19.46388 -32.62398019,-9.27101"
        id="path94"
-       clip-path="url(#clipPath160)" />
+       clip-path="url(#clipPath32)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 63,247.82309 c 0,0 -13.656261,-29.2184 -33.331203,-23.3608 -9.070342,2.7004 -10.348462,-14.83312 -24.9465675,-17.40595"
        id="path95"
-       clip-path="url(#clipPath159)" />
+       clip-path="url(#clipPath31)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 160.01388,413.83668 c 0,0 5.45204,40.12174 -37.03092,60.89253"
        id="path96"
-       clip-path="url(#clipPath158)" />
+       clip-path="url(#clipPath30)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 160.01388,413.83668 c 0,0 -61.047896,8.39139 -70.780888,36.39196"
        id="path97"
-       clip-path="url(#clipPath157)" />
+       clip-path="url(#clipPath29)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 90.005718,373.97801 c 0,0 -53.113229,-26.49918 -66.809473,-11.49603 C 9.5,377.48512 14.75,407.25 14.75,407.25"
        id="path98"
-       clip-path="url(#clipPath156)" />
+       clip-path="url(#clipPath28)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 90.005718,373.97801 -42.671302,30.328"
        id="path99"
-       clip-path="url(#clipPath155)" />
+       clip-path="url(#clipPath27)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 90.005718,373.97801 c 0,0 18.969542,41.8527 -21.729504,56.07882"
        id="path100"
-       clip-path="url(#clipPath154)" />
+       clip-path="url(#clipPath26)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 256,430.5 c 0,0 -63.21794,20.05223 -35.50366,79.02611"
        id="path101"
-       clip-path="url(#clipPath153)" />
+       clip-path="url(#clipPath25)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 256,430.5 c 0,0 9.79682,11.6207 8.99472,32.1959 -0.3201,8.21106 -13.41296,19.56049 -15.94754,28.72058 -2.70385,9.77184 5.2024,17.20066 6.95282,20.58352"
        id="path102"
-       clip-path="url(#clipPath152)" />
+       clip-path="url(#clipPath24)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 256,430.5 c 0,0 42.39906,6.49199 35.68155,20.98768 -6.71752,14.49569 10.28562,56.35159 10.28562,56.35159"
        id="path103"
-       clip-path="url(#clipPath151)" />
+       clip-path="url(#clipPath23)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 357.44097,435.5 c -1.53614,-1.33566 -6.0059,35.50342 -15.25906,61.55742"
        id="path104"
-       clip-path="url(#clipPath150)" />
+       clip-path="url(#clipPath22)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 357.44097,435.5 c 0,0 48.70079,-0.52201 54.37448,23.61954"
        id="path105"
-       clip-path="url(#clipPath149)" />
+       clip-path="url(#clipPath21)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 422.43564,381.5 c 5.67607,-2.14429 -5.62033,18.31739 -3.5,29.5 2.31671,12.21833 30.51314,-11.88343 17.78847,26.31408"
        id="path106"
-       clip-path="url(#clipPath148)" />
+       clip-path="url(#clipPath20)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 422.43564,381.5 c 0,0 50.23821,-20.57815 54.02629,4.62509"
        id="path107"
-       clip-path="url(#clipPath147)" />
+       clip-path="url(#clipPath19)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 431,242.82309 512,256"
        id="path108"
-       clip-path="url(#clipPath146)" />
+       clip-path="url(#clipPath18)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 431,242.82309 c 0,0 40.86366,-75.37195 72.57175,-51.97084"
        id="path109"
-       clip-path="url(#clipPath145)" />
+       clip-path="url(#clipPath17)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 415.77879,154.36773 c 0,0 47.48947,27.19652 71.85534,-7.37062"
        id="path110"
-       clip-path="url(#clipPath144)" />
+       clip-path="url(#clipPath16)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 415.77879,154.36773 454.61694,94.484333"
        id="path111"
-       clip-path="url(#clipPath143)" />
+       clip-path="url(#clipPath15)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 392.88916,100 c 0,0 40.58079,-4.660424 44.81669,-24.330212"
        id="path112"
-       clip-path="url(#clipPath142)" />
+       clip-path="url(#clipPath14)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 392.88916,100 396.6963,42.12959"
        id="path113"
-       clip-path="url(#clipPath141)" />
+       clip-path="url(#clipPath13)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 352.68652,61 369.7206,26.645199"
        id="path114"
-       clip-path="url(#clipPath140)" />
+       clip-path="url(#clipPath12)"
+       transform="translate(1.5,0.24999999)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 352.68652,61 c 0,0 -20.50942,-30.368387 -9.46772,-45.684193"
        id="path115"
-       clip-path="url(#clipPath139)" />
+       clip-path="url(#clipPath11)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 248.5,82.665476 c 0,0 35.97013,-13.002492 39.04551,-80.7144493"
        id="path116"
-       clip-path="url(#clipPath138)" />
+       clip-path="url(#clipPath10)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 248.5,82.665476 c 0,0 -21.68414,-26.803051 -39.17793,-31.880154 -11.23402,-3.260371 -17.2143,17.569803 -26.2666,10.203735 -12.27315,-9.986952 -11.43586,-20.876099 -13.03521,-46.118659"
        id="path117"
-       clip-path="url(#clipPath137)" />
+       clip-path="url(#clipPath9)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 248.5,82.665476 234.5,0"
        id="path118"
-       clip-path="url(#clipPath136)" />
+       clip-path="url(#clipPath8)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="M 65.053824,136.3971 32.019052,132.03011"
        id="path119"
-       clip-path="url(#clipPath135)" />
+       clip-path="url(#clipPath7)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 65.053824,136.3971 c 0,0 10.570542,-14.36323 -10.311083,-38.610613"
        id="path120"
-       clip-path="url(#clipPath134)" />
+       clip-path="url(#clipPath6)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 133,120.5 c 0,0 -61.296385,-7.75495 -49.064932,-54.051205"
        id="path121"
-       clip-path="url(#clipPath133)" />
+       clip-path="url(#clipPath5)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 133,120.5 c 5,-7.00936 12.01079,-46.699104 -9.40614,-83.599552"
        id="path122"
-       clip-path="url(#clipPath132)" />
+       clip-path="url(#clipPath4)" />
     <path
        style="fill:none;fill-opacity:1;stroke:#e3f8f2;stroke-width:7;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        d="m 357.44097,435.5 24.51105,43.37236"
        id="path123"
-       clip-path="url(#clipPath131)" />
+       clip-path="url(#clipPath3)" />
     <circle
        style="fill:url(#radialGradient4);fill-opacity:1;stroke:none;stroke-width:30;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:0.253109"
        id="circle123"
        cx="256"
        cy="256"
        r="256"
-       clip-path="url(#clipPath130)" />
+       clip-path="url(#clipPath2)" />
     <circle
-       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+       style="display:inline;fill:none;fill-opacity:1;stroke:#000000;stroke-width:10;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        id="circle125"
        cx="256"
        cy="256"

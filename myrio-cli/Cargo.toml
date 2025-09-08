@@ -6,7 +6,6 @@ edition.workspace = true
 readme = "README.md"
 categories = ["command-line-utilities"]
 license = "LGPL-3.0-or-later"
-license-file = "LICENSE"
 
 [dependencies]
 # internal

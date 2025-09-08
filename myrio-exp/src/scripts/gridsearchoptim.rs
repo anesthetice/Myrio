@@ -239,7 +239,7 @@ fn single(
                 .core
                 .gather_branches_at_rank(Rank::Genus)
                 .iter()
-                .max_by_key(|branch| SimScore::try_from(branch.extra.mean).unwrap_or_default())
+                .max_by_key(|branch| SimScore::try_from(branch.extra.mean.unwrap()).unwrap_or_default())
                 .unwrap()
                 .name;
 

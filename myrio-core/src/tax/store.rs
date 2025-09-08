@@ -58,10 +58,11 @@ pub struct TTSHeader {
 }
 
 impl TaxTreeStore {
-    const MAGIC_NUMBER: [u8; 8] = [77, 89, 82, 73, 79, 45, 206, 168]; // "MYRIO-Ψ"
+    // "MYRIO-Ψ"
 
     const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
     pub const FILE_EXTENSION: &str = "myrtree";
+    const MAGIC_NUMBER: [u8; 8] = [77, 89, 82, 73, 79, 45, 206, 168];
 
     /// Self needs to be mutable so we can temporarily swap out the payloads
     pub fn to_bytes(

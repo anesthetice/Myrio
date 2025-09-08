@@ -9,6 +9,16 @@ pub struct Branch<B> {
     pub extra: B,
 }
 
+impl<B> Branch<B> {
+    pub fn gather_leaves<'a>(&'a self) -> Vec<&'a Leaf> {
+        let mut leaves: Vec<&'a Leaf> = Vec::new();
+        for node in self.children.iter() {
+            node.gather_leaves(&mut leaves);
+        }
+        leaves
+    }
+}
+
 #[derive(Clone, Encode, Decode)]
 pub struct Leaf {
     pub name: Box<str>,
@@ -116,6 +126,41 @@ impl<B, L> TaxTreeCore<B, L> {
         let desired_height = rank as usize;
         let mut output = Vec::new();
         for root in self.roots.iter() {
+            dive_recursive(root, current_height, desired_height, &mut output);
+        }
+
+        output
+    }
+
+    pub fn gather_branches_mut_at_rank(
+        &mut self,
+        rank: Rank,
+    ) -> Vec<&mut Branch<B>> {
+        if rank > self.highest_rank {
+            return Vec::with_capacity(0);
+        }
+
+        fn dive_recursive<'a, B>(
+            node: &'a mut Node<B>,
+            current_height: usize,
+            desired_height: usize,
+            output: &mut Vec<&'a mut Branch<B>>,
+        ) {
+            if let Node::Branch(branch) = node {
+                if current_height == desired_height {
+                    output.push(branch);
+                } else {
+                    for child in branch.children.iter_mut() {
+                        dive_recursive(child, current_height - 1, desired_height, output);
+                    }
+                }
+            }
+        }
+
+        let current_height = self.highest_rank as usize;
+        let desired_height = rank as usize;
+        let mut output = Vec::new();
+        for root in self.roots.iter_mut() {
             dive_recursive(root, current_height, desired_height, &mut output);
         }
 

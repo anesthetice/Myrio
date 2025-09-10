@@ -47,7 +47,7 @@ impl StorePayload {
 pub struct TaxTreeStore {
     pub(crate) core: TaxTreeCore<(), StorePayload>,
     pub(crate) filepath: PathBuf,
-    pub(crate) k_precomputed: Vec<usize>,
+    pub k_precomputed: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Encode, Decode)]
@@ -58,10 +58,9 @@ pub struct TTSHeader {
 }
 
 impl TaxTreeStore {
-    // "MYRIO-Ψ"
-
     const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
     pub const FILE_EXTENSION: &str = "myrtree";
+    // "MYRIO-Ψ"
     const MAGIC_NUMBER: [u8; 8] = [77, 89, 82, 73, 79, 45, 206, 168];
 
     /// Self needs to be mutable so we can temporarily swap out the payloads
@@ -404,7 +403,7 @@ impl TaxTreeStore {
         self.k_precomputed.clear();
     }
 
-    pub(crate) fn compute_and_append_kmer_counts(
+    pub fn compute_and_append_kmer_counts(
         &mut self,
         k: usize,
         nb_bootstrap_resamples: usize,
@@ -426,7 +425,7 @@ impl TaxTreeStore {
         });
     }
 
-    pub(crate) fn compute_and_overwrite_kmer_counts(
+    pub fn compute_and_overwrite_kmer_counts(
         &mut self,
         k: usize,
         nb_bootstrap_resamples: usize,

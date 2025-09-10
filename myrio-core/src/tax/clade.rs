@@ -130,6 +130,38 @@ impl Rank {
     pub fn all_re() -> [&'static Lazy<Regex>; 8] {
         [&DOMAIN_RE, &KINGDOM_RE, &PHYLUM_RE, &CLASS_RE, &ORDER_RE, &FAMILY_RE, &GENUS_RE, &SPECIES_RE]
     }
+
+    pub fn above(&self) -> Option<Self> {
+        let usize_repr = *self as usize;
+        if usize_repr != 8 {
+            let rank = unsafe { std::mem::transmute::<usize, Rank>(usize_repr + 1) };
+            Some(rank)
+        } else {
+            None
+        }
+    }
+
+    pub fn below(&self) -> Option<Self> {
+        let usize_repr = *self as usize;
+        if usize_repr != 1 {
+            let rank = unsafe { std::mem::transmute::<usize, Rank>(usize_repr - 1) };
+            Some(rank)
+        } else {
+            None
+        }
+    }
+
+    pub fn collect_range_inclusive(
+        start: Self,
+        stop: Self,
+    ) -> Vec<Self> {
+        let start_repr_usize = start as usize;
+        let stop_repr_usize = stop as usize;
+
+        (start_repr_usize..=stop_repr_usize)
+            .map(|i| unsafe { std::mem::transmute::<usize, Rank>(i) })
+            .collect_vec()
+    }
 }
 
 impl std::fmt::Display for Rank {
@@ -137,7 +169,7 @@ impl std::fmt::Display for Rank {
         &self,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        writeln!(f, "{self:?}")
+        write!(f, "{self:?}")
     }
 }
 

@@ -1,12 +1,12 @@
 // Imports
 use std::ops::Neg;
 
+use console::{StyledObject, style};
 use indicatif::{MultiProgress, ParallelProgressIterator};
 use indoc::printdoc;
 use itertools::Itertools;
 use rayon::iter::{
-    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator,
-    ParallelIterator,
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
 
 use crate::{
@@ -20,12 +20,13 @@ use crate::{
     },
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct BRes {
     pub nb_leaves: usize,
-    pub mean: Option<Float>,
-    pub max: Option<Float>,
-    pub pool_score: Option<Float>,
+    pub mean: Float,
+    pub max: Float,
+    pub pool_score: Float,
+    pub indicator: Option<String>,
 }
 
 impl std::fmt::Display for BRes {
@@ -33,18 +34,19 @@ impl std::fmt::Display for BRes {
         &self,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        let mut s: String = String::new();
-        s += &format!("🮰: {}", self.nb_leaves);
-        if let Some(mean) = self.mean {
-            s += &format!(", μ={mean:.3}")
+        if let Some(indicator) = &self.indicator {
+            write!(
+                f,
+                "{indicator} | ({}, μ={:.3}, max={:.3}, s={:.3})",
+                self.nb_leaves, self.mean, self.max, self.pool_score
+            )
+        } else {
+            write!(
+                f,
+                "({}, μ={:.3}, max={:.3}, s={:.3})",
+                self.nb_leaves, self.mean, self.max, self.pool_score
+            )
         }
-        if let Some(max) = self.max {
-            s += &format!(", max={max:.3}")
-        }
-        if let Some(pool_score) = self.pool_score {
-            s += &format!(", s={pool_score:.3}")
-        }
-        f.write_str(s.as_str())
     }
 }
 
@@ -57,6 +59,12 @@ impl TaxTreeResults {
         query: SFVec,
         ttcompute: TaxTreeCompute,
         similarity: Similarity,
+        lambda_leaf: Float,
+        lambda_branch: Float,
+        mu: Float,
+        gamma: Float,
+        delta: Float,
+        epsilon: Float,
         multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
         let simfunc: SimFunc = similarity.to_simfunc(true);
@@ -74,126 +82,170 @@ impl TaxTreeResults {
 
         let mut roots = Vec::with_capacity(ttcompute.core.roots.len());
 
-        // This recursive function serves to convert the roots of TaxTreeCore<(), SFVec> used by TaxTreeCompute into the roots of TaxTreeCore<BRes, SimScore> used by TaxTreeResults
+        // This recursive function serves to convert the roots of TaxTreeCore<(), SFVec> used by TaxTreeCompute into the roots of TaxTreeCore<BRes, SimScore> used by TaxTreeResults. The BRes parameters `nb_leaves`, `mean`, `max` are all computed here, `pool_score` is set to the default of 0.0 and will be computed later
         fn dive_recursive(
             store_node: Node<()>,
             above: &mut Vec<Node<BRes>>,
-        ) -> usize {
+            simscores: &[SimScore],
+        ) -> (usize, Float, Float) // (number of leaves, sum, max)
+        {
             match store_node {
                 Node::Branch(store_branch) => {
                     let mut results_branch_children: Vec<Node<BRes>> =
                         Vec::with_capacity(store_branch.children.len());
-                    let nb_leaves = store_branch
-                        .children
-                        .into_iter()
-                        .map(|store_node| dive_recursive(store_node, &mut results_branch_children))
-                        .sum::<usize>();
+
+                    let mut nb_leaves: usize = 0;
+                    let mut sum: Float = 0.0;
+                    let mut max: Float = 0.0;
+
+                    for store_node in store_branch.children {
+                        let (nb_leaves_i, sum_i, max_i) =
+                            dive_recursive(store_node, &mut results_branch_children, simscores);
+
+                        nb_leaves += nb_leaves_i;
+                        sum += sum_i;
+                        max = max.max(max_i);
+                    }
+
                     let results_branch = Node::new_branch(
                         store_branch.name,
                         results_branch_children.into_boxed_slice(),
-                        BRes { nb_leaves, mean: None, max: None, pool_score: None },
+                        BRes {
+                            nb_leaves,
+                            mean: sum / nb_leaves as Float,
+                            max,
+                            pool_score: 0.0,
+                            indicator: None,
+                        },
                     );
                     above.push(results_branch);
-                    nb_leaves
+                    (nb_leaves, sum, max)
                 }
                 Node::Leaf(leaf) => {
+                    let score = **unsafe { simscores.get_unchecked(leaf.payload_id) };
                     above.push(Node::Leaf(leaf));
-                    1_usize
+                    (1_usize, score, score)
                 }
             }
         }
         for store_node in ttcompute.core.roots {
-            dive_recursive(store_node, &mut roots);
+            dive_recursive(store_node, &mut roots, &payloads);
         }
 
-        // The incomplete results tree, notice that the payloads haven't been inserted yet (for borrow checker related reasons)
-        let mut ttres = Self {
+        let ttres = Self {
             core: TaxTreeCore {
                 gene: ttcompute.core.gene,
                 highest_rank: ttcompute.core.highest_rank,
                 roots: roots.into_boxed_slice(),
-                payloads: Box::from([]),
+                payloads: payloads.into_boxed_slice(),
             },
         };
+        let mut ttres = ttres.cut(100);
 
-        let mut genus_vec = ttres.core.gather_branches_mut_at_rank(Rank::Genus);
-        genus_vec.par_iter_mut().for_each(|genus| {
-            let scores = genus
-                .gather_leaves()
-                .into_iter()
-                .map(|leaf| unsafe { **payloads.get_unchecked(leaf.payload_id) })
-                .collect_vec();
+        // We extract the payloads to satisfy the borrow-checker, these will be inserted later at the end
+        let payloads = std::mem::replace(&mut ttres.core.payloads, Box::from([]));
 
-            genus.extra.mean.replace(scores.iter().sum::<Float>() / scores.len() as Float);
-            genus.extra.max.replace(scores.iter().copied().reduce(Float::max).unwrap());
+        fn softmax_pooling(
+            scores: Vec<Float>,
+            lambda: Float,
+        ) -> Float {
+            let mut numerator: Float = 0.0;
+            let mut denominator: Float = 0.0;
 
-            // Softmax Pooling multiplied by a low `n` penalty
-            static LAMBDA: Float = 1.5;
-            static BETA: Float = 1.2;
-            let pool_score = {
-                let numerator = scores.iter().copied().map(|s| s * (LAMBDA * s).exp()).sum::<Float>();
-                let denominator = scores.iter().copied().map(|s| (LAMBDA * s).exp()).sum::<Float>();
-                let small_size_penalty_multiplier = scores.len() as Float / (scores.len() as Float + BETA);
+            for s in scores.into_iter() {
+                numerator += s * (lambda * s).exp();
+                denominator += (lambda * s).exp();
+            }
 
-                (numerator / denominator) * small_size_penalty_multiplier
-            };
-            genus.extra.pool_score.replace(pool_score);
-        });
+            numerator / denominator
+        }
 
-        {
-            let n = genus_vec.len() as Float;
-            let pool_scores = genus_vec
-                .iter()
-                .map(|branch| unsafe { branch.extra.pool_score.unwrap_unchecked() })
-                .collect_vec();
+        for rank in Rank::collect_range_inclusive(Rank::Genus, ttres.core.highest_rank) {
+            let mut rank_branch_vec = ttres.core.gather_branches_mut_at_rank(rank);
+
+            rank_branch_vec.par_iter_mut().for_each(|rank_branch| {
+                let mut sim_scores_below: Vec<Float> = Vec::new();
+                let mut pool_scores_below: Vec<Float> = Vec::new();
+
+                for sub_node in rank_branch.children.iter() {
+                    match sub_node {
+                        Node::Branch(sub_branch) => {
+                            pool_scores_below.push(sub_branch.extra.pool_score);
+                        }
+                        Node::Leaf(leaf) => {
+                            sim_scores_below.push(unsafe { **payloads.get_unchecked(leaf.payload_id) })
+                        }
+                    }
+                }
+                if !sim_scores_below.is_empty() {
+                    // Softmax Pooling multiplied by a low `n` penalty
+                    let n: Float = sim_scores_below.len() as Float;
+                    let penalty = n / (n + mu);
+                    pool_scores_below.push(softmax_pooling(sim_scores_below, lambda_leaf) * penalty);
+                }
+                rank_branch.extra.pool_score = softmax_pooling(pool_scores_below, lambda_branch);
+            });
+
+            if rank_branch_vec.is_empty() {
+                continue;
+            } else if rank_branch_vec.len() == 1 {
+                let single_branch = rank_branch_vec.pop().unwrap();
+                single_branch.extra.indicator = Some(style("◉: ∅").green().to_string());
+                continue;
+            }
+
+            let n = rank_branch_vec.len() as Float;
+            let pool_scores = rank_branch_vec.iter().map(|branch| branch.extra.pool_score).collect_vec();
 
             let pool_score_mean = pool_scores.iter().sum::<Float>() / n;
             #[rustfmt::skip]
             let pool_score_std =
                 (n.powi(-1) * pool_scores.into_iter().map(|x| (x - pool_score_mean).powi(2)).sum::<Float>()).sqrt();
 
-            static GAMMA: Float = 2.5;
-            static DELTA: Float = 0.9;
-
-            let first_genus = {
-                let pos = genus_vec
+            let first = rank_branch_vec.remove(
+                rank_branch_vec
                     .iter()
-                    .position_max_by_key(|branch| unsafe {
-                        SimScore::new_unchecked(branch.extra.pool_score.unwrap_unchecked())
-                    })
-                    .unwrap();
-                genus_vec.remove(pos)
-            };
+                    .position_max_by_key(|branch| SimScore::try_new(branch.extra.pool_score).unwrap())
+                    .unwrap(),
+            );
 
-            let second_genus = {
-                let pos = genus_vec
+            let second = rank_branch_vec.remove(
+                rank_branch_vec
                     .iter()
-                    .position_max_by_key(|branch| unsafe {
-                        SimScore::new_unchecked(branch.extra.pool_score.unwrap_unchecked())
-                    })
-                    .unwrap();
-                genus_vec.remove(pos)
+                    .position_max_by_key(|branch| SimScore::try_new(branch.extra.pool_score).unwrap())
+                    .unwrap(),
+            );
+
+            let x = (first.extra.pool_score - second.extra.pool_score) / pool_score_std;
+
+            let conf = first.extra.pool_score.powf(epsilon) * x.powf(gamma) / (delta + x.powf(gamma));
+
+            let colorizer = match conf {
+                0.0..0.25 => StyledObject::<String>::red,
+                0.25..0.5 => StyledObject::<String>::yellow,
+                0.5..0.75 => StyledObject::<String>::green,
+                0.75..1.0 => StyledObject::<String>::cyan,
+                _ => {
+                    eprintln!("Warning: got unexpected confidence score");
+                    StyledObject::magenta
+                }
             };
+            first.extra.indicator = Some(colorizer(style(format!("◉: {conf:.3}"))).to_string());
 
-            let x = (first_genus.extra.pool_score.unwrap() - second_genus.extra.pool_score.unwrap())
-                / pool_score_std;
-
-            let conf =
-                first_genus.extra.pool_score.unwrap().powf(0.7) * x.powf(GAMMA) / (DELTA + x.powf(GAMMA));
-
+            #[cfg(debug_assertions)]
             printdoc! {"
-                1st genus: {} -> {:.3}
-                2nd genus: {} -> {:.3}
+                ## {rank}
+                1st : {} -> {:.3} | 2nd : {} -> {:.3}
                 mean: {pool_score_mean:.3}, std: {pool_score_std:.3}, x={x:.3}
-                => conf = {conf:.3}
+                => conf = {conf:.3}\n
             ",
-            first_genus.name, first_genus.extra.pool_score.unwrap(),
-            second_genus.name, second_genus.extra.pool_score.unwrap()
+            first.name, first.extra.pool_score,
+            second.name, second.extra.pool_score,
             };
         }
 
         // insert payloads before returning
-        ttres.core.payloads = payloads.into_boxed_slice();
+        ttres.core.payloads = payloads;
 
         Ok(ttres)
     }
@@ -237,7 +289,7 @@ impl TaxTreeResults {
                         above.push(Node::new_branch(
                             branch.name.clone(),
                             current.into_boxed_slice(),
-                            branch.extra,
+                            branch.extra.clone(),
                         ));
                     }
                 }

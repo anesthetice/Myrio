@@ -82,15 +82,11 @@ pub fn process_run(
         None => tree_filepaths.len(),
     };
 
-    let intial_centroids = if mat.get_flag("no-initial-centroids") {
-        Vec::with_capacity(0)
-    } else {
-        ttcompute_vec
-            .iter()
-            .map(TaxTreeCompute::get_kmer_normalized_counts_fingerprint)
-            .cloned()
-            .collect_vec()
-    };
+    let intial_centroids = ttcompute_vec
+        .iter()
+        .map(TaxTreeCompute::get_kmer_normalized_counts_fingerprint)
+        .cloned()
+        .collect_vec();
 
     let cluster_params = ClusteringParameters {
         k: cluster_k,
@@ -104,89 +100,47 @@ pub fn process_run(
         silhouette_trimming: config.cluster.silhouette_trimming,
     };
 
-    // The nice "default way" where we can use cluster centroids
-    if !mat.get_flag("no-initial-centroids") {
-        let queries = myrio_core::clustering::cluster(myrseqs, cluster_params)
-            .clusters
-            .into_iter()
-            .map(|myrseqs| {
-                let elements = myrseqs
-                    .into_iter()
-                    .map(|myrseq| myrseq.compute_kmer_counts(search_k, search_t1).0)
-                    .collect_vec();
-                myrio_core::clustering::compute_cluster_centroid(&elements)
-            })
-            .collect_vec();
-
-        spinner.finish_with_message("Finished clustering");
-
-        for (ttcompute, query) in ttcompute_vec.into_iter().zip(queries) {
-            let ttresults_full =
-                TaxTreeResults::from_compute_tree(query, ttcompute, search_similarity, None)?;
-
-            /*
-            use std::io::Write;
-            let mut file =
-                std::fs::OpenOptions::new().write(true).create(true).truncate(true).open("./output.txt")?;
-            writeln!(file, "{ttresults_full}")?;
-            file.sync_all()?;
-            drop(file);
-            break;
-            */
-
-            let ttresults_best = ttresults_full.cut(10);
-
-            println!("{}", ttresults_best.core);
-        }
-    } else {
-        #[rustfmt::skip]
-        let (mut search_queries, mut match_queries): (Vec<SFVec>, Vec<SFVec>) =
-            myrio_core::clustering::cluster(myrseqs, cluster_params)
-                .clusters
+    let queries = myrio_core::clustering::cluster(myrseqs, cluster_params)
+        .clusters
+        .into_iter()
+        .map(|myrseqs| {
+            let elements = myrseqs
                 .into_iter()
-                .map(|myrseqs| {
-                    let search_elements = myrseqs
-                        .iter()
-                        .map(|myrseq| myrseq.compute_kmer_counts(search_k, search_t1).0)
-                        .collect_vec();
-                    let search_queries =
-                        myrio_core::clustering::compute_cluster_centroid(&search_elements);
+                .map(|myrseq| myrseq.compute_kmer_counts(search_k, search_t1).0)
+                .collect_vec();
+            myrio_core::clustering::compute_cluster_centroid(&elements)
+        })
+        .collect_vec();
 
-                    let match_elements = myrseqs
-                        .iter()
-                        .map(|myrseq| myrseq.compute_kmer_counts(cluster_k, search_t1).0)
-                        .collect_vec();
-                    let match_queries =
-                        myrio_core::clustering::compute_cluster_centroid(&match_elements);
+    spinner.finish_with_message("Finished clustering");
 
-                    (search_queries, match_queries)
-                })
-                .multiunzip();
+    for (ttcompute, query) in ttcompute_vec.into_iter().zip(queries) {
+        let ttresults_full = TaxTreeResults::from_compute_tree(
+            query,
+            ttcompute,
+            search_similarity,
+            config.search.lambda_leaf,
+            config.search.lambda_branch,
+            config.search.mu,
+            config.search.gamma,
+            config.search.delta,
+            config.search.epsilon,
+            None,
+        )?;
 
-        spinner.finish_with_message("Finished clustering");
+        /*
+        use std::io::Write;
+        let mut file =
+            std::fs::OpenOptions::new().write(true).create(true).truncate(true).open("./output.txt")?;
+        writeln!(file, "{ttresults_full}")?;
+        file.sync_all()?;
+        drop(file);
+        break;
+        */
 
-        let simfunc: SimFunc = cluster_similarity.to_simfunc(true);
+        let ttresults_best = ttresults_full.cut(config.search.nb_best_display);
 
-        for ttcompute in ttcompute_vec.into_iter() {
-            let query_idx = match_queries
-                .iter()
-                .enumerate()
-                .max_by_key(|(_, q)| {
-                    let score = simfunc(ttcompute.get_kmer_normalized_counts_fingerprint(), q);
-                    println!("{score}");
-                    score
-                })
-                .unwrap()
-                .0;
-
-            let query = search_queries.remove(query_idx);
-            match_queries.remove(query_idx);
-
-            let ttresults_best =
-                TaxTreeResults::from_compute_tree(query, ttcompute, search_similarity, None)?.cut(5);
-
-            println!("{}", ttresults_best.core);
-        }
+        println!("{}", ttresults_best.core);
     }
 
     Ok(())

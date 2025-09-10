@@ -225,7 +225,7 @@ where
                 Node::Branch(branch) => {
                     writeln!(
                         f,
-                        "{}{}── {} ({})",
+                        "{}{}── {} {}",
                         space(depth, is_end_stack),
                         if is_end { "└" } else { "├" },
                         branch.name,

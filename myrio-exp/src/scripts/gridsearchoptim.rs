@@ -232,14 +232,25 @@ fn single(
                 search_queries.remove(query_idx)
             };
 
-            let ttresults_best =
-                TaxTreeResults::from_compute_tree(query, ttcompute.clone(), search_similarity, None)?.cut(5);
+            let ttresults_best = TaxTreeResults::from_compute_tree(
+                query,
+                ttcompute.clone(),
+                search_similarity,
+                2.0,
+                20.0,
+                1.1,
+                2.5,
+                0.9,
+                0.55,
+                None,
+            )?
+            .cut(5);
 
             let best_genus = &*ttresults_best
                 .core
                 .gather_branches_at_rank(Rank::Genus)
                 .iter()
-                .max_by_key(|branch| SimScore::try_from(branch.extra.mean.unwrap()).unwrap_or_default())
+                .max_by_key(|branch| SimScore::try_from(branch.extra.mean).unwrap_or_default())
                 .unwrap()
                 .name;
 

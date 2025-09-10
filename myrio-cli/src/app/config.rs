@@ -55,6 +55,14 @@ impl Config {
         k = 18 # k-mer size to use in searching (i.e., value of `k` itself)
         t1 = 0.1 # see `cluster.t1` above
         similarity = "Cosine" # see `cluster.similarity` above
+        nb_best_analysis = 100
+        lambda_leaf = 2.0
+        lambda_branch = 20.0
+        mu = 1.1
+        gamma = 2.5
+        delta = 0.9
+        epsilon = 0.55
+        nb_best_display = 7
     "#};
 
     pub fn load(filepath: &std::path::Path) -> Self {
@@ -165,10 +173,30 @@ pub struct SearchConfig {
     pub k: usize,
     pub t1: Float,
     pub similarity: Similarity,
+    pub nb_best_analysis: usize,
+    pub lambda_leaf: Float,
+    pub lambda_branch: Float,
+    pub mu: Float,
+    pub gamma: Float,
+    pub delta: Float,
+    pub epsilon: Float,
+    pub nb_best_display: usize,
 }
 
 impl Default for SearchConfig {
     fn default() -> Self {
-        Self { k: 18, t1: 0.1, similarity: Similarity::Cosine }
+        Self {
+            k: 18,
+            t1: 0.1,
+            similarity: Similarity::Cosine,
+            nb_best_analysis: 100,
+            lambda_leaf: 2.0,
+            lambda_branch: 20.0,
+            mu: 1.1,
+            gamma: 2.5,
+            delta: 0.9,
+            epsilon: 0.55,
+            nb_best_display: 7,
+        }
     }
 }

@@ -10,9 +10,18 @@ pub type SimFunc = fn(&SFVec, &SFVec) -> SimScore;
     default = 0_f32,
     new_unchecked,
     validate(finite),
-    derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deref, TryFrom, Display, Default)
+    derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deref, TryFrom, Default)
 )]
 pub struct SimScore(f32);
+
+impl std::fmt::Display for SimScore {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(f, "{:.3}", **self)
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Similarity {

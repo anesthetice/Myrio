@@ -56,7 +56,8 @@ pub fn build_cli() -> Command {
                 .long("nb-clusters")
                 .value_parser(vparser!(usize))
                 .action(ArgAction::Set)
-        )
+        );
+        /*
         .arg(
             Arg::new("no-initial-centroids")
                 .help("Flag that prevents the use of intial centroids derived from gene trees when clustering, instead matching afterwards")
@@ -64,6 +65,7 @@ pub fn build_cli() -> Command {
                 .long("no-initial-centroids")
                 .action(ArgAction::SetTrue)
         );
+        */
 
     let tree_new_subcommand = Command::new("new")
         .arg(

@@ -1,6 +1,5 @@
-use itertools::Itertools;
-
 use super::*;
+use itertools::Itertools;
 
 pub fn process_tree(
     mut mat: ArgMatches,
@@ -42,13 +41,16 @@ fn process_tree_new(
             anyhow::Ok(Some(pathbuf))
         })?;
 
-    let k_precompute: Option<Vec<usize>> = mat.remove_many("pre-compute").map(|vals| vals.collect());
-    let pre_compute_kcounts = k_precompute
-        .as_deref()
-        .map(|k_values| (k_values, config.fasta_bootstrapping_nb_resamples_default));
+    let mut ttstore = TaxTreeStore::load_from_fasta_file(input, output, gene)?;
 
-    let mut tree = TaxTreeStore::load_from_fasta_file(input, output, gene, pre_compute_kcounts)?;
-    tree.save_to_file(config.zstd_compression_level, None)?;
+    if let Some(k_values_to_precompute) = mat.remove_many::<usize>("pre-compute") {
+        for k in k_values_to_precompute.unique() {
+            ttstore.compute_and_append_kmer_counts(k, config.fasta_nb_resamples, None);
+            ttstore.k_precomputed.push(k);
+        }
+    }
+
+    ttstore.save_to_file(config.zstd_compression_level, None)?;
 
     Ok(())
 }
@@ -59,14 +61,12 @@ fn process_tree_expand(
 ) -> anyhow::Result<()> {
     let tree_filepaths = gather_trees(&mut mat, "trees")?;
 
-    let k_precomputed = mat
+    let k_values_to_precompute_vec = mat
         .remove_many::<usize>("pre-compute")
-        .map(|vals| vals.collect_vec())
+        .map(|vals| vals.collect_vec()) // no need for unique here
         .unwrap_or_else(|| vec![config.search.k]);
 
-    let nb_resamples = mat
-        .remove_one::<usize>("nb-resamples")
-        .unwrap_or(config.fasta_bootstrapping_nb_resamples_default);
+    let nb_resamples = mat.remove_one::<usize>("nb-resamples").unwrap_or(config.fasta_nb_resamples);
 
     for filepath in tree_filepaths.into_iter() {
         let spinner = myrio_core::utils::simple_spinner(
@@ -77,7 +77,7 @@ fn process_tree_expand(
         let mut ttstore = TaxTreeStore::load_from_file(filepath)?;
         spinner.finish();
 
-        for k in k_precomputed.iter().copied() {
+        for &k in k_values_to_precompute_vec.iter() {
             if !ttstore.k_precomputed.contains(&k) {
                 ttstore.compute_and_append_kmer_counts(k, nb_resamples, None);
                 ttstore.k_precomputed.push(k);

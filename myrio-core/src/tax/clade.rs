@@ -89,6 +89,7 @@ impl ParsingError {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Encode, Decode)]
 #[repr(usize)]
 pub enum Rank {

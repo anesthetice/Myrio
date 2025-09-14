@@ -212,15 +212,16 @@ impl TaxTreeStore {
         input_filepath: Q,
         store_filepath: Option<Q>,
         gene: impl ToString,
-        // the first element is the list of `k` for which to pre-compute sparse k-mer counts,
-        // the second element is the `max_consecutive_N_before_cutoff` parameter
-        pre_compute_kcounts: Option<(&[usize], usize)>,
     ) -> Result<Self, Error> {
         let store_filepath = if let Some(fp) = store_filepath {
             fp.as_ref().to_path_buf()
         } else {
             let mut fp = input_filepath.as_ref().to_path_buf();
-            let file_name = fp.file_name().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
+            let file_name = fp
+                .file_name()
+                .and_then(|s| s.to_str())
+                .map(str::to_owned)
+                .unwrap_or_else(|| format!("{}_db", gene.to_string()));
             fp.set_file_name(file_name);
             fp.set_extension(Self::FILE_EXTENSION);
             fp
@@ -235,16 +236,13 @@ impl TaxTreeStore {
             }
         };
         file.read_to_string(&mut fasta)?;
-        Self::load_from_fasta_string(fasta, store_filepath, gene, pre_compute_kcounts)
+        Self::load_from_fasta_string(fasta, store_filepath, gene)
     }
 
     pub fn load_from_fasta_string(
         fasta: String,
         store_filepath: PathBuf,
         gene: impl ToString,
-        // the first element is the list of `k` for which to pre-compute sparse k-mer counts,
-        // the second element is the `nb_bootstrap_resamples` parameter
-        pre_compute_kmer_counts: Option<(&[usize], usize)>,
     ) -> Result<Self, Error> {
         /// Phylogenetic rank name stack (i.e., 'species' is at the top of the stack (end of vector), and 'domain' is at the bottom of the stack (start of vector))
         type Stack = Vec<Box<str>>;
@@ -256,11 +254,6 @@ impl TaxTreeStore {
         let mut leaves_and_stacks: Vec<(StoreNode, Stack)> = Vec::new();
         let mut payloads: Vec<StorePayload> = Vec::new();
         let mut payload_id: usize = 0;
-
-        let pre_comp = match pre_compute_kmer_counts {
-            Some((k_values, _)) => Vec::with_capacity(k_values.len()),
-            None => Vec::with_capacity(0),
-        };
 
         let spinner = crate::utils::simple_spinner(None::<&str>, Some(200), None);
 
@@ -308,7 +301,7 @@ impl TaxTreeStore {
             };
 
             leaves_and_stacks.push((StoreNode::new_leaf(name, payload_id), stack));
-            payloads.push(StorePayload::new(seq, pre_comp.clone()));
+            payloads.push(StorePayload::new(seq, Vec::new()));
             payload_id += 1;
             string_seq.clear();
         }
@@ -366,25 +359,11 @@ impl TaxTreeStore {
 
         spinner.finish();
 
-        if let Some((k_values, nb_bootstrap_resamples)) = pre_compute_kmer_counts {
-            let mut tax_tree_store = Self {
-                core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
-                filepath: store_filepath,
-                k_precomputed: k_values.to_vec(),
-            };
-
-            for &k in k_values {
-                tax_tree_store.compute_and_append_kmer_counts(k, nb_bootstrap_resamples, None)
-            }
-
-            Ok(tax_tree_store)
-        } else {
-            Ok(Self {
-                core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
-                filepath: store_filepath,
-                k_precomputed: Vec::new(),
-            })
-        }
+        Ok(Self {
+            core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
+            filepath: store_filepath,
+            k_precomputed: Vec::new(),
+        })
     }
 
     pub fn get_filepath(&self) -> &Path {
@@ -406,7 +385,7 @@ impl TaxTreeStore {
     pub fn compute_and_append_kmer_counts(
         &mut self,
         k: usize,
-        nb_bootstrap_resamples: usize,
+        nb_resamples: usize,
         multi: Option<&indicatif::MultiProgress>,
     ) {
         let pb = crate::utils::simple_progressbar(
@@ -414,21 +393,20 @@ impl TaxTreeStore {
             format!("computing counts for k={k}"),
             multi,
         );
-        self.core.payloads.par_iter_mut().progress_with(pb).for_each(|sp| {
-            let kmer_counts = compute_kmer_store_counts_for_fasta_seq(
-                &sp.seq,
-                k,
-                nb_bootstrap_resamples,
-                &mut SmallRng::from_os_rng(),
-            );
-            sp.kmer_store_counts_vec.push(kmer_counts);
-        });
+        self.core.payloads.par_iter_mut().progress_with(pb).for_each_init(
+            SmallRng::from_os_rng,
+            |rng, sp| {
+                let kmer_store_counts =
+                    compute_kmer_store_counts_for_fasta_seq(&sp.seq, k, nb_resamples, rng);
+                sp.kmer_store_counts_vec.push(kmer_store_counts);
+            },
+        );
     }
 
     pub fn compute_and_overwrite_kmer_counts(
         &mut self,
         k: usize,
-        nb_bootstrap_resamples: usize,
+        nb_resamples: usize,
         multi: Option<&indicatif::MultiProgress>,
     ) {
         let pb = crate::utils::simple_progressbar(
@@ -436,16 +414,15 @@ impl TaxTreeStore {
             format!("computing counts for k={k}"),
             multi,
         );
-        self.core.payloads.par_iter_mut().progress_with(pb).for_each(|sp| {
-            let kmer_counts = compute_kmer_store_counts_for_fasta_seq(
-                &sp.seq,
-                k,
-                nb_bootstrap_resamples,
-                &mut SmallRng::from_os_rng(),
-            );
-            let pre_comp = &mut sp.kmer_store_counts_vec;
-            *pre_comp = vec![kmer_counts]
-        });
+        self.core.payloads.par_iter_mut().progress_with(pb).for_each_init(
+            SmallRng::from_os_rng,
+            |rng, sp| {
+                let kmer_store_counts =
+                    compute_kmer_store_counts_for_fasta_seq(&sp.seq, k, nb_resamples, rng);
+                let pre_comp = &mut sp.kmer_store_counts_vec;
+                *pre_comp = vec![kmer_store_counts]
+            },
+        );
     }
 }
 

@@ -1,8 +1,6 @@
-use std::{
-    f64,
-    ops::{Div, Sub},
-};
+use std::ops::Div;
 
+use console::style;
 use itertools::Itertools;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
@@ -41,7 +39,7 @@ pub struct ClusteringOutput {
     pub rejected: Vec<MyrSeq>,
 }
 
-/// The input `members` should ideally not be normalized
+/// The input `members` should ideally not be normalized, output is normalized
 pub fn compute_cluster_centroid<T>(members: &[T]) -> SFVec
 where
     T: AsRef<SFVec> + Sync,
@@ -75,7 +73,7 @@ pub fn cluster(
 
     let mut rejected: Vec<MyrSeq> = Vec::new();
 
-    // Step 1, compute the k-mer counts of each myrseq, normalized either way (too bothersome later on otherwise)
+    // Step 1, compute the k-mer counts of each myrseq, discarding k-mers with low quality then discarding sequences with not enough remaining valid k-mers
     let (myrseqs, kmer_counts_vec, nb_hck_vec): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
         .into_iter()
         .filter_map(|myrseq| {
@@ -90,7 +88,7 @@ pub fn cluster(
         //.sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first
         .multiunzip();
 
-    // We keep both the non-normalized kmer counts (for cluster members) but also the normalized ones (for more efficient computation)
+    // We keep both the non-normalized k-mer counts (for cluster members) but also the normalized ones (for more efficient computation)
     let kmer_counts_normalized_vec =
         kmer_counts_vec.clone().into_iter().map(SFVec::into_normalized_l2).collect_vec();
 
@@ -121,7 +119,7 @@ pub fn cluster(
                     .sum::<Float>()
                     .div(clusters.len() as Float);
                 // add a penalty (increases score) for sequences with a low number of high-confidence k-mers
-                score = 0.8 * score + 0.2 * (1.0 - (*nb_hck as Float) / max_nb_hck);
+                score *= 0.8 + 0.2 * (1.0 - (*nb_hck as Float) / max_nb_hck);
                 SimScore::try_new(score).unwrap()
             })
             .unwrap()
@@ -169,7 +167,35 @@ pub fn cluster(
         nb_iters += 1;
     }
 
-    // Step 4 bypass if silhouette_trimming is set to `None`
+    /*
+    {
+        kmer_counts_normalized_vec
+            .par_iter()
+            .enumerate()
+            .map(|(kc_idx, kmer_counts_normalized)| {
+                let cl_idx = clusters
+                    .iter()
+                    .enumerate()
+                    .max_by_key(|(_, cluster)| simfunc(&cluster.centroid, kmer_counts_normalized))
+                    .unwrap()
+                    .0;
+                (kc_idx, cl_idx)
+            })
+            .collect_into_vec(&mut target);
+
+        target.iter().for_each(|&(kc_idx, cl_idx)| unsafe {
+            clusters
+                .get_unchecked_mut(cl_idx)
+                .push(kmer_counts_vec.get_unchecked(kc_idx), kmer_counts_normalized_vec.get_unchecked(kc_idx))
+        });
+        target.clear();
+
+        Cluster::print_analyze(&clusters, None, similarity, &["ITS", "matK", "rbcL"]);
+        clusters = clusters.into_iter().map(Cluster::recenter).collect_vec();
+    }
+    */
+
+    // Step 4 bypass if silhouette_trimming is set to `None` (i.e., disabled)
     if silhouette_trimming.is_none() {
         let mut output: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
         for (myrseq, kmer_counts_normalized) in myrseqs.into_iter().zip_eq(kmer_counts_normalized_vec.iter())
@@ -206,7 +232,7 @@ pub fn cluster(
         unsafe { clustered_myrseqs.get_unchecked_mut(cl_idx).push(myrseq) };
     }
 
-    let silhouette_scores_vec = Cluster::compute_silhouette_scores_vec(&clusters, simfunc);
+    let silhouette_scores_vec = Cluster::compute_silhouette_scores_vec(&clusters, similarity);
 
     let output = clustered_myrseqs
         .into_iter()
@@ -291,7 +317,7 @@ impl<'a> Cluster<'a> {
 
     fn compute_silhouette_scores_vec(
         clusters: &[Self],
-        simfunc: SimFunc,
+        similarity: Similarity,
     ) -> Vec<Vec<Float>> {
         #[rustfmt::skip]
         fn inner(cluster: &Cluster, neighbor: &Cluster, index: usize, simfunc: SimFunc) -> Float {
@@ -300,7 +326,6 @@ impl<'a> Cluster<'a> {
             let a = cluster.members_normalized.iter()
                 .map(|&e| *Similarity::dist(simfunc(i, e)))
                 .sum::<Float>()
-                .sub(1.0)
                 .div((cluster.members_normalized.len() - 1) as Float);
             let b = neighbor.members_normalized.iter()
                 .map(|&e| *Similarity::dist(simfunc(i, e)))
@@ -310,7 +335,8 @@ impl<'a> Cluster<'a> {
             (b - a) / a.max(b)
         }
 
-        let mut output = Vec::with_capacity(clusters.len());
+        let simfunc: SimFunc = similarity.to_simfunc(true);
+        let mut output: Vec<Vec<Float>> = Vec::with_capacity(clusters.len());
 
         clusters
             .par_iter()
@@ -336,5 +362,50 @@ impl<'a> Cluster<'a> {
             .collect_into_vec(&mut output);
 
         output
+    }
+
+    fn print_analyze(
+        clusters: &'a [Cluster],
+        silhouette_scores_vec: Option<&[Vec<Float>]>,
+        similarity: Similarity,
+        names: &[&str],
+    ) {
+        let silhouette_scores_vec_computed = if silhouette_scores_vec.is_none() {
+            Self::compute_silhouette_scores_vec(clusters, similarity)
+        } else {
+            Vec::with_capacity(0)
+        };
+
+        let silhouette_scores_vec = if let Some(silscores_vec) = silhouette_scores_vec {
+            silscores_vec
+        } else {
+            silhouette_scores_vec_computed.as_slice()
+        };
+
+        let simfunc: SimFunc = similarity.to_simfunc(true);
+
+        debug_assert_eq!(clusters.len(), silhouette_scores_vec.len(),);
+
+        debug_assert_eq!(clusters.len(), names.len());
+
+        for (cluster, silscores, name) in itertools::izip!(clusters, silhouette_scores_vec, names) {
+            let n = silscores.len() as Float;
+
+            let (wcsss_weighted, mean, std) = if !silscores.is_empty() {
+                let wcss_weighted: Float = cluster.wcsss(simfunc) / n;
+                let mean: Float = silscores.iter().sum::<Float>() / n;
+                let std: Float =
+                    (n.powi(-1) * silscores.iter().map(|x| (x - mean).powi(2)).sum::<Float>()).sqrt();
+                (wcss_weighted, mean, std)
+            } else {
+                (0.0, 0.0, 0.0)
+            };
+            let name_bold = style(name).bold();
+            indoc::printdoc! {"
+                {name_bold} cluster
+                ├── within-cluster sum of similarity scores weighted: {wcsss_weighted:.4}
+                └── silhouette: (μ={mean:.3}, σ={std:.3})
+            "};
+        }
     }
 }

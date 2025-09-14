@@ -55,6 +55,7 @@ pub struct TaxTreeResults {
 }
 
 impl TaxTreeResults {
+    #[allow(clippy::too_many_arguments)]
     pub fn from_compute_tree(
         query: SFVec,
         ttcompute: TaxTreeCompute,
@@ -200,7 +201,7 @@ impl TaxTreeResults {
             let pool_score_mean = pool_scores.iter().sum::<Float>() / n;
             #[rustfmt::skip]
             let pool_score_std =
-                (n.powi(-1) * pool_scores.into_iter().map(|x| (x - pool_score_mean).powi(2)).sum::<Float>()).sqrt();
+                (n.powi(-1) * pool_scores.into_iter().map(|x| (x - pool_score_mean).powi(2)).sum::<Float>()).sqrt().max(1E-8);
 
             let first = rank_branch_vec.remove(
                 rank_branch_vec
@@ -226,7 +227,7 @@ impl TaxTreeResults {
                 0.5..0.75 => StyledObject::<String>::green,
                 0.75..1.0 => StyledObject::<String>::cyan,
                 _ => {
-                    eprintln!("Warning: got unexpected confidence score");
+                    eprintln!("Warning: got unexpected confidence score of {conf}");
                     StyledObject::magenta
                 }
             };

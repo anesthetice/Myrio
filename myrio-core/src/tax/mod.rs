@@ -49,6 +49,14 @@ pub enum Error {
     MissingBytes(usize, usize),
     #[error("Expected to find the TaxTreeStore magic number")]
     NotATaxTreeStore,
+    #[error("Miscellaneous error, {0}")]
+    Misc(String),
+}
+
+impl Error {
+    pub(crate) fn new_misc(msg: impl ToString) -> Self {
+        Self::Misc(msg.to_string())
+    }
 }
 
 pub fn kmer_store_counts_to_kmer_counts(input: (SparseVec<u16>, Float)) -> SFVec {
@@ -59,10 +67,10 @@ pub fn kmer_store_counts_to_kmer_counts(input: (SparseVec<u16>, Float)) -> SFVec
 pub fn compute_kmer_counts_for_fasta_seq(
     seq: &SeqSlice<Iupac>,
     k: usize,
-    nb_bootstrap_resamples: usize,
+    nb_resamples: usize,
     rng: &mut impl rand::Rng,
 ) -> SFVec {
-    let input = compute_kmer_store_counts_for_fasta_seq(seq, k, nb_bootstrap_resamples, rng);
+    let input = compute_kmer_store_counts_for_fasta_seq(seq, k, nb_resamples, rng);
     kmer_store_counts_to_kmer_counts(input)
 }
 

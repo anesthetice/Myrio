@@ -566,6 +566,18 @@ where
     }
 }
 
+impl<T> std::iter::Sum<T> for SparseVec<Float>
+where
+    T: AsRef<SparseVec<Float>>,
+{
+    fn sum<I: Iterator<Item = T>>(iter: I) -> Self {
+        iter.fold(
+            unsafe { SparseVec::new_unchecked(Vec::with_capacity(0), Vec::with_capacity(0), 0, 0.0) },
+            |acc, x| acc + x.as_ref(),
+        )
+    }
+}
+
 /// This function is only safe if both slices are sorted with unique elements
 unsafe fn merge_sorted_unique(
     a: &[usize],

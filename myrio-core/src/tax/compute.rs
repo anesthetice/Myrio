@@ -2,22 +2,27 @@
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use rand::{SeedableRng, rngs::SmallRng, seq::IndexedRandom};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use super::Error;
 use crate::{
     data::{Float, SFVec},
     tax::{
-        compute_kmer_counts_for_fasta_seq, core::TaxTreeCore, kmer_store_counts_to_kmer_counts,
+        clade::Rank, compute_kmer_counts_for_fasta_seq, core::TaxTreeCore, kmer_store_counts_to_kmer_counts,
         store::TaxTreeStore,
     },
 };
 
 #[derive(Clone)]
 pub struct TaxTreeCompute {
-    pub(crate) core: TaxTreeCore<(), SFVec>,
-    pub(crate) kmer_normalized_counts_fingerprint: SFVec,
+    pub core: TaxTreeCore<(), SFVec>,
+    /// normalized k-mer counts that represent the entire gene
+    pub global_fingerprint: SFVec,
+    /// set of normalized k-mer counts that represent the gene for clades at a specific rank
+    pub local_fingerprints: Vec<SFVec>,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub enum CacheOptions {
     Enabled { zstd_compression_level: i32 },
@@ -25,34 +30,56 @@ pub enum CacheOptions {
 }
 
 impl TaxTreeCompute {
-    pub fn get_kmer_normalized_counts_fingerprint(&self) -> &SFVec {
-        &self.kmer_normalized_counts_fingerprint
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn from_store_tree(
         mut ttstore: TaxTreeStore,
         cluster_k: usize,
-        fingerprint_nb_subsamples: usize,
-        fingerprint_fasta_nb_resamples: usize,
+        fingerprint_local_rank: Rank,
+        fingerprint_local_nb_subsamples: usize,
+        fingerprint_local_fasta_nb_resamples: usize,
+        fasta_nb_resamples: usize,
         search_k: usize,
-        search_fasta_nb_resamples: usize,
         cache_opt: CacheOptions,
-        rng: &mut impl rand::Rng,
         multi: Option<&MultiProgress>,
     ) -> Result<Self, Error> {
-        let kmer_normalized_counts_fingerprint = (0..fingerprint_nb_subsamples)
-            .map(|_| {
-                let seq = &ttstore.core.payloads.choose(rng).unwrap().seq;
-                compute_kmer_counts_for_fasta_seq(
-                    seq,
-                    cluster_k,
-                    fingerprint_fasta_nb_resamples,
-                    &mut SmallRng::from_os_rng(),
-                )
-            })
-            .fold(SFVec::new(0), |acc, x| acc + x)
-            .into_normalized_l2();
+        if matches!(fingerprint_local_rank, Rank::Species) {
+            return Err(Error::new_misc("Fingerprint rank cannot be set to `Species`"));
+        }
+
+        if fingerprint_local_rank > ttstore.core.highest_rank {
+            return Err(Error::new_misc(format!(
+                "The desired fingerprint rank of `{fingerprint_local_rank}` is higher than the tree's highest rank of `{}`",
+                ttstore.core.highest_rank
+            )));
+        }
+
+        let local_fingerprints: Vec<SFVec> = {
+            let branches = ttstore.core.gather_branches_at_rank(fingerprint_local_rank);
+            let mut output: Vec<SFVec> = Vec::with_capacity(branches.len());
+
+            branches
+                .into_par_iter()
+                .map_init(rand::rngs::SmallRng::from_os_rng, |rng, branch| {
+                    let leaves = branch.gather_leaves();
+                    (0..fingerprint_local_nb_subsamples)
+                        .map(|_| {
+                            let random_payload_id = leaves.choose(rng).unwrap().payload_id;
+                            let seq = &ttstore.core.payloads[random_payload_id].seq;
+                            compute_kmer_counts_for_fasta_seq(
+                                seq,
+                                cluster_k,
+                                fingerprint_local_fasta_nb_resamples,
+                                rng,
+                            )
+                        })
+                        .sum::<SFVec>()
+                        .into_normalized_l2()
+                })
+                .collect_into_vec(&mut output);
+            output
+        };
+
+        let global_fingerprint: SFVec = local_fingerprints.iter().sum::<SFVec>().into_normalized_l2();
 
         #[rustfmt::skip]
         let sfvec_idx = ttstore
@@ -63,12 +90,12 @@ impl TaxTreeCompute {
             .map_or_else(
                 || match cache_opt {
                     CacheOptions::Enabled { zstd_compression_level } => {
-                        ttstore.compute_and_append_kmer_counts(search_k, search_fasta_nb_resamples, multi);
+                        ttstore.compute_and_append_kmer_counts(search_k, fasta_nb_resamples, multi);
                         ttstore.save_to_file(zstd_compression_level, multi)?;
                         Ok::<usize, Error>(ttstore.k_precomputed.len())
                     },
                     CacheOptions::Disabled => {
-                        ttstore.compute_and_overwrite_kmer_counts(search_k, search_fasta_nb_resamples, multi);
+                        ttstore.compute_and_overwrite_kmer_counts(search_k, fasta_nb_resamples, multi);
                         Ok::<usize, Error>(0_usize)
                     }
                 },
@@ -92,7 +119,8 @@ impl TaxTreeCompute {
                 roots: ttstore.core.roots,
                 payloads: payloads.into_boxed_slice(),
             },
-            kmer_normalized_counts_fingerprint,
+            global_fingerprint,
+            local_fingerprints,
         })
     }
 }

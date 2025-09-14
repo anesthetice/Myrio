@@ -23,6 +23,7 @@ impl std::fmt::Display for SimScore {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub enum Similarity {
     Cosine,
@@ -71,7 +72,15 @@ fn cosine(
 ) -> SimScore {
     (a.dot_zero(b) / (a.norm_l2() * b.norm_l2()))
         .try_into()
-        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .inspect_err(|e| {
+            eprintln!(
+                "{e} a.count={} ({} NaN), b.count={} ({} NaN)",
+                a.count(),
+                a.values().filter(|v| v.is_nan()).count(),
+                b.count(),
+                b.values().filter(|v| v.is_nan()).count(),
+            )
+        })
         .unwrap_or_default()
 }
 
@@ -90,7 +99,15 @@ fn cosine_pre_normalized(
 ) -> SimScore {
     a.dot_zero(b)
         .try_into()
-        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .inspect_err(|e| {
+            eprintln!(
+                "{e} a.count={} ({} NaN), b.count={} ({} NaN)",
+                a.count(),
+                a.values().filter(|v| v.is_nan()).count(),
+                b.count(),
+                b.values().filter(|v| v.is_nan()).count(),
+            )
+        })
         .unwrap_or_default()
 }
 
@@ -111,7 +128,15 @@ fn jacard_tanimoto(
     let dot = a.dot_zero(b);
     (dot / (a.norm_l2_squared() + b.norm_l2_squared() - dot))
         .try_into()
-        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .inspect_err(|e| {
+            eprintln!(
+                "{e} a.count={} ({} NaN), b.count={} ({} NaN)",
+                a.count(),
+                a.values().filter(|v| v.is_nan()).count(),
+                b.count(),
+                b.values().filter(|v| v.is_nan()).count(),
+            )
+        })
         .unwrap_or_default()
 }
 
@@ -132,7 +157,15 @@ fn jacard_tanimoto_pre_normalized(
     let dot = a.dot_zero(b);
     (dot / (2.0 - dot))
         .try_into()
-        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .inspect_err(|e| {
+            eprintln!(
+                "{e} a.count={} ({} NaN), b.count={} ({} NaN)",
+                a.count(),
+                a.values().filter(|v| v.is_nan()).count(),
+                b.count(),
+                b.values().filter(|v| v.is_nan()).count(),
+            )
+        })
         .unwrap_or_default()
 }
 
@@ -165,7 +198,15 @@ fn overlap(
 
     (sum_min / sum_max)
         .try_into()
-        .inspect_err(|e| eprintln!("{e}, a.count={}, b.count={}", a.count(), b.count()))
+        .inspect_err(|e| {
+            eprintln!(
+                "{e} a.count={} ({} NaN), b.count={} ({} NaN)",
+                a.count(),
+                a.values().filter(|v| v.is_nan()).count(),
+                b.count(),
+                b.values().filter(|v| v.is_nan()).count(),
+            )
+        })
         .unwrap_or_default()
 }
 

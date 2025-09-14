@@ -12,15 +12,11 @@ myrio-proc = { workspace = true }
 # external
 bio-seq = { workspace = true }
 bincode = { version = "2.0" }
-bytemuck = { version = "1.23" }
 console = { workspace = true}
 flate2 = { version = "1.1" }
 indicatif = { workspace = true, features = ["rayon"] }
 indoc = { version = "2.0" }
 itertools = { workspace = true }
-# As the `argmin` crate currently only supports `ndarray` 0.15
-#ndarray = { version = "0.15" }
-#ndarray-stats = { version = "0.5.0" }
 nutype = { version = "0.6", features = ["new_unchecked"]}
 once_cell = { version = "1.21" }
 rand = { workspace = true }
@@ -28,7 +24,10 @@ rayon = { workspace = true }
 regex = { version = "1.11" }
 thiserror = { workspace = true }
 zstd = { version = "0.13", features = ["zstdmt"]}
+# optional
+serde = { version = "1.0", features = ["derive"], optional = true }
 
 [features]
-default = ["progress"]
+default = ["progress", "serde"]
 progress = []
+serde = ["dep:serde"]

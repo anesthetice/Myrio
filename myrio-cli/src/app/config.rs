@@ -1,26 +1,24 @@
 use std::io::{Read, Write};
 
-use myrio_core::data::Float;
+use myrio_core::{data::Float, similarity::Similarity, tax::clade::Rank};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub zstd_compression_level: i32,
-    pub nb_subsamples_for_tree_centroid: usize,
-    pub fasta_bootstrapping_nb_resamples_default: usize,
-    pub fasta_bootstrapping_nb_resamples_for_tree_centroid: usize,
+    pub fasta_nb_resamples: usize,
     pub cluster: ClusterConfig,
+    pub fingerprint: FingerprintConfig,
     pub search: SearchConfig,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            zstd_compression_level: 9,
-            nb_subsamples_for_tree_centroid: 512,
-            fasta_bootstrapping_nb_resamples_default: 32,
-            fasta_bootstrapping_nb_resamples_for_tree_centroid: 32,
+            zstd_compression_level: 6,
+            fasta_nb_resamples: 32,
             cluster: ClusterConfig::default(),
+            fingerprint: FingerprintConfig::default(),
             search: SearchConfig::default(),
         }
     }
@@ -31,37 +29,62 @@ impl Config {
         # The compression level used by zstd, levels currently range from 1 to 22
         zstd_compression_level = 6
 
-        # The number of subsamples (i.e., leaves) used to compute the kmer counts centroid of a tree
-        nb_subsamples_for_tree_centroid = 512
-
-        # The number of times resampling (techincally downsampling) is performed on a fasta sequence when computing kmer counts by default
-        fasta_bootstrapping_nb_resamples_default = 32
-
-        # The number of times resampling (techincally downsampling) is performed on a fasta sequence when computing kmer counts for the tree centroid
-        fasta_bootstrapping_nb_resamples_for_tree_centroid = 32
+        # The number of times resampling is performed on a fasta sequence when computing k-mer counts
+        fasta_nb_resamples = 32
 
         [cluster]
-        k = 6 # k-mer size to use in clustering (i.e., value of `k` itself)
-        t1 = 0.2 # excludes k-mers from the count for which the product of their per-base probability of being correctly identified is lower than this value`
-        t2 = 20 # reject sequences that have fewer than `t2` valid k-mers
-        similarity = "Cosine" # similarity function to use, available: ["Cosine", "JacardTanimoto", "Overlap"]
-        eta_improvement = 0.0001 # fraction used to decide when to stop the main clustering step
-        nb_iters_max = 20 # maximum number of iterations the main clustering step can usec
+        # The k-mer size to use in clustering (i.e., value of `k` itself)
+        k = 6
+        # Value that serves to exclude k-mers from being counted when `∏ P(correctly called) < t1`
+        t1 = 0.2
+        # Value that serves to exclude sequences that end up having fewer than `t2` valid k-mers
+        t2 = 20
+        # The similarity function to use, available: ["Cosine", "JacardTanimoto", "Overlap"]
+        similarity = "Cosine"
+        # A fraction used to decide when to stop the main clustering step
+        eta_improvement = 0.0001
+        # Maximum number of iterations the main clustering step can perform
+        nb_iters_max = 20
         # E.g., `silhouette_trimming = 1.4` means silhouette trimming is enabled, sequences with a lower silhouette score than `mean - std * 1.4` are discarded
         # To disabled silhouette trimming, comment out the line with `#` (improves clustering performance by a lot)
         silhouette_trimming = 1.4
 
+        [fingerprint]
+        # Rank for which the local fingerprints will be computed, available: ["Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus"]
+        local_rank = "Phylum"
+        # Same explanation as `cluster.similarity` seen above
+        similarity = "Cosine"
+        # The number of subsamples (i.e., leaves) used to compute the local fingerprint (representative k-mer counts) of a tree
+        local_nb_subsamples = 128
+        # The number of times resampling is performed on a fasta sequence when computing k-mer counts
+        local_fasta_nb_resamples = 32
+        # Mathematical parameter used to prioritize local fingerprints with a higher similarity score
+        # equation: `local_fingerprint * exp(1 + α ⋅ score)`
+        alpha = 2.5
+
         [search]
-        k = 18 # k-mer size to use in searching (i.e., value of `k` itself)
-        t1 = 0.1 # see `cluster.t1` above
-        similarity = "Cosine" # see `cluster.similarity` above
+        # The k-mer size to use in searching (i.e., value of `k` itself)
+        k = 18
+        # Same explanation as `cluster.t1` seen above
+        t1 = 0.1
+        # Same explanation as `cluster.similarity` seen above
+        similarity = "Cosine"
+        # The number of leaves to keep for analysis
         nb_best_analysis = 100
+
+        # Mathematical parameters for softmax pooling (and small `n` penalty for leaves)
+        # see `https://github.com/anesthetice/Myrio/blob/main/myrio-core/README.md` for more information
         lambda_leaf = 2.0
         lambda_branch = 20.0
         mu = 1.1
+
+        # Mathematical parameters for confidence computation
+        # see `https://github.com/anesthetice/Myrio/blob/main/myrio-core/README.md` for more information
         gamma = 2.5
         delta = 0.9
         epsilon = 0.55
+
+        # Decides how many of the best leaves are displayed at the end
         nb_best_display = 7
     "#};
 
@@ -122,27 +145,7 @@ impl Config {
     }
 }
 
-/// From `myrio-core/src/similarity.rs`
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum Similarity {
-    Cosine,
-    JacardTanimoto,
-    Overlap,
-}
-
-#[allow(clippy::from_over_into)]
-impl Into<myrio_core::similarity::Similarity> for Similarity {
-    fn into(self) -> myrio_core::similarity::Similarity {
-        match self {
-            Self::Cosine => myrio_core::similarity::Similarity::Cosine,
-            Self::JacardTanimoto => myrio_core::similarity::Similarity::JacardTanimoto,
-            Self::Overlap => myrio_core::similarity::Similarity::Overlap,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename = "clustering")]
 pub struct ClusterConfig {
     pub k: usize,
     pub t1: Float,
@@ -168,7 +171,27 @@ impl Default for ClusterConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename = "searching")]
+pub struct FingerprintConfig {
+    pub local_rank: Rank,
+    pub similarity: Similarity,
+    pub local_nb_subsamples: usize,
+    pub local_fasta_nb_resamples: usize,
+    pub alpha: Float,
+}
+
+impl Default for FingerprintConfig {
+    fn default() -> Self {
+        Self {
+            local_rank: Rank::Phylum,
+            similarity: Similarity::Cosine,
+            local_nb_subsamples: 128,
+            local_fasta_nb_resamples: 32,
+            alpha: 2.5,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchConfig {
     pub k: usize,
     pub t1: Float,

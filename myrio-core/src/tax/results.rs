@@ -16,7 +16,7 @@ use crate::{
         Error,
         clade::Rank,
         compute::TaxTreeCompute,
-        core::{Leaf, Node, TaxTreeCore},
+        core::{Branch, Leaf, Node, TaxTreeCore},
     },
 };
 
@@ -60,6 +60,7 @@ impl TaxTreeResults {
         query: SFVec,
         ttcompute: TaxTreeCompute,
         similarity: Similarity,
+        nb_best_analysis: usize,
         lambda_leaf: Float,
         lambda_branch: Float,
         mu: Float,
@@ -133,7 +134,7 @@ impl TaxTreeResults {
             dive_recursive(store_node, &mut roots, &payloads);
         }
 
-        let ttres = Self {
+        let mut ttres = Self {
             core: TaxTreeCore {
                 gene: ttcompute.core.gene,
                 highest_rank: ttcompute.core.highest_rank,
@@ -141,7 +142,8 @@ impl TaxTreeResults {
                 payloads: payloads.into_boxed_slice(),
             },
         };
-        let mut ttres = ttres.cut(100);
+        ttres.trim(15);
+        let mut ttres = ttres.cut(nb_best_analysis);
 
         // We extract the payloads to satisfy the borrow-checker, these will be inserted later at the end
         let payloads = std::mem::replace(&mut ttres.core.payloads, Box::from([]));
@@ -251,6 +253,64 @@ impl TaxTreeResults {
         Ok(ttres)
     }
 
+    pub fn trim(
+        &mut self,
+        max_amount_of_leaves_per_branch: usize,
+    ) {
+        let mut new_payloads: Vec<SimScore> = Vec::new();
+
+        fn dive_recursive(
+            node: &mut Node<BRes>,
+            new_payloads: &mut Vec<SimScore>,
+            simscores: &[SimScore],
+            max: usize,
+        ) {
+            if let Node::Branch(branch) = node {
+                let children = std::mem::take(&mut branch.children);
+
+                let mut new_children: Vec<Node<BRes>> = Vec::new();
+                let mut leaves: Vec<Leaf> = Vec::new();
+
+                for sub_node in children {
+                    match sub_node {
+                        Node::Leaf(leaf) => leaves.push(leaf),
+                        branch_wrapped => new_children.push(branch_wrapped),
+                    }
+                }
+
+                new_children.iter_mut().for_each(|sub_node| {
+                    dive_recursive(sub_node, new_payloads, simscores, max);
+                });
+
+                // Bypass somewhat expensive computations if there are fewer leaves than max
+                if leaves.len() <= max {
+                    leaves.into_iter().for_each(|leaf| {
+                        new_children.push(Node::new_leaf(leaf.name, new_payloads.len()));
+                        new_payloads.push(unsafe { *simscores.get_unchecked(leaf.payload_id) });
+                    });
+                } else {
+                    leaves
+                        .into_iter()
+                        .map(|leaf| (leaf.name, unsafe { *simscores.get_unchecked(leaf.payload_id) }))
+                        .k_largest_by_key(max, |(_, score)| *score)
+                        .for_each(|(name, score)| {
+                            new_children.push(Node::new_leaf(name, new_payloads.len()));
+                            new_payloads.push(score);
+                        });
+                }
+
+                let _ = std::mem::replace(&mut branch.children, new_children.into_boxed_slice());
+            }
+        }
+
+        for root in self.core.roots.iter_mut() {
+            dive_recursive(root, &mut new_payloads, &self.core.payloads, max_amount_of_leaves_per_branch);
+        }
+
+        let _ = std::mem::replace(&mut self.core.payloads, new_payloads.into_boxed_slice());
+    }
+
+    /// Keep only the leaves with the highest similarity scores
     pub fn cut(
         &self,
         nb_best: usize,
@@ -315,6 +375,66 @@ impl TaxTreeResults {
                 payloads: new_payloads.into_boxed_slice(),
             },
         }
+    }
+
+    pub const CSV_HEADER: &str = "gene,domain,kingdom,phylum,class,order,family,genus,species,category,simscore,mean_simscore,max_simscore,pooling_score\n";
+
+    /// Does not include the header `Self::CSV_HEADER`
+    pub fn generate_csv_records(&self) -> String {
+        let template =
+            self.core.gene.clone() + &",".repeat(1 + Rank::Domain as usize - self.core.highest_rank as usize);
+
+        fn dive_recursive(
+            node: &Node<BRes>,
+            remaining_rank_depth: usize,
+            simscores: &[SimScore],
+            mut template: String,
+            output: &mut Vec<String>,
+        ) {
+            match node {
+                Node::Branch(branch) => {
+                    template += &*branch.name;
+                    template += ",";
+                    for sub_node in branch.children.iter() {
+                        dive_recursive(
+                            sub_node,
+                            remaining_rank_depth - 1,
+                            simscores,
+                            template.clone(),
+                            output,
+                        );
+                    }
+                    template += &",".repeat(remaining_rank_depth);
+                    template += "branch,";
+                    template += &format!(
+                        ",{:.6},{:.6},{:.6}",
+                        branch.extra.mean, branch.extra.max, branch.extra.pool_score
+                    );
+                    output.push(template);
+                }
+                Node::Leaf(leaf) => {
+                    template += &*leaf.name;
+                    template += ",";
+                    template += &",".repeat(remaining_rank_depth);
+                    template += "leaf,";
+                    template += &format!("{:.6},,,", *simscores[leaf.payload_id],);
+                    output.push(template);
+                }
+            }
+        }
+
+        let mut output: Vec<String> = Vec::new();
+        for root in self.core.roots.iter() {
+            dive_recursive(
+                root,
+                self.core.highest_rank as usize - 1,
+                &self.core.payloads,
+                template.clone(),
+                &mut output,
+            );
+        }
+
+        output.join("\n") + "\n"
     }
 }
 

@@ -256,7 +256,7 @@ where
                 Node::Leaf(leaf) => {
                     writeln!(
                         f,
-                        "{}{}── {} ({})",
+                        "{}{}── {} {}",
                         space(depth, is_end_stack),
                         if is_end { "└" } else { "├" },
                         leaf.name,
@@ -464,16 +464,16 @@ mod test {
 
         let expected = indoc! {"
             Root (Test)
-            ├── test-1 (0.075)
-            │   ├── test-11 (0.15)
-            │   │   ├── test-111 (0.1)
-            │   │   └── test-112 (0.2)
-            │   └── test-12 (0)
-            │       ├── test-121 (0)
-            │       └── test-122 (0)
-            └── test-2 (0.9)
-                └── test-21 (0.9)
-                    └── test-211 (0.9)
+            ├── test-1 0.075
+            │   ├── test-11 0.15
+            │   │   ├── test-111 0.1
+            │   │   └── test-112 0.2
+            │   └── test-12 0
+            │       ├── test-121 0
+            │       └── test-122 0
+            └── test-2 0.9
+                └── test-21 0.9
+                    └── test-211 0.9
         "};
         assert_eq!(tree.to_string().as_str(), expected);
     }

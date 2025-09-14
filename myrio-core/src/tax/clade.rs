@@ -163,6 +163,18 @@ impl Rank {
             .map(|i| unsafe { std::mem::transmute::<usize, Rank>(i) })
             .collect_vec()
     }
+
+    pub fn collect_range_exclusive(
+        start: Self,
+        stop: Self,
+    ) -> Vec<Self> {
+        let start_repr_usize = start as usize;
+        let stop_repr_usize = stop as usize;
+
+        (start_repr_usize..stop_repr_usize)
+            .map(|i| unsafe { std::mem::transmute::<usize, Rank>(i) })
+            .collect_vec()
+    }
 }
 
 impl std::fmt::Display for Rank {

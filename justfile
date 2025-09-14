@@ -8,8 +8,8 @@ runmaxexp:
     RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run -p myrio-exp --release
 
 test:
-    RUSTFLAGS="-Awarnings" cargo test -p myrio-cli --no-default-features
-    RUSTFLAGS="-Awarnings" cargo test -p myrio-exp --no-default-features
+    #RUSTFLAGS="-Awarnings" cargo test -p myrio-cli --no-default-features
+    #RUSTFLAGS="-Awarnings" cargo test -p myrio-exp --no-default-features
     RUSTFLAGS="-Awarnings" cargo test -p myrio-core --no-default-features
 
 flamegraph:

@@ -1,3 +1,9 @@
+use std::{
+    fs::{File, OpenOptions},
+    io::Write,
+    time::SystemTime,
+};
+
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use myrio_core::{
@@ -157,11 +163,46 @@ pub fn process_run(
 
     spinner.finish_with_message("Finished clustering");
 
+    let mut csv_file_opt: Option<File> = mat
+        .remove_one::<PathBuf>("output-csv")
+        .map(|mut pathbuf| {
+            if pathbuf.is_dir() {
+                let timestamp_in_seconds =
+                    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+                let file_name = format!("myrio_results_{timestamp_in_seconds}.csv");
+                pathbuf.set_file_name(file_name);
+            } else {
+                pathbuf.set_extension("csv");
+            }
+            OpenOptions::new().create(true).write(true).truncate(true).open(pathbuf)
+        })
+        .map_or(Ok(None), |v| v.map(Some))?;
+
+    if let Some(ref mut csv_file) = csv_file_opt {
+        csv_file.write_all(TaxTreeResults::CSV_HEADER.as_bytes())?;
+    }
+
+    let mut txt_file_opt: Option<File> = mat
+        .remove_one::<PathBuf>("output-txt")
+        .map(|mut pathbuf| {
+            if pathbuf.is_dir() {
+                let timestamp_in_seconds =
+                    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+                let file_name = format!("myrio_results_{timestamp_in_seconds}.txt");
+                pathbuf.set_file_name(file_name);
+            } else {
+                pathbuf.set_extension("txt");
+            }
+            OpenOptions::new().create(true).write(true).truncate(true).open(pathbuf)
+        })
+        .map_or(Ok(None), |v| v.map(Some))?;
+
     for (ttcompute, query) in ttcompute_vec.into_iter().zip(queries) {
         let ttresults_full = TaxTreeResults::from_compute_tree(
             query,
             ttcompute,
             search_similarity,
+            config.search.nb_best_analysis,
             config.search.lambda_leaf,
             config.search.lambda_branch,
             config.search.mu,
@@ -170,6 +211,14 @@ pub fn process_run(
             config.search.epsilon,
             None,
         )?;
+
+        if let Some(ref mut csv_file) = csv_file_opt {
+            csv_file.write_all(ttresults_full.generate_csv_records().as_bytes())?;
+        }
+
+        if let Some(ref mut txt_file) = txt_file_opt {
+            txt_file.write_all((ttresults_full.to_string() + "\n\n").as_bytes())?;
+        }
 
         /*
         use std::io::Write;
@@ -184,6 +233,14 @@ pub fn process_run(
         let ttresults_best = ttresults_full.cut(config.search.nb_best_display);
 
         println!("{}", ttresults_best.core);
+    }
+
+    if let Some(ref mut csv_file) = csv_file_opt {
+        csv_file.sync_all()?;
+    }
+
+    if let Some(ref mut txt_file) = txt_file_opt {
+        txt_file.sync_all()?;
     }
 
     Ok(())

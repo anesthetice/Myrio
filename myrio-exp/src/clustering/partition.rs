@@ -163,7 +163,7 @@ impl Clusterer {
         let (myrseqs, kcounts, nb_hcks): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
             .into_iter()
             .filter_map(|myrseq| {
-                let (mut kcount, nb_hck) = myrseq.compute_kmer_counts(k, t1);
+                let (kcount, nb_hck) = myrseq.compute_kmer_counts(k, t1);
                 if nb_hck != 0 { Some((myrseq, kcount, nb_hck)) } else { None }
             })
             .sorted_by(|(.., a), (.., b)| b.cmp(a)) // largest first

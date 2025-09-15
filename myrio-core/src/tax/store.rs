@@ -19,12 +19,12 @@ use rayon::{
 };
 
 use crate::{
-    data::{Float, SFVec, SparseVec},
+    data::{Float, SparseVec},
     tax::{
         Error,
         clade::{self, Rank},
-        compute_kmer_counts_for_fasta_seq, compute_kmer_store_counts_for_fasta_seq,
-        core::{Leaf, Node, TaxTreeCore},
+        compute_kmer_store_counts_for_fasta_seq,
+        core::{Node, TaxTreeCore},
     },
 };
 

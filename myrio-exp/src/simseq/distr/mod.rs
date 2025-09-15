@@ -4,7 +4,6 @@ pub mod nbin;
 pub mod poisson;
 
 // Imports
-use itertools::Itertools;
 use nbin::{NegativeBinomial as NBinDistr, NegativeBinomialError};
 use poisson::{Poisson as PoissonDistr, PoissonError};
 use rand::distr::Distribution;

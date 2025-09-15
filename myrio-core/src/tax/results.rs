@@ -16,7 +16,7 @@ use crate::{
         Error,
         clade::Rank,
         compute::TaxTreeCompute,
-        core::{Branch, Leaf, Node, TaxTreeCore},
+        core::{Leaf, Node, TaxTreeCore},
     },
 };
 
@@ -55,6 +55,8 @@ pub struct TaxTreeResults {
 }
 
 impl TaxTreeResults {
+    pub const CSV_HEADER: &str = "gene,domain,kingdom,phylum,class,order,family,genus,species,category,simscore,mean_simscore,max_simscore,pooling_score\n";
+
     #[allow(clippy::too_many_arguments)]
     pub fn from_compute_tree(
         query: SFVec,
@@ -372,8 +374,6 @@ impl TaxTreeResults {
             },
         }
     }
-
-    pub const CSV_HEADER: &str = "gene,domain,kingdom,phylum,class,order,family,genus,species,category,simscore,mean_simscore,max_simscore,pooling_score\n";
 
     /// Does not include the header `Self::CSV_HEADER`
     pub fn generate_csv_records(&self) -> String {

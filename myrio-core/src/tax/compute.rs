@@ -1,16 +1,13 @@
 // Imports
 use indicatif::MultiProgress;
 use itertools::Itertools;
-use rand::{SeedableRng, rngs::SmallRng, seq::IndexedRandom};
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rand::{SeedableRng, seq::IndexedRandom};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use super::Error;
 use crate::{
     data::{Float, SFVec},
-    tax::{
-        clade::Rank, compute_kmer_counts_for_fasta_seq, core::TaxTreeCore, kmer_store_counts_to_kmer_counts,
-        store::TaxTreeStore,
-    },
+    tax::{clade::Rank, compute_kmer_counts_for_fasta_seq, core::TaxTreeCore, store::TaxTreeStore},
 };
 
 #[derive(Clone)]

@@ -1,10 +1,10 @@
-use std::{io::Write, panic::catch_unwind};
+use std::io::Write;
 
 use itertools::Itertools;
 use myrio_core::{
     clustering::ClusteringParameters,
-    data::{Float, MyrSeq, SFVec},
-    similarity::{SimFunc, SimScore, Similarity},
+    data::{Float, SFVec},
+    similarity::{SimScore, Similarity},
     tax::{
         clade::Rank,
         compute::{CacheOptions, TaxTreeCompute},
@@ -12,7 +12,6 @@ use myrio_core::{
         store::TaxTreeStore,
     },
 };
-use rand::SeedableRng;
 
 #[rustfmt::skip]
 const INPUTS: [(&str, &str); 8] = [

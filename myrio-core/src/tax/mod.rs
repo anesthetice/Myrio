@@ -15,15 +15,8 @@ use bio_seq::{
 };
 use itertools::Itertools;
 use myrio_proc::gen_match_k_sparse;
-use rand::{
-    SeedableRng,
-    rngs::{SmallRng, StdRng},
-    seq::IndexedRandom,
-};
-use rayon::{
-    iter::{IntoParallelIterator, ParallelBridge, ParallelIterator},
-    slice::ParallelSlice,
-};
+use rand::seq::IndexedRandom;
+use rayon::iter::ParallelIterator;
 use thiserror::Error;
 
 use crate::{

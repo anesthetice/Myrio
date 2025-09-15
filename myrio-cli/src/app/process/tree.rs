@@ -1,5 +1,4 @@
 use super::*;
-use itertools::Itertools;
 
 pub fn process_tree(
     mut mat: ArgMatches,

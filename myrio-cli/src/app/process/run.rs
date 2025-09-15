@@ -46,13 +46,19 @@ pub fn process_run(
     let search_similarity: Similarity = config.search.similarity;
 
     // gather myrseqs and filter out the poor quality ones
-    let mut myrseqs: Vec<MyrSeq> = myrio_core::io::read_fastq_from_file(input_filepath)?;
-    myrseqs = MyrSeq::pre_process(
-        myrseqs,
-        config.fastq_min_length,
-        config.fastq_min_mean_qual,
-        config.fastq_max_qual,
-    );
+    let myrseqs: Vec<MyrSeq> = {
+        let mut output = myrio_core::io::read_fastq_from_file(input_filepath)?;
+        let initial_count = output.len();
+        output = MyrSeq::pre_process(
+            output,
+            config.fastq_min_length,
+            config.fastq_min_mean_qual,
+            config.fastq_max_qual,
+        );
+        let final_count = output.len();
+        println!("Pre-processed {initial_count} records → discarded {}", initial_count - final_count);
+        output
+    };
 
     // gather compute trees
     let ttcompute_vec = tree_filepaths
@@ -137,7 +143,7 @@ pub fn process_run(
                     .map(|local_fingerprint| {
                         let score = *simfunc(local_fingerprint, &naive_query);
                         let fingerprint_adjustor = (1.0 + fingerprint_alpha * score).exp();
-                        // println!("{score:.2} -> {fingerprint_adjustor:.2}");
+                        // println!("{score:.2} → {fingerprint_adjustor:.2}");
                         local_fingerprint * fingerprint_adjustor
                     })
                     .sum::<SFVec>()

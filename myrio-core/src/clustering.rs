@@ -365,6 +365,7 @@ impl<'a> Cluster<'a> {
         output
     }
 
+    #[allow(unused)]
     fn print_analyze(
         clusters: &'a [Cluster],
         silhouette_scores_vec: Option<&[Vec<Float>]>,

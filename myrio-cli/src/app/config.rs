@@ -21,9 +21,9 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             zstd_compression_level: 6,
-            fastq_min_length: 40,
-            fastq_min_mean_qual: 10.0,
-            fastq_max_qual: 40,
+            fastq_min_length: 50,
+            fastq_min_mean_qual: 12.0,
+            fastq_max_qual: 255,
             fasta_nb_resamples: 32,
             cluster: ClusterConfig::default(),
             fingerprint: FingerprintConfig::default(),
@@ -38,11 +38,11 @@ impl Config {
         zstd_compression_level = 6
 
         # The minimum length a fastq record needs to not be discarded
-        fastq_min_length = 40
+        fastq_min_length = 50
         # The minimum mean quality (Phred score, typically between 0-40) a fastq record needs to not be discarded
-        fastq_min_mean_qual = 10.0
+        fastq_min_mean_qual = 12.0
         # The maximum quality score (Phred score) a fastq record can have before being discarded due to being anomalous
-        fastq_max_qual = 40
+        fastq_max_qual = 255 # setting this value to 255 is basically the same as disabling it
 
         # The number of times resampling is performed on a fasta sequence when computing k-mer counts
         fasta_nb_resamples = 32

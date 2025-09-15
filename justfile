@@ -7,6 +7,9 @@ install:
 runmaxcli +ARGS:
     RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run -p myrio-cli --release -- {{ARGS}}
 
+rundbgcli +ARGS:
+    RUSTFLAGS="-Awarnings" RUST_BACKTRACE=1 cargo run -p myrio-cli -- {{ARGS}}
+
 runmaxexp:
     RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run -p myrio-exp --release
 

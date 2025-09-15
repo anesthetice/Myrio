@@ -1,10 +1,33 @@
 [package]
 name = "myrio-core"
-version.workspace = true
+version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 readme = "README.md"
+license = "LGPL-3.0-or-later"
 
 [dependencies]
-bio = { workspace = true }
+# internal
+myrio-proc = { workspace = true }
+# external
 bio-seq = { workspace = true }
+bincode = { version = "2.0" }
+console = { workspace = true}
+flate2 = { version = "1.1" }
+indicatif = { workspace = true, features = ["rayon"] }
+indoc = { version = "2.0" }
+itertools = { workspace = true }
+nutype = { version = "0.6", features = ["new_unchecked"]}
+once_cell = { version = "1.21" }
+rand = { workspace = true }
+rayon = { workspace = true }
+regex = { version = "1.11" }
+thiserror = { workspace = true }
+zstd = { version = "0.13", features = ["zstdmt"]}
+# optional
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+default = ["progress", "serde"]
+progress = []
+serde = ["dep:serde"]

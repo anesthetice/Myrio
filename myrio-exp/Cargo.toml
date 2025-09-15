@@ -4,14 +4,35 @@ version.workspace = true
 authors.workspace = true
 edition.workspace = true
 readme = "README.md"
-default-run = "myrio-exp"
+default-run = "myrio-exp-bin"
 
 [dependencies]
+# internal
 myrio-core = { workspace = true }
+myrio-proc = { workspace = true }
+# external
 anyhow = { workspace = true }
-bio = { workspace = true }
+#argmin = { version = "0.10", features = ["ctrlc"] }
+#argmin-math = { version = "0.4", features = ["ndarray_v0_15-nolinalg"] }
 bio-seq = { workspace = true }
+bytemuck = { version = "1.23" }
+itertools = { workspace = true }
+ndarray = { workspace = true }
+rand = { workspace = true }
+rayon = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+divan = { version = "0.1" }
+
+[lib]
+name = "myrio_exp"
+path = "src/lib.rs"
 
 [[bin]]
-name = "myrio-exp"
+name = "myrio-exp-bin"
 path = "src/main.rs"
+
+[[bench]]
+name = "bench"
+harness = false

@@ -4,6 +4,7 @@ members = [
     "myrio-core",
     "myrio-cli",
     "myrio-exp",
+    "myrio-proc",
 ]
 resolver = "2"
 
@@ -15,15 +16,35 @@ readme = true
 version = "0.1.0"
 
 [workspace.dependencies]
-myrio-core = { version = "0.1.0", path = "myrio-core" }
+myrio-core = { version = "0.1.0", path = "myrio-core", default-features = true }
+myrio-proc = { version = "0.1.0", path = "myrio-proc" }
 
-anyhow = { version = "1" }
-bio = { version = "2.3" }
-bio-seq = { version = "0.14" }
+anyhow = { version = "1.0" }
+bio-seq = { git = "https://github.com/anesthetice/bio-seq.git" }
+console = { version = "0.16" }
+itertools = { version = "0.14" }
+indicatif = { version = "0.18", features = ["rayon"] }
+ndarray = { version = "0.16" }
+rand = { version = "0.9" }
+rayon = { version = "1.11" }
+thiserror = { version = "2.0" }
+
+[profile.dev]
+opt-level = 2
 
 [profile.release]
 opt-level = 3
 lto = true
-panic = "abort"
+panic = "unwind"
 strip = "symbols"
 codegen-units = 1
+
+[profile.profiling]
+inherits = "release"
+debug = true
+debug-assertions = false
+opt-level = 3
+lto = "off"
+strip = false
+codegen-units = 1
+panic = "unwind"

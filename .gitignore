@@ -1,2 +1,6 @@
+/ignore
 /target
 Cargo.lock
+myrio-py/.venv
+myrio-py/data
+grid_search_optimization_results.md

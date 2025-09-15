@@ -1,12 +1,31 @@
 [package]
 name = "myrio-cli"
-version.workspace = true
+version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 readme = "README.md"
 categories = ["command-line-utilities"]
+license = "LGPL-3.0-or-later"
+description = "Myrio is a command-line application designed to indentify the taxonomy of plants from amplified barcode sequences"
+documentation = "https://github.com/anesthetice/Myrio"
+repository = "https://github.com/anesthetice/Myrio"
+homepage = "https://github.com/anesthetice/Myrio"
 
 [dependencies]
+# internal
+myrio-core = { workspace = true }
+# external
+anyhow = { workspace = true }
+clap = { version = "4.5" }
+clap_complete = { version = "4.5" }
+console = { workspace = true}
+directories = { version = "6.0" }
+indicatif = { workspace = true, features = ["rayon"] }
+indoc = { version = "2.0" }
+itertools = { workspace = true }
+rand = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+toml = { version = "0.9" }
 
 [[bin]]
 name = "myrio"

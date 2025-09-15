@@ -9,7 +9,7 @@ use bincode::{BorrowDecode, Decode, Encode};
 use itertools::Itertools;
 use myrio_proc::impl_ops_for_svec;
 
-/// A sparse vector containing floats, similar to `HashMap<usize,Float>` but without the need for hashing
+/// A sparse vector containing floats, similar to `HashMap<usize, Float>` but without the need for hashing
 pub type Float = f32;
 pub type SFVec = SparseVec<Float>;
 

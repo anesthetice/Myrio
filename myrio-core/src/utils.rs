@@ -1,3 +1,4 @@
+// Imports
 use indicatif::{MultiProgress, ProgressBar};
 
 pub fn greenify(s: &str) -> String {

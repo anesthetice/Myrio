@@ -41,10 +41,12 @@ impl Config {
         fastq_min_length = 40
         # The minimum mean quality (Phred score, typically between 0-40) a fastq record needs to not be discarded
         fastq_min_mean_qual = 10.0
-        # The maximum quality score (Phred score) a fastq record can have before being discarded due to being anomalous        fastq_max_qual = 40
+        # The maximum quality score (Phred score) a fastq record can have before being discarded due to being anomalous
+        fastq_max_qual = 40
 
         # The number of times resampling is performed on a fasta sequence when computing k-mer counts
         fasta_nb_resamples = 32
+
 
         [cluster]
         # The k-mer size to use in clustering (i.e., value of `k` itself)
@@ -63,6 +65,7 @@ impl Config {
         # To disabled silhouette trimming, comment out the line with `#` (improves clustering performance by a lot)
         silhouette_trimming = 1.4
 
+
         [fingerprint]
         # Rank for which the local fingerprints will be computed, available: ["Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus"]
         local_rank = "Phylum"
@@ -75,6 +78,7 @@ impl Config {
         # Mathematical parameter used to prioritize local fingerprints with a higher similarity score
         # equation: `local_fingerprint * exp(1 + α ⋅ score)`
         alpha = 2.5
+
 
         [search]
         # The k-mer size to use in searching (i.e., value of `k` itself)

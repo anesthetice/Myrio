@@ -1,6 +1,9 @@
 fmt:
     cargo +nightly fmt
 
+install:
+    RUSTFLAGS="-C target-cpu=native" cargo install --path myrio-cli
+
 runmaxcli +ARGS:
     RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run -p myrio-cli --release -- {{ARGS}}
 

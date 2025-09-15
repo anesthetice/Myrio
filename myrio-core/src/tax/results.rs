@@ -3,7 +3,6 @@ use std::ops::Neg;
 
 use console::{StyledObject, style};
 use indicatif::{MultiProgress, ParallelProgressIterator};
-use indoc::printdoc;
 use itertools::Itertools;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
@@ -239,7 +238,7 @@ impl TaxTreeResults {
             first.extra.indicator = Some(colorizer(style(format!("◉: {conf:.3}"))).to_string());
 
             #[cfg(debug_assertions)]
-            printdoc! {"
+            indoc::printdoc! {"
                 ## {rank}
                 1st : {} -> {:.3} | 2nd : {} -> {:.3}
                 mean: {pool_score_mean:.3}, std: {pool_score_std:.3}, x={x:.3}

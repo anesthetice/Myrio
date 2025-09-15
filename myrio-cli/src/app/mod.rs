@@ -44,6 +44,7 @@ impl App {
         match subcommand.as_str() {
             "run" => process::run(sub_mat, &self.config),
             "tree" => process::tree(sub_mat, &self.config),
+            "misc" => process::misc(sub_mat, &self.config),
             _ => Ok(()),
         }
     }

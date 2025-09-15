@@ -1,8 +1,10 @@
 // Modules
+mod misc;
 mod run;
 mod tree;
 
 // Re-exports
+pub(in crate::app) use misc::process_misc as misc;
 pub(in crate::app) use run::process_run as run;
 pub(in crate::app) use tree::process_tree as tree;
 

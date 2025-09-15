@@ -60,6 +60,7 @@ impl TaxTreeResults {
         query: SFVec,
         ttcompute: TaxTreeCompute,
         similarity: Similarity,
+        max_amount_of_leaves_per_branch: usize,
         nb_best_analysis: usize,
         lambda_leaf: Float,
         lambda_branch: Float,
@@ -142,7 +143,7 @@ impl TaxTreeResults {
                 payloads: payloads.into_boxed_slice(),
             },
         };
-        ttres.trim(15);
+        ttres.trim(max_amount_of_leaves_per_branch);
         let mut ttres = ttres.cut(nb_best_analysis);
 
         // We extract the payloads to satisfy the borrow-checker, these will be inserted later at the end
@@ -253,6 +254,7 @@ impl TaxTreeResults {
         Ok(ttres)
     }
 
+    /// Keeps at most 'n' (highest score) leaves per branch
     pub fn trim(
         &mut self,
         max_amount_of_leaves_per_branch: usize,
@@ -282,22 +284,16 @@ impl TaxTreeResults {
                     dive_recursive(sub_node, new_payloads, simscores, max);
                 });
 
-                // Bypass somewhat expensive computations if there are fewer leaves than max
-                if leaves.len() <= max {
-                    leaves.into_iter().for_each(|leaf| {
-                        new_children.push(Node::new_leaf(leaf.name, new_payloads.len()));
-                        new_payloads.push(unsafe { *simscores.get_unchecked(leaf.payload_id) });
+                // We could bypass this somewhat expensive computations if there are fewer leaves than max
+                // But it's nice to have all leaves ordered so I'll leave it like this
+                leaves
+                    .into_iter()
+                    .map(|leaf| (leaf.name, unsafe { *simscores.get_unchecked(leaf.payload_id) }))
+                    .k_largest_by_key(max, |(_, score)| *score)
+                    .for_each(|(name, score)| {
+                        new_children.push(Node::new_leaf(name, new_payloads.len()));
+                        new_payloads.push(score);
                     });
-                } else {
-                    leaves
-                        .into_iter()
-                        .map(|leaf| (leaf.name, unsafe { *simscores.get_unchecked(leaf.payload_id) }))
-                        .k_largest_by_key(max, |(_, score)| *score)
-                        .for_each(|(name, score)| {
-                            new_children.push(Node::new_leaf(name, new_payloads.len()));
-                            new_payloads.push(score);
-                        });
-                }
 
                 let _ = std::mem::replace(&mut branch.children, new_children.into_boxed_slice());
             }

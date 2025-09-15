@@ -6,7 +6,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub zstd_compression_level: i32,
+    pub fastq_min_length: usize,
+    pub fastq_min_mean_qual: Float,
+    pub fastq_max_qual: u8,
     pub fasta_nb_resamples: usize,
+
     pub cluster: ClusterConfig,
     pub fingerprint: FingerprintConfig,
     pub search: SearchConfig,
@@ -16,6 +20,9 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             zstd_compression_level: 6,
+            fastq_min_length: 40,
+            fastq_min_mean_qual: 10.0,
+            fastq_max_qual: 40,
             fasta_nb_resamples: 32,
             cluster: ClusterConfig::default(),
             fingerprint: FingerprintConfig::default(),
@@ -28,6 +35,12 @@ impl Config {
     pub const DEFAULT_WITH_COMMENTS: &'static str = indoc::indoc! {r#"
         # The compression level used by zstd, levels currently range from 1 to 22
         zstd_compression_level = 6
+
+        # The minimum length a fastq record needs to not be discarded
+        fastq_min_length = 40
+        # The minimum mean quality (Phred score, typically between 0-40) a fastq record needs to not be discarded
+        fastq_min_mean_qual = 10.0
+        # The maximum quality score (Phred score) a fastq record can have before being discarded due to being anomalous        fastq_max_qual = 40
 
         # The number of times resampling is performed on a fasta sequence when computing k-mer counts
         fasta_nb_resamples = 32
@@ -69,6 +82,8 @@ impl Config {
         t1 = 0.1
         # Same explanation as `cluster.similarity` seen above
         similarity = "Cosine"
+        # The maximum number of leaves per branch, if a branch contains more leaves than this value, then only the best are kept, the rest being discarded (from the pooling score computation but not the previous more basic ones)
+        max_amount_of_leaves_per_branch = 15
         # The number of leaves to keep for analysis
         nb_best_analysis = 100
 
@@ -196,6 +211,7 @@ pub struct SearchConfig {
     pub k: usize,
     pub t1: Float,
     pub similarity: Similarity,
+    pub max_amount_of_leaves_per_branch: usize,
     pub nb_best_analysis: usize,
     pub lambda_leaf: Float,
     pub lambda_branch: Float,
@@ -212,6 +228,7 @@ impl Default for SearchConfig {
             k: 18,
             t1: 0.1,
             similarity: Similarity::Cosine,
+            max_amount_of_leaves_per_branch: 15,
             nb_best_analysis: 100,
             lambda_leaf: 2.0,
             lambda_branch: 20.0,

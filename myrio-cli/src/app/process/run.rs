@@ -45,7 +45,14 @@ pub fn process_run(
     let search_t1 = config.search.t1;
     let search_similarity: Similarity = config.search.similarity;
 
-    let myrseqs: Vec<MyrSeq> = myrio_core::io::read_fastq_from_file(input_filepath)?;
+    // gather myrseqs and filter out the poor quality ones
+    let mut myrseqs: Vec<MyrSeq> = myrio_core::io::read_fastq_from_file(input_filepath)?;
+    myrseqs = MyrSeq::pre_process(
+        myrseqs,
+        config.fastq_min_length,
+        config.fastq_min_mean_qual,
+        config.fastq_max_qual,
+    );
 
     // gather compute trees
     let ttcompute_vec = tree_filepaths
@@ -88,6 +95,8 @@ pub fn process_run(
     };
 
     let queries: Vec<SFVec> = {
+        spinner.set_message("Clustering from global fingerprints...");
+
         let initial_centroids_from_global_fingerprints =
             ttcompute_vec.iter().map(|ttcompute| &ttcompute.global_fingerprint).cloned().collect_vec();
 
@@ -115,8 +124,8 @@ pub fn process_run(
             })
             .collect_vec();
 
+        spinner.set_message("Re-clustering from local fingerprints...");
         let simfunc: SimFunc = fingerprint_similarity.to_simfunc(true);
-
         let initial_centroids_from_local_fingerprints = naive_queries
             .into_iter()
             .zip(ttcompute_vec.iter())
@@ -161,7 +170,7 @@ pub fn process_run(
             .collect_vec()
     };
 
-    spinner.finish_with_message("Finished clustering");
+    spinner.finish_with_message("Clustering");
 
     let mut csv_file_opt: Option<File> = mat
         .remove_one::<PathBuf>("output-csv")
@@ -202,6 +211,7 @@ pub fn process_run(
             query,
             ttcompute,
             search_similarity,
+            config.search.max_amount_of_leaves_per_branch,
             config.search.nb_best_analysis,
             config.search.lambda_leaf,
             config.search.lambda_branch,
@@ -217,18 +227,8 @@ pub fn process_run(
         }
 
         if let Some(ref mut txt_file) = txt_file_opt {
-            txt_file.write_all((ttresults_full.to_string() + "\n\n").as_bytes())?;
+            txt_file.write_all((ttresults_full.to_string() + "\n").as_bytes())?;
         }
-
-        /*
-        use std::io::Write;
-        let mut file =
-            std::fs::OpenOptions::new().write(true).create(true).truncate(true).open("./output.txt")?;
-        writeln!(file, "{ttresults_full}")?;
-        file.sync_all()?;
-        drop(file);
-        break;
-        */
 
         let ttresults_best = ttresults_full.cut(config.search.nb_best_display);
 

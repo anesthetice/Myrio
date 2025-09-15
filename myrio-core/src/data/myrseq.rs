@@ -1,6 +1,6 @@
 // Imports
 use std::{
-    ops::{AddAssign, Range},
+    ops::{Div, Range},
     path::Path,
 };
 
@@ -112,11 +112,22 @@ impl MyrSeq {
 
     pub fn pre_process(
         input: Vec<MyrSeq>,
-        min_mean_qual: Float,
-        max_qual: usize,
         min_length: usize,
+        min_mean_qual: Float,
+        max_qual: u8,
     ) -> Vec<MyrSeq> {
-        todo!()
+        input
+            .into_iter()
+            .filter(|myrseq| !myrseq.quality.is_empty())
+            .filter(|myrseq| {
+                let n = myrseq.quality.len();
+                let myrseq_mean_qual =
+                    myrseq.quality.iter().copied().map(Float::from).sum::<Float>().div(n as Float);
+                let myrseq_max_qual = myrseq.quality.iter().copied().max().unwrap_or(0);
+
+                (n >= min_length) && (myrseq_mean_qual >= min_mean_qual) && (myrseq_max_qual <= max_qual)
+            })
+            .collect_vec()
     }
 
     pub fn encode_vec<W: std::io::Write>(

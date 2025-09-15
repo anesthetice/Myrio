@@ -144,20 +144,18 @@ fn single(
     let cluster_simfunc = cluster_similarity.to_simfunc(true);
 
     // gather compute trees
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-
     let ttcompute_vec = TREE_FILEPATHS
         .iter()
         .map(|filepath| {
             TaxTreeCompute::from_store_tree(
                 TaxTreeStore::load_from_file(filepath)?,
                 cluster_k,
-                REPR_SAMPLES,
-                NB_FASTA_RESAMPLES,
+                Rank::Phylum,
+                128,
+                32,
+                32,
                 search_k,
-                NB_FASTA_RESAMPLES,
                 CACHE_OPT,
-                &mut rng,
                 None,
             )
         })
@@ -167,11 +165,7 @@ fn single(
     let mut output: String = String::new();
 
     let cluster_intial_centroids = if cluster_initial_centroids_flag {
-        ttcompute_vec
-            .iter()
-            .map(TaxTreeCompute::get_kmer_normalized_counts_fingerprint)
-            .cloned()
-            .collect_vec()
+        ttcompute_vec.iter().map(|ttcompute| &ttcompute.global_fingerprint).cloned().collect_vec()
     } else {
         Vec::new()
     };
@@ -223,9 +217,7 @@ fn single(
                 let query_idx = match_queries
                     .iter()
                     .enumerate()
-                    .max_by_key(|(_, q)| {
-                        cluster_simfunc(ttcompute.get_kmer_normalized_counts_fingerprint(), q)
-                    })
+                    .max_by_key(|(_, q)| cluster_simfunc(&ttcompute.global_fingerprint, q))
                     .unwrap()
                     .0;
                 match_queries.remove(query_idx);
@@ -236,6 +228,8 @@ fn single(
                 query,
                 ttcompute.clone(),
                 search_similarity,
+                15,
+                100,
                 2.0,
                 20.0,
                 1.1,

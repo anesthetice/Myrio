@@ -45,7 +45,6 @@ fn process_tree_new(
     if let Some(k_values_to_precompute) = mat.remove_many::<usize>("pre-compute") {
         for k in k_values_to_precompute.unique() {
             ttstore.compute_and_append_kmer_counts(k, config.fasta_nb_resamples, None);
-            ttstore.k_precomputed.push(k);
         }
     }
 
@@ -79,7 +78,6 @@ fn process_tree_expand(
         for &k in k_values_to_precompute_vec.iter() {
             if !ttstore.k_precomputed.contains(&k) {
                 ttstore.compute_and_append_kmer_counts(k, nb_resamples, None);
-                ttstore.k_precomputed.push(k);
             }
         }
 

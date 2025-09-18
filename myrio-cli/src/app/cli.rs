@@ -41,8 +41,18 @@ pub fn build_cli() -> Command {
                 .action(ArgAction::Set)
         )
         .arg(
+            Arg::new("save-clusters")
+                .help("Save clusters to the specified path")
+                .required(false)
+                .short('s')
+                .long("save-clusters")
+                .value_parser(vparser!(PathBuf))
+                .action(ArgAction::Set)
+        )
+        .arg(
             Arg::new("output-csv")
                 .help("Write results to a `.csv` file")
+                .long_help("Write results to a `.csv` file (e.g., `--csv .` will write to a timestamped file in the current directory)")
                 .required(false)
                 .long("output-csv")
                 .visible_aliases(["csv", "csv-output"])
@@ -52,6 +62,7 @@ pub fn build_cli() -> Command {
         .arg(
             Arg::new("output-txt")
                 .help("Write results to a `.txt` file")
+                .long_help("Write results to a `.txt` file (e.g., `--txt .` will write to a timestamped file in the current directory)")
                 .required(false)
                 .long("output-txt")
                 .visible_aliases(["txt", "txt-output"])

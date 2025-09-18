@@ -24,7 +24,6 @@ flamegraph:
 flamegraph-alt:
     RUSTFLAGS="-C force-frame-pointers=yes" cargo flamegraph --package myrio-cli --profile profiling -- run -i ignore/queries/Berberis_Julianae_Campus_matk_rbcL_psbA-trnH_ITS_barcode6.fastq -t ignore/myrio-db/
 
-
 regen-myrio-db:
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_ITS.fasta -g "ITS"
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_matK.fasta -g "matK"

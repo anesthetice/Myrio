@@ -401,6 +401,7 @@ impl TaxTreeStore {
                 sp.kmer_store_counts_vec.push(kmer_store_counts);
             },
         );
+        self.k_precomputed.push(k);
     }
 
     pub fn compute_and_overwrite_kmer_counts(
@@ -423,6 +424,7 @@ impl TaxTreeStore {
                 *pre_comp = vec![kmer_store_counts]
             },
         );
+        self.k_precomputed = vec![k];
     }
 }
 

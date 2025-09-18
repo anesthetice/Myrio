@@ -4,6 +4,7 @@ use std::{
     time::SystemTime,
 };
 
+use anyhow::Context;
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use myrio_core::{
@@ -163,8 +164,31 @@ pub fn process_run(
             silhouette_trimming: config.cluster.silhouette_trimming,
         };
 
-        myrio_core::clustering::cluster(myrseqs, cluster_params_for_local)
-            .clusters
+        let clusters = myrio_core::clustering::cluster(myrseqs, cluster_params_for_local).clusters;
+
+        if let Some(pathbuf) = mat.remove_one::<PathBuf>("save-clusters") {
+            if !pathbuf.is_dir() {
+                std::fs::create_dir(&pathbuf).with_context(|| {
+                    format!("Failed to create `{}`, please make sure the parent path exists or the right permissions are granted.", pathbuf.display())
+                })?;
+            }
+
+            let mut ttcompute_iter = ttcompute_vec.iter();
+            for (idx, cluster) in clusters.iter().enumerate() {
+                let file_name = match ttcompute_iter.next() {
+                    Some(ttcompute) => format!("{idx}_{}.fastq", ttcompute.core.gene),
+                    None => format!("{idx}.fastq"),
+                };
+                let filepath = pathbuf.join(file_name);
+                myrio_core::io::write_fastq_to_file(
+                    filepath,
+                    cluster,
+                    &myrio_core::io::CompressionMethod::None,
+                )?;
+            }
+        }
+
+        clusters
             .into_iter()
             .map(|myrseqs| {
                 let elements = myrseqs

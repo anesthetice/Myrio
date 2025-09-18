@@ -89,7 +89,7 @@ impl TaxTreeCompute {
                     CacheOptions::Enabled { zstd_compression_level } => {
                         ttstore.compute_and_append_kmer_counts(search_k, fasta_nb_resamples, multi);
                         ttstore.save_to_file(zstd_compression_level, multi)?;
-                        Ok::<usize, Error>(ttstore.k_precomputed.len())
+                        Ok::<usize, Error>(ttstore.k_precomputed.len() - 1)
                     },
                     CacheOptions::Disabled => {
                         ttstore.compute_and_overwrite_kmer_counts(search_k, fasta_nb_resamples, multi);

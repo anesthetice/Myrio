@@ -150,6 +150,7 @@ impl TaxTreeResults {
         // We extract the payloads to satisfy the borrow-checker, these will be inserted later at the end
         let payloads = std::mem::replace(&mut ttres.core.payloads, Box::from([]));
 
+        #[inline]
         fn softmax_pooling(
             scores: Vec<Float>,
             lambda: Float,

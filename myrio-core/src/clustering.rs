@@ -196,8 +196,8 @@ pub fn cluster(
     }
     */
 
-    // Step 4 bypass if silhouette_trimming is set to `None` (i.e., disabled)
-    if silhouette_trimming.is_none() {
+    // Step 4 bypass if silhouette_trimming is set to `None` (i.e., disabled), or if we only have a single cluster
+    if silhouette_trimming.is_none() || clusters.len() == 1 {
         let mut output: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
         for (myrseq, kmer_counts_normalized) in myrseqs.into_iter().zip_eq(kmer_counts_normalized_vec.iter())
         {

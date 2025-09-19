@@ -43,10 +43,10 @@ impl TaxTreeCompute {
             return Err(Error::new_misc("Fingerprint rank cannot be set to `Species`"));
         }
 
-        if fingerprint_local_rank > ttstore.core.highest_rank {
+        if fingerprint_local_rank > ttstore.core.root_rank {
             return Err(Error::new_misc(format!(
                 "The desired fingerprint rank of `{fingerprint_local_rank}` is higher than the tree's highest rank of `{}`",
-                ttstore.core.highest_rank
+                ttstore.core.root_rank
             )));
         }
 
@@ -112,8 +112,8 @@ impl TaxTreeCompute {
         Ok(Self {
             core: TaxTreeCore {
                 gene: ttstore.core.gene,
-                highest_rank: ttstore.core.highest_rank,
-                roots: ttstore.core.roots,
+                root: ttstore.core.root,
+                root_rank: ttstore.core.root_rank,
                 payloads: payloads.into_boxed_slice(),
             },
             global_fingerprint,

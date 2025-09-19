@@ -250,7 +250,7 @@ impl TaxTreeStore {
 
         let mut lines = fasta.lines().enumerate().peekable();
 
-        let highest_rank: OnceCell<Rank> = OnceCell::new();
+        let root_rank: OnceCell<Rank> = OnceCell::new();
         let mut leaves_and_stacks: Vec<(StoreNode, Stack)> = Vec::new();
         let mut payloads: Vec<StorePayload> = Vec::new();
         let mut payload_id: usize = 0;
@@ -260,10 +260,11 @@ impl TaxTreeStore {
         let mut string_seq = String::new();
 
         'outer: while let Some((lidx, text_line)) = lines.next() {
-            spinner.set_message(format!("Working on line n°{lidx}"));
+            let line_number = lidx + 1;
+            spinner.set_message(format!("Working on line n°{line_number}"));
 
             let (h_rank, _, mut stack) =
-                match clade::Parsed::from_str(text_line).map_err(|e| Error::CladeParse(e, lidx + 1)) {
+                match clade::Parsed::from_str(text_line).map_err(|e| Error::CladeParse(e, line_number)) {
                     Ok(parsed) => parsed.uncurl(),
                     Err(e) => {
                         eprintln!("{e}");
@@ -277,9 +278,9 @@ impl TaxTreeStore {
                     }
                 };
 
-            let expected_highest_rank = *highest_rank.get_or_init(|| h_rank);
+            let expected_highest_rank = *root_rank.get_or_init(|| h_rank);
             if expected_highest_rank != h_rank {
-                return Err(Error::HighestRankMismatch(expected_highest_rank, h_rank, lidx + 1));
+                return Err(Error::HighestRankMismatch(expected_highest_rank, h_rank, line_number));
             }
 
             while let Some((_, next_line)) = lines.peek() {
@@ -291,7 +292,8 @@ impl TaxTreeStore {
             }
 
             let name = unsafe { stack.pop().unwrap_unchecked() }; // Safe as an Ok(...) from `clade::parse_str` means the vector isn't empty
-            let seq: Seq<Iupac> = match Seq::from_str(&string_seq).map_err(|e| Error::BioSeq(e, lidx + 1)) {
+            let seq: Seq<Iupac> = match Seq::from_str(&string_seq).map_err(|e| Error::BioSeq(e, line_number))
+            {
                 Ok(seq) => seq,
                 Err(e) => {
                     eprintln!("{e}");
@@ -311,11 +313,10 @@ impl TaxTreeStore {
         let spinner =
             crate::utils::simple_spinner(Some("Bundling everything together".to_string()), Some(200), None);
 
-        let highest_rank =
-            *highest_rank.get().expect("Totally invalid or empty file (highest rank was not set)");
+        let root_rank = *root_rank.get().expect("Totally invalid or empty file (highest rank was not set)");
         let mut nodes_and_stacks: Vec<(StoreNode, Stack)> = Vec::new();
 
-        for curr_stack_len in (1..highest_rank as usize).rev() {
+        for curr_stack_len in (1..root_rank as usize).rev() {
             let mut super_node_name_to_nodes_and_stack: HashMap<Box<str>, (Vec<StoreNode>, Stack)> =
                 HashMap::new();
 
@@ -350,17 +351,11 @@ impl TaxTreeStore {
                 .collect_vec();
         }
 
-        let roots = nodes_and_stacks
-            .into_iter()
-            .chain(leaves_and_stacks)
-            .map(|(node, _)| node)
-            .collect_vec()
-            .into_boxed_slice();
-
+        let root = crate::utils::extract_singlevec(nodes_and_stacks).0;
         spinner.finish();
 
         Ok(Self {
-            core: TaxTreeCore::new(gene.to_string(), highest_rank, roots, payloads.into_boxed_slice()),
+            core: TaxTreeCore::new(gene.to_string(), root, root_rank, payloads.into_boxed_slice()),
             filepath: store_filepath,
             k_precomputed: Vec::new(),
         })
@@ -454,16 +449,13 @@ mod test {
 
         let core = TaxTreeCore::<(), StorePayload> {
             gene: String::from("test"),
-            highest_rank: Rank::Species,
-            roots: Box::from([branch]),
+            root: branch,
+            root_rank: Rank::Species,
             payloads: sp_vec.into_boxed_slice(),
         };
 
-        let mut tree_original = TaxTreeStore {
-            core,
-            filepath: PathBuf::from("./notimportant.myrtree"),
-            k_precomputed: vec![1, 2, 3, 4],
-        };
+        let mut tree_original =
+            TaxTreeStore { core, filepath: PathBuf::default(), k_precomputed: vec![1, 2, 3, 4] };
 
         let tree_reconstructed = {
             let bytes = tree_original.to_bytes(3).unwrap();
@@ -473,7 +465,7 @@ mod test {
 
         // Sanity checks
         assert_eq!(tree_original.core.gene, tree_reconstructed.core.gene);
-        assert_eq!(tree_original.core.highest_rank, tree_reconstructed.core.highest_rank);
+        assert_eq!(tree_original.core.root_rank, tree_reconstructed.core.root_rank);
         assert_eq!(tree_original.k_precomputed, tree_reconstructed.k_precomputed);
 
         assert_eq!(tree_original.core.payloads, tree_reconstructed.core.payloads);

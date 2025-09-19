@@ -1,7 +1,7 @@
 // Imports
 use std::path::PathBuf;
 
-use clap::{Arg, ArgAction, Command, value_parser as vparser};
+use clap::{Arg, ArgAction, Command, builder::Styles, value_parser as vparser};
 
 #[rustfmt::skip]
 pub fn build_cli() -> Command {
@@ -204,9 +204,27 @@ pub fn build_cli() -> Command {
             misc_generate_shell_completions_subcommand,
         ]);
 
-    Command::new("myrio").subcommands([
-        run_subcommand,
-        tree_subcommand,
-        misc_subcommand,
-    ])
+    Command::new("myrio")
+        .color(clap::ColorChoice::Auto)
+        .styles(Styles::styled())
+        .arg(
+            Arg::new("version")
+                .required(false)
+                .short('v')
+                .long("version")
+                .action(ArgAction::SetTrue)
+        )
+        .arg(
+            Arg::new("color")
+                .required(false)
+                .long("color")
+                .value_parser(["always", "auto", "never"])
+                .default_value("auto")
+                .action(ArgAction::Set)
+        )
+        .subcommands([
+            run_subcommand,
+            tree_subcommand,
+            misc_subcommand,
+        ])
 }

@@ -83,13 +83,13 @@ def _(df_ITS, df_matK, df_rbcL, df_trnH_psbA, pl):
         for row in df.rows():
             pid, p, c, o, f, g, s, seq, _ = row
             # seq_lb = '\n'.join(seq[i:i+80] for i in range(0, len(seq), 80))
-            string = f">BOLD_PROCESS_ID={pid}|tax={{"
-            for clade, name in zip(["p", "c", "o", "f", "g", "s"], [p, c, o, f, g, s]):
+            string = f">BOLD_PROCESS_ID={pid}|tax={{k:Plantae, "
+            for rank, name in zip(["p", "c", "o", "f", "g", "s"], [p, c, o, f, g, s]):
                 if name is not None:
-                    if clade != "s":
-                        string += f"{clade}:{name}, "
+                    if rank != "s":
+                        string += f"{rank}:{name}, "
                     else:
-                        string += f"{clade}:{name}"
+                        string += f"{rank}:{name}"
             string += "}\n"
             string += seq.upper()
             data.append(string)

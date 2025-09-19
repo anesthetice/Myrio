@@ -5,6 +5,7 @@ mod process;
 
 // Imports
 use anyhow::Context;
+use clap::ColorChoice;
 use config::Config;
 use directories::ProjectDirs;
 
@@ -17,6 +18,8 @@ impl App {
     const NAME: &'static str = "myrio";
     #[cfg(debug_assertions)]
     const NAME: &'static str = "myrio-dev";
+
+    const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
     pub fn load() -> anyhow::Result<Self> {
         let dirs = ProjectDirs::from("", "", Self::NAME)
@@ -36,6 +39,19 @@ impl App {
 
     pub fn run(self) -> anyhow::Result<()> {
         let mut mat = cli::build_cli().get_matches();
+
+        if mat.get_flag("version") {
+            println!("myrio {}", Self::VERSION);
+            return Ok(());
+        }
+
+        let color_choice = mat.remove_one::<String>("color").unwrap();
+        let color_choice = match color_choice.as_str() {
+            "always" => ColorChoice::Always,
+            "auto" => ColorChoice::Auto,
+            "never" => ColorChoice::Never,
+            _ => unreachable!(),
+        };
 
         let Some((subcommand, sub_mat)) = mat.remove_subcommand() else {
             return Ok(());

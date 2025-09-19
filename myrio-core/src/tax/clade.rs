@@ -175,6 +175,19 @@ impl Rank {
             .map(|i| unsafe { std::mem::transmute::<usize, Rank>(i) })
             .collect_vec()
     }
+
+    pub fn to_char(&self) -> char {
+        match &self {
+            Self::Domain => 'd',
+            Self::Kingdom => 'k',
+            Self::Phylum => 'p',
+            Self::Class => 'c',
+            Self::Order => 'o',
+            Self::Family => 'f',
+            Self::Genus => 'g',
+            Self::Species => 's',
+        }
+    }
 }
 
 impl std::fmt::Display for Rank {

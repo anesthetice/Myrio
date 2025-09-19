@@ -61,3 +61,12 @@ pub fn simple_progressbar(
     #[cfg(not(feature = "progress"))]
     ProgressBar::hidden()
 }
+
+#[inline]
+pub fn extract_singlevec<T>(vec: Vec<T>) -> T {
+    if let Ok([val]) = <[_; 1]>::try_from(vec) {
+        val
+    } else {
+        panic!("Expected vector containing a single element");
+    }
+}

@@ -16,6 +16,7 @@ use crate::{
         clade::Rank,
         compute::TaxTreeCompute,
         core::{Leaf, Node, TaxTreeCore},
+        display::MaybeColoredDisplay,
     },
 };
 
@@ -25,27 +26,47 @@ pub struct BRes {
     pub mean: Float,
     pub max: Float,
     pub pool_score: Float,
-    pub indicator: Option<String>,
+    pub confidence: Option<Option<Float>>,
 }
 
-impl std::fmt::Display for BRes {
-    fn fmt(
+impl MaybeColoredDisplay for BRes {
+    fn fmt_maybe_color(
         &self,
         f: &mut std::fmt::Formatter<'_>,
+        use_color: bool,
     ) -> std::fmt::Result {
-        if let Some(indicator) = &self.indicator {
-            write!(
-                f,
-                "{indicator} | ({}, μ={:.3}, max={:.3}, s={:.3})",
-                self.nb_leaves, self.mean, self.max, self.pool_score
-            )
-        } else {
-            write!(
-                f,
-                "({}, μ={:.3}, max={:.3}, s={:.3})",
-                self.nb_leaves, self.mean, self.max, self.pool_score
-            )
+        let default = format!(
+            "⟮nb_leaves={}, μ_sim={:.3}, max_sim={:.3}, s_pool={:.3}⟯",
+            self.nb_leaves, self.mean, self.max, self.pool_score
+        );
+
+        let Some(confidence) = self.confidence else {
+            return f.write_str(&default);
+        };
+
+        let confidence_string = confidence.map_or_else(|| "◎".to_string(), |conf| format!("◎ {conf:.3}"));
+
+        if !use_color {
+            return write!(f, "{confidence_string} {default}",);
         }
+
+        let confidence_string = confidence
+            .map(|conf| {
+                let colorizer = match conf {
+                    0.0..0.25 => StyledObject::<&String>::red,
+                    0.25..0.5 => StyledObject::<&String>::yellow,
+                    0.5..0.75 => StyledObject::<&String>::green,
+                    0.75..1.0 => StyledObject::<&String>::cyan,
+                    _ => {
+                        eprintln!("Warning: got unexpected confidence score of {conf}");
+                        StyledObject::<&String>::black
+                    }
+                };
+                colorizer(style(&confidence_string))
+            })
+            .unwrap_or(style(&confidence_string).green().dim());
+
+        write!(f, "{confidence_string} {default}",)
     }
 }
 
@@ -84,8 +105,6 @@ impl TaxTreeResults {
             .map(|sfvec| simfunc(&sfvec, &query))
             .collect_into_vec(&mut payloads);
 
-        let mut roots = Vec::with_capacity(ttcompute.core.roots.len());
-
         // This recursive function serves to convert the roots of TaxTreeCore<(), SFVec> used by TaxTreeCompute into the roots of TaxTreeCore<BRes, SimScore> used by TaxTreeResults. The BRes parameters `nb_leaves`, `mean`, `max` are all computed here, `pool_score` is set to the default of 0.0 and will be computed later
         fn dive_recursive(
             store_node: Node<()>,
@@ -119,7 +138,7 @@ impl TaxTreeResults {
                             mean: sum / nb_leaves as Float,
                             max,
                             pool_score: 0.0,
-                            indicator: None,
+                            confidence: None,
                         },
                     );
                     above.push(results_branch);
@@ -132,15 +151,14 @@ impl TaxTreeResults {
                 }
             }
         }
-        for store_node in ttcompute.core.roots {
-            dive_recursive(store_node, &mut roots, &payloads);
-        }
+        let mut root_wrapped = Vec::with_capacity(1);
+        dive_recursive(ttcompute.core.root, &mut root_wrapped, &payloads);
 
         let mut ttres = Self {
             core: TaxTreeCore {
                 gene: ttcompute.core.gene,
-                highest_rank: ttcompute.core.highest_rank,
-                roots: roots.into_boxed_slice(),
+                root: crate::utils::extract_singlevec(root_wrapped),
+                root_rank: ttcompute.core.root_rank,
                 payloads: payloads.into_boxed_slice(),
             },
         };
@@ -166,7 +184,7 @@ impl TaxTreeResults {
             numerator / denominator
         }
 
-        for rank in Rank::collect_range_inclusive(Rank::Genus, ttres.core.highest_rank) {
+        for rank in Rank::collect_range_exclusive(Rank::Genus, ttres.core.root_rank) {
             let mut rank_branch_vec = ttres.core.gather_branches_mut_at_rank(rank);
 
             rank_branch_vec.par_iter_mut().for_each(|rank_branch| {
@@ -196,7 +214,7 @@ impl TaxTreeResults {
                 continue;
             } else if rank_branch_vec.len() == 1 {
                 let single_branch = rank_branch_vec.pop().unwrap();
-                single_branch.extra.indicator = Some(style("◉: ∅").green().to_string());
+                single_branch.extra.confidence = Some(None);
                 continue;
             }
 
@@ -226,17 +244,7 @@ impl TaxTreeResults {
 
             let conf = first.extra.pool_score.powf(epsilon) * x.powf(gamma) / (delta + x.powf(gamma));
 
-            let colorizer = match conf {
-                0.0..0.25 => StyledObject::<String>::red,
-                0.25..0.5 => StyledObject::<String>::yellow,
-                0.5..0.75 => StyledObject::<String>::green,
-                0.75..1.0 => StyledObject::<String>::cyan,
-                _ => {
-                    eprintln!("Warning: got unexpected confidence score of {conf}");
-                    StyledObject::magenta
-                }
-            };
-            first.extra.indicator = Some(colorizer(style(format!("◉: {conf:.3}"))).to_string());
+            first.extra.confidence = Some(Some(conf));
 
             #[cfg(debug_assertions)]
             indoc::printdoc! {"
@@ -261,8 +269,6 @@ impl TaxTreeResults {
         &mut self,
         max_amount_of_leaves_per_branch: usize,
     ) {
-        let mut new_payloads: Vec<SimScore> = Vec::new();
-
         fn dive_recursive(
             node: &mut Node<BRes>,
             new_payloads: &mut Vec<SimScore>,
@@ -300,10 +306,13 @@ impl TaxTreeResults {
                 let _ = std::mem::replace(&mut branch.children, new_children.into_boxed_slice());
             }
         }
-
-        for root in self.core.roots.iter_mut() {
-            dive_recursive(root, &mut new_payloads, &self.core.payloads, max_amount_of_leaves_per_branch);
-        }
+        let mut new_payloads: Vec<SimScore> = Vec::new();
+        dive_recursive(
+            &mut self.core.root,
+            &mut new_payloads,
+            &self.core.payloads,
+            max_amount_of_leaves_per_branch,
+        );
 
         let _ = std::mem::replace(&mut self.core.payloads, new_payloads.into_boxed_slice());
     }
@@ -360,16 +369,15 @@ impl TaxTreeResults {
         }
 
         let mut new_payloads = Vec::new();
-        let mut roots = Vec::new();
-        for root in self.core.roots.iter() {
-            dive_recursive(root, &mut roots, &mut new_payloads, &best);
-        }
+        let mut root_wrapped = Vec::new();
+
+        dive_recursive(&self.core.root, &mut root_wrapped, &mut new_payloads, &best);
 
         TaxTreeResults {
             core: TaxTreeCore {
                 gene: self.core.gene.clone(),
-                highest_rank: self.core.highest_rank,
-                roots: roots.into_boxed_slice(),
+                root: crate::utils::extract_singlevec(root_wrapped),
+                root_rank: self.core.root_rank,
                 payloads: new_payloads.into_boxed_slice(),
             },
         }
@@ -378,7 +386,7 @@ impl TaxTreeResults {
     /// Does not include the header `Self::CSV_HEADER`
     pub fn generate_csv_records(&self) -> String {
         let template =
-            self.core.gene.clone() + &",".repeat(1 + Rank::Domain as usize - self.core.highest_rank as usize);
+            self.core.gene.clone() + &",".repeat(1 + Rank::Domain as usize - self.core.root_rank as usize);
 
         fn dive_recursive(
             node: &Node<BRes>,
@@ -420,25 +428,25 @@ impl TaxTreeResults {
         }
 
         let mut output: Vec<String> = Vec::new();
-        for root in self.core.roots.iter() {
-            dive_recursive(
-                root,
-                self.core.highest_rank as usize - 1,
-                &self.core.payloads,
-                template.clone(),
-                &mut output,
-            );
-        }
+
+        dive_recursive(
+            &self.core.root,
+            self.core.root_rank as usize - 1,
+            &self.core.payloads,
+            template.clone(),
+            &mut output,
+        );
 
         output.join("\n") + "\n"
     }
 }
 
-impl std::fmt::Display for TaxTreeResults {
-    fn fmt(
+impl MaybeColoredDisplay for TaxTreeResults {
+    fn fmt_maybe_color(
         &self,
         f: &mut std::fmt::Formatter<'_>,
+        use_color: bool,
     ) -> std::fmt::Result {
-        writeln!(f, "{}", self.core)
+        write!(f, "{}", self.core.display(use_color))
     }
 }

@@ -12,6 +12,7 @@ use myrio_core::{
     similarity::{SimFunc, Similarity},
     tax::{
         compute::{CacheOptions, TaxTreeCompute},
+        display::MaybeColoredDisplay,
         results::TaxTreeResults,
     },
 };
@@ -257,12 +258,12 @@ pub fn process_run(
         }
 
         if let Some(ref mut txt_file) = txt_file_opt {
-            txt_file.write_all((ttresults_full.to_string() + "\n").as_bytes())?;
+            txt_file.write_all((ttresults_full.display(false).to_string() + "\n").as_bytes())?;
         }
 
         let ttresults_best = ttresults_full.cut(config.search.nb_best_display);
 
-        println!("{}", ttresults_best.core);
+        println!("{}", ttresults_best.display(true));
     }
 
     if let Some(ref mut csv_file) = csv_file_opt {

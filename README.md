@@ -57,7 +57,7 @@ ATACCCTACCCCATTCATCTGGAAATCTTGGTTCAAACCCTTCGCTATTGGGTGAAAGACGCCTCTTCTTTGCATTTATT
 
 **Important constraints**:
 
-1. All entries must share the same highest rank. For example, if the highest rank of the first record is `family`, then every other record must also have `family` as their highest rank (note that the highest rank defined is `Domain`, while the lowest is `Species`).
+1. All entries must share the same highest-ranked clade. For example, if the highest rank of the first record is `family: Araliaceae`, then every other record must also have `family: Araliaceae` as their highest-ranked clade (note that the highest rank defined is `Domain`, while the lowest is `Species`).
 2. No rank gaps are allowed. For instance, if you specify `family`, you cannot skip `genus` and go directly to `species`.
 
 

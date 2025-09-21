@@ -16,7 +16,6 @@ use crate::{
         clade::Rank,
         compute::TaxTreeCompute,
         core::{Leaf, Node, TaxTreeCore},
-        display::MaybeColoredDisplay,
     },
 };
 
@@ -29,11 +28,10 @@ pub struct BRes {
     pub confidence: Option<Option<Float>>,
 }
 
-impl MaybeColoredDisplay for BRes {
-    fn fmt_maybe_color(
+impl std::fmt::Display for BRes {
+    fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
-        use_color: bool,
     ) -> std::fmt::Result {
         let default = format!(
             "⟮nb_leaves={}, μ_sim={:.3}, max_sim={:.3}, s_pool={:.3}⟯",
@@ -45,10 +43,6 @@ impl MaybeColoredDisplay for BRes {
         };
 
         let confidence_string = confidence.map_or_else(|| "◎".to_string(), |conf| format!("◎ {conf:.3}"));
-
-        if !use_color {
-            return write!(f, "{confidence_string} {default}",);
-        }
 
         let confidence_string = confidence
             .map(|conf| {
@@ -438,15 +432,5 @@ impl TaxTreeResults {
         );
 
         output.join("\n") + "\n"
-    }
-}
-
-impl MaybeColoredDisplay for TaxTreeResults {
-    fn fmt_maybe_color(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        use_color: bool,
-    ) -> std::fmt::Result {
-        write!(f, "{}", self.core.display(use_color))
     }
 }

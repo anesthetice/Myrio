@@ -196,7 +196,7 @@ pub fn cluster(
     }
     */
 
-    // Step 4 bypass if silhouette_trimming is set to `None` (i.e., disabled), or if we only have a single cluster
+    // We bypass step 4 and go straight to step 5 (final step) if silhouette_trimming is set to `None` (i.e., disabled), or if we only have a single cluster (as computing the silhouette score requires >=2 clusters)
     if silhouette_trimming.is_none() || clusters.len() == 1 {
         let mut output: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
         for (myrseq, kmer_counts_normalized) in myrseqs.into_iter().zip_eq(kmer_counts_normalized_vec.iter())
@@ -216,7 +216,6 @@ pub fn cluster(
     let ssdcf = silhouette_trimming.unwrap();
 
     // Step 4 and 5, silhouette thinning and simply computing the output
-    // (could also add multi-threading to this part in the future)
     let mut clustered_myrseqs: Vec<Vec<MyrSeq>> = vec![Vec::new(); clusters.len()];
     for ((myrseq, kmer_counts_normalized), kmer_counts) in myrseqs
         .into_iter()

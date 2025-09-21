@@ -10,6 +10,15 @@ pub fn process_misc(
 
     match subcommand.as_str() {
         "generate-shell-completions" => process_misc_generate_shell_completions(sub_mat, _config),
+        "get-config-location" => {
+            let conf_filepath = directories::ProjectDirs::from("", "", App::NAME)
+                .ok_or_else(|| anyhow::anyhow!("Failed to get project directories"))?
+                .config_dir()
+                .join(Config::FILENAME);
+
+            println!("Configuration filepath: {}", conf_filepath.display());
+            Ok(())
+        }
         _ => Ok(()),
     }
 }

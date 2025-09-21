@@ -19,6 +19,7 @@ use myrio_core::{
     tax::store::TaxTreeStore,
 };
 
+use crate::app::App;
 use crate::app::config::Config;
 
 fn gather_trees(

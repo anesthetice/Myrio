@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
+use clap::ColorChoice;
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use myrio_core::{
@@ -12,7 +13,6 @@ use myrio_core::{
     similarity::{SimFunc, Similarity},
     tax::{
         compute::{CacheOptions, TaxTreeCompute},
-        display::MaybeColoredDisplay,
         results::TaxTreeResults,
     },
 };
@@ -22,6 +22,7 @@ use super::*;
 pub fn process_run(
     mut mat: ArgMatches,
     config: &Config,
+    color_choice: ColorChoice,
 ) -> anyhow::Result<()> {
     let input_filepath: PathBuf = mat.remove_one("input").unwrap();
     let tree_filepaths = gather_trees(&mut mat, "trees")?;
@@ -258,12 +259,19 @@ pub fn process_run(
         }
 
         if let Some(ref mut txt_file) = txt_file_opt {
-            txt_file.write_all((ttresults_full.display(false).to_string() + "\n").as_bytes())?;
+            if matches!(color_choice, ColorChoice::Auto) {
+                console::set_colors_enabled(false);
+                let prev = console::colors_enabled();
+                txt_file.write_all((ttresults_full.core.to_string() + "\n").as_bytes())?;
+                console::set_colors_enabled(prev);
+            } else {
+                txt_file.write_all((ttresults_full.core.to_string() + "\n").as_bytes())?;
+            }
         }
 
         let ttresults_best = ttresults_full.cut(config.search.nb_best_display);
 
-        println!("{}", ttresults_best.display(true));
+        println!("{}", ttresults_best.core);
     }
 
     if let Some(ref mut csv_file) = csv_file_opt {

@@ -1,67 +1,18 @@
 use console::style;
 
-use crate::{
-    similarity::SimScore,
-    tax::{
-        clade::Rank,
-        core::{Node, TaxTreeCore},
-    },
+use crate::tax::{
+    clade::Rank,
+    core::{Node, TaxTreeCore},
 };
 
-pub trait MaybeColoredDisplay: Sized {
-    fn fmt_maybe_color(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        use_color: bool,
-    ) -> std::fmt::Result;
-
-    fn display<'a>(
-        &'a self,
-        use_color: bool,
-    ) -> MaybeColored<'a, Self> {
-        MaybeColored { inner: self, use_color }
-    }
-}
-
-pub struct MaybeColored<'a, T>
+impl<B, L> std::fmt::Display for TaxTreeCore<B, L>
 where
-    T: MaybeColoredDisplay,
-{
-    inner: &'a T,
-    use_color: bool,
-}
-
-impl<'a, T> std::fmt::Display for MaybeColored<'a, T>
-where
-    T: MaybeColoredDisplay,
+    B: std::fmt::Display,
+    L: std::fmt::Display,
 {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        self.inner.fmt_maybe_color(f, self.use_color)
-    }
-}
-
-impl MaybeColoredDisplay for SimScore {
-    fn fmt_maybe_color(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        _use_color: bool,
-    ) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl<B, L> MaybeColoredDisplay for TaxTreeCore<B, L>
-where
-    B: MaybeColoredDisplay,
-    L: MaybeColoredDisplay,
-{
-    fn fmt_maybe_color(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        use_color: bool,
     ) -> std::fmt::Result {
         let root_branch = self.root.unwrap_branch_ref();
         let rbc_len = root_branch.children.len();
@@ -82,22 +33,21 @@ where
             "{} {} {}",
             root_branch.name,
             to_dim_with_parenthesis(self.root_rank),
-            root_branch.extra.display(use_color)
+            root_branch.extra,
         )?;
 
         #[rustfmt::skip]
         fn dive_recursive<B, L>(
             node: &Node<B>,
             payloads: &[L],
-            use_color: bool,
             is_end: bool,
             mut left: String,
             rank: Rank,
             f: &mut std::fmt::Formatter<'_>,
         ) -> std::result::Result<(), std::fmt::Error>
         where
-            B: MaybeColoredDisplay,
-            L: MaybeColoredDisplay,
+            B: std::fmt::Display,
+            L: std::fmt::Display,
         {
             match node {
                 Node::Branch(branch) => {
@@ -109,7 +59,7 @@ where
                         if is_end { "┗" } else { "┣" },
                         branch.name,
                         to_dim_with_parenthesis(rank),
-                        branch.extra.display(use_color),
+                        branch.extra,
                     )?;
 
                     left += if is_end {"        "} else {"┃       "};
@@ -117,9 +67,9 @@ where
                     if !branch.children.is_empty() {
                         let len = branch.children.len();
                         for node in branch.children[0..len - 1].iter() {
-                            dive_recursive(node, payloads, use_color, false, left.clone(), rank.below().unwrap(), f)?;
+                            dive_recursive(node, payloads, false, left.clone(), rank.below().unwrap(), f)?;
                         }
-                        dive_recursive(&branch.children[len - 1], payloads, use_color, true, left.clone(), rank.below().unwrap(), f)?;
+                        dive_recursive(&branch.children[len - 1], payloads, true, left.clone(), rank.below().unwrap(), f)?;
                     }
                 }
                 Node::Leaf(leaf) => {
@@ -130,7 +80,7 @@ where
                         if is_end { "└" } else { "├" },
                         leaf.name,
                         to_dim_with_parenthesis(rank),
-                        payloads[leaf.payload_id].display(use_color),
+                        payloads[leaf.payload_id],
                     )?;
                 }
             }
@@ -138,17 +88,9 @@ where
         }
         let rank_below = self.root_rank.below().unwrap();
         for root_child in &root_branch.children[0..rbc_len - 1] {
-            dive_recursive(root_child, &self.payloads, use_color, false, String::new(), rank_below, f)?;
+            dive_recursive(root_child, &self.payloads, false, String::new(), rank_below, f)?;
         }
-        dive_recursive(
-            &root_branch.children[rbc_len - 1],
-            &self.payloads,
-            use_color,
-            true,
-            String::new(),
-            rank_below,
-            f,
-        )
+        dive_recursive(&root_branch.children[rbc_len - 1], &self.payloads, true, String::new(), rank_below, f)
     }
 }
 

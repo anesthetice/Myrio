@@ -32,7 +32,7 @@ impl App {
             })?;
         }
 
-        let config = config::Config::load(&_conf_dir.join("myrio.conf.toml"));
+        let config = config::Config::load(&_conf_dir.join(Config::FILENAME));
 
         Ok(Self { config })
     }
@@ -47,9 +47,17 @@ impl App {
 
         let color_choice = mat.remove_one::<String>("color").unwrap();
         let color_choice = match color_choice.as_str() {
-            "always" => ColorChoice::Always,
+            "always" => {
+                console::set_colors_enabled(true);
+                console::set_colors_enabled_stderr(true);
+                ColorChoice::Always
+            }
             "auto" => ColorChoice::Auto,
-            "never" => ColorChoice::Never,
+            "never" => {
+                console::set_colors_enabled(false);
+                console::set_colors_enabled_stderr(false);
+                ColorChoice::Never
+            }
             _ => unreachable!(),
         };
 
@@ -58,7 +66,7 @@ impl App {
         };
 
         match subcommand.as_str() {
-            "run" => process::run(sub_mat, &self.config),
+            "run" => process::run(sub_mat, &self.config, color_choice),
             "tree" => process::tree(sub_mat, &self.config),
             "misc" => process::misc(sub_mat, &self.config),
             _ => Ok(()),

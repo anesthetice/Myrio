@@ -199,9 +199,13 @@ pub fn build_cli() -> Command {
                 .value_parser(vparser!(clap_complete::Shell)),
         );
 
+    let misc_get_config_location = Command::new("get-config-location")
+        .about("Display the filepath of the configuration");
+
     let misc_subcommand = Command::new("misc")
         .subcommands([
             misc_generate_shell_completions_subcommand,
+            misc_get_config_location,
         ]);
 
     Command::new("myrio")

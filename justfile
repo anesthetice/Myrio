@@ -35,3 +35,15 @@ regen-myrio-db-with-precomputation:
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_matK.fasta -g "matK" -k 18
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_rbcL.fasta -g "rbcL" -k 18
     just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_trnH-psbA.fasta -g "trnH-psbA" -k 18
+
+build-dbs-for-release:
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_ITS.fasta -g "ITS" -o ./ignore/artifacts/BOLD_Plantae_20250831_ITS.myrtree
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_matK.fasta -g "matK" -o ./ignore/artifacts/BOLD_Plantae_20250831_matK.myrtree
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_rbcL.fasta -g "rbcL" -o ./ignore/artifacts/BOLD_Plantae_20250831_rbcL.myrtree
+    just runmaxcli tree new -i ./ignore/myrio-db/BOLD_Plantae_20250831_trnH-psbA.fasta -g "trnH-psbA" -o ./ignore/artifacts/BOLD_Plantae_20250831_trnH-psbA.myrtree
+
+build-bins-for-release:
+    cargo build --package myrio-cli --release
+    mv target/release/myrio ignore/artifacts/myrio_x86_64-unknown-linux-gnu
+    cross build --package myrio-cli --release --target=x86_64-pc-windows-gnu
+    mv target/x86_64-pc-windows-gnu/release/myrio.exe ignore/artifacts/myrio_x86_64-pc-windows-gnu.exe

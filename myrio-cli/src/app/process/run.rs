@@ -6,10 +6,13 @@ use std::{
 
 use anyhow::Context;
 use clap::ColorChoice;
+use console::style;
 use indicatif::MultiProgress;
+use indoc::printdoc;
 use itertools::Itertools;
 use myrio_core::{
     clustering::ClusteringParameters,
+    data::Float,
     similarity::{SimFunc, Similarity},
     tax::{
         compute::{CacheOptions, TaxTreeCompute},
@@ -51,6 +54,15 @@ pub fn process_run(
     // gather myrseqs and filter out the poor quality ones
     let myrseqs: Vec<MyrSeq> = {
         let mut output = myrio_core::io::read_fastq_from_file(input_filepath)?;
+        let (mean_qual_score, mean_seq_len) = {
+            let mut n: usize = 0;
+            let mut sum: usize = 0;
+            output.iter().for_each(|myrseq| {
+                n += myrseq.quality.len();
+                myrseq.quality.iter().for_each(|q| sum += usize::from(*q));
+            });
+            (sum as Float / n as Float, n as Float / output.len() as Float)
+        };
         let initial_count = output.len();
         output = MyrSeq::pre_process(
             output,
@@ -59,7 +71,16 @@ pub fn process_run(
             config.fastq_max_qual,
         );
         let final_count = output.len();
-        println!("Pre-processed {initial_count} records → discarded {}", initial_count - final_count);
+        printdoc! {"
+            Pre-processed {initial_count} FASTQ records → ignored {} records
+            {}
+            {}
+
+            ",
+            initial_count - final_count,
+            style(format!("├─── μ_quality_score    =  {mean_qual_score:.2}")).dim(),
+            style(format!("└─── μ_sequence_length  =  {mean_seq_len:.2}")).dim(),
+        };
         output
     };
 

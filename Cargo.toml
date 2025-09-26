@@ -13,14 +13,14 @@ authors = ["Elliot Currat <elliot.currat@epfl.ch>"]
 description = "Myrio is a command-line application designed to identify the taxonomy of a plant from specific amplified DNA sequences."
 edition = "2024"
 readme = true
-version = "0.1.0"
+version = "0.2.0"
 
 [workspace.dependencies]
-myrio-core = { version = "0.1.0", path = "myrio-core", default-features = true }
-myrio-proc = { version = "0.1.0", path = "myrio-proc" }
+myrio-core = { version = "0.2.0", path = "myrio-core", default-features = true }
+myrio-proc = { version = "0.2.0", path = "myrio-proc" }
 
 anyhow = { version = "1.0" }
-bio-seq = { git = "https://github.com/anesthetice/bio-seq.git" }
+bio-seq = { git = "https://github.com/anesthetice/bio-seq.git", rev = "eae949f165c3c97b87903a2ccc5a287bef6b4bb8" }
 console = { version = "0.16" }
 itertools = { version = "0.14" }
 indicatif = { version = "0.18", features = ["rayon"] }

@@ -60,6 +60,33 @@ impl<B> Node<B> {
         }
     }
 
+    pub fn gather_branches<'a>(
+        &'a self,
+        output: &mut Vec<&'a Branch<B>>,
+    ) {
+        if let Self::Branch(branch) = self {
+            output.push(branch);
+            branch.children.iter().for_each(|node| node.gather_branches(output));
+        }
+    }
+
+    pub fn gather_leaves_and_branches<'a>(
+        &'a self,
+        output_leaves: &mut Vec<&'a Leaf>,
+        output_branches: &mut Vec<&'a Branch<B>>,
+    ) {
+        match self {
+            Self::Branch(branch) => {
+                output_branches.push(branch);
+                branch
+                    .children
+                    .iter()
+                    .for_each(|node| node.gather_leaves_and_branches(output_leaves, output_branches));
+            }
+            Self::Leaf(leaf) => output_leaves.push(leaf),
+        }
+    }
+
     pub fn unwrap_branch(self) -> Branch<B> {
         match self {
             Self::Branch(branch) => branch,

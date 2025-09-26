@@ -41,11 +41,9 @@ impl TaxTreeCompute {
     ) -> Result<Self, Error> {
         if matches!(fingerprint_local_rank, Rank::Species) {
             return Err(Error::new_misc("Fingerprint rank cannot be set to `Species`"));
-        }
-
-        if fingerprint_local_rank > ttstore.core.root_rank {
+        } else if fingerprint_local_rank > ttstore.core.root_rank {
             return Err(Error::new_misc(format!(
-                "The desired fingerprint rank of `{fingerprint_local_rank}` is higher than the tree's highest rank of `{}`",
+                "The desired fingerprint rank of `{fingerprint_local_rank}` is higher than the tree's root rank of `{}`",
                 ttstore.core.root_rank
             )));
         }
@@ -57,11 +55,11 @@ impl TaxTreeCompute {
             branches
                 .into_par_iter()
                 .map_init(rand::rngs::SmallRng::from_os_rng, |rng, branch| {
-                    let leaves = branch.gather_leaves();
-                    (0..fingerprint_local_nb_subsamples)
-                        .map(|_| {
-                            let random_payload_id = leaves.choose(rng).unwrap().payload_id;
-                            let seq = &ttstore.core.payloads[random_payload_id].seq;
+                    branch
+                        .gather_leaves()
+                        .choose_multiple(rng, fingerprint_local_nb_subsamples)
+                        .map(|leaf| {
+                            let seq = unsafe { &ttstore.core.payloads.get_unchecked(leaf.payload_id).seq };
                             compute_kmer_counts_for_fasta_seq(
                                 seq,
                                 cluster_k,

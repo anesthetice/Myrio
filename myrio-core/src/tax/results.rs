@@ -15,7 +15,7 @@ use crate::{
         Error,
         clade::Rank,
         compute::TaxTreeCompute,
-        core::{Leaf, Node, TaxTreeCore},
+        core::{Branch, Leaf, Node, TaxTreeCore},
     },
 };
 
@@ -26,6 +26,7 @@ pub struct BRes {
     pub max: Float,
     pub pool_score: Float,
     pub confidence: Option<Option<Float>>,
+    pub force_keep: bool,
 }
 
 impl std::fmt::Display for BRes {
@@ -44,6 +45,7 @@ impl std::fmt::Display for BRes {
 
         let confidence_string = confidence.map_or_else(|| "◎".to_string(), |conf| format!("◎ {conf:.3}"));
 
+        #[allow(clippy::print_in_format_impl)]
         let confidence_string = confidence
             .map(|conf| {
                 let colorizer = match conf {
@@ -99,7 +101,7 @@ impl TaxTreeResults {
             .map(|sfvec| simfunc(&sfvec, &query))
             .collect_into_vec(&mut payloads);
 
-        // This recursive function serves to convert the roots of TaxTreeCore<(), SFVec> used by TaxTreeCompute into the roots of TaxTreeCore<BRes, SimScore> used by TaxTreeResults. The BRes parameters `nb_leaves`, `mean`, `max` are all computed here, `pool_score` is set to the default of 0.0 and will be computed later
+        // This recursive function serves to convert the root of TaxTreeCore<(), SFVec> used by TaxTreeCompute into the root of TaxTreeCore<BRes, SimScore> used by TaxTreeResults. The BRes parameters `nb_leaves`, `mean`, `max` are all computed here, `pool_score` is set to the default value of 0.0 as it will be computed later.
         fn dive_recursive(
             store_node: Node<()>,
             above: &mut Vec<Node<BRes>>,
@@ -133,6 +135,7 @@ impl TaxTreeResults {
                             max,
                             pool_score: 0.0,
                             confidence: None,
+                            force_keep: false,
                         },
                     );
                     above.push(results_branch);
@@ -178,7 +181,8 @@ impl TaxTreeResults {
             numerator / denominator
         }
 
-        for rank in Rank::collect_range_exclusive(Rank::Genus, ttres.core.root_rank) {
+        let root_rank = ttres.core.root_rank;
+        for rank in Rank::collect_range_inclusive(Rank::Genus, root_rank) {
             let mut rank_branch_vec = ttres.core.gather_branches_mut_at_rank(rank);
 
             rank_branch_vec.par_iter_mut().for_each(|rank_branch| {
@@ -207,8 +211,9 @@ impl TaxTreeResults {
             if rank_branch_vec.is_empty() {
                 continue;
             } else if rank_branch_vec.len() == 1 {
-                let single_branch = rank_branch_vec.pop().unwrap();
-                single_branch.extra.confidence = Some(None);
+                if rank != root_rank {
+                    crate::utils::extract_singlevec(rank_branch_vec).extra.confidence = Some(None);
+                }
                 continue;
             }
 
@@ -220,25 +225,22 @@ impl TaxTreeResults {
             let pool_score_std =
                 (n.powi(-1) * pool_scores.into_iter().map(|x| (x - pool_score_mean).powi(2)).sum::<Float>()).sqrt().max(1E-8);
 
-            let first = rank_branch_vec.remove(
-                rank_branch_vec
-                    .iter()
-                    .position_max_by_key(|branch| SimScore::try_new(branch.extra.pool_score).unwrap())
-                    .unwrap(),
-            );
-
-            let second = rank_branch_vec.remove(
-                rank_branch_vec
-                    .iter()
-                    .position_max_by_key(|branch| SimScore::try_new(branch.extra.pool_score).unwrap())
-                    .unwrap(),
-            );
+            let (first, second) = rank_branch_vec
+                .into_iter()
+                .k_largest_by_key(2, |branch| SimScore::try_new(branch.extra.pool_score).unwrap())
+                .collect_tuple()
+                .unwrap();
 
             let x = (first.extra.pool_score - second.extra.pool_score) / pool_score_std;
 
             let conf = first.extra.pool_score.powf(epsilon) * x.powf(gamma) / (delta + x.powf(gamma));
 
             first.extra.confidence = Some(Some(conf));
+            first.extra.force_keep = true;
+
+            if second.extra.pool_score > 0.2 && conf < 0.3 {
+                second.extra.force_keep = true;
+            }
 
             #[cfg(debug_assertions)]
             indoc::printdoc! {"
@@ -336,16 +338,22 @@ impl TaxTreeResults {
         ) {
             match node {
                 Node::Branch(branch) => {
-                    let mut add_self_flag: bool = false;
+                    let mut add_self_flag: bool = branch.extra.force_keep;
                     let mut current: Vec<Node<BRes>> = Vec::new();
-                    let mut leaves: Vec<&Leaf> = Vec::new();
-                    for node in branch.children.iter() {
-                        node.gather_leaves(&mut leaves);
-                        if leaves.iter().any(|&leaf| best.keys().contains(&leaf.payload_id)) {
+                    let mut leaves_below: Vec<&Leaf> = Vec::new();
+                    let mut branches_below: Vec<&Branch<BRes>> = Vec::new();
+
+                    for sub_node in branch.children.iter() {
+                        sub_node.gather_leaves_and_branches(&mut leaves_below, &mut branches_below);
+
+                        if leaves_below.iter().any(|&leaf| best.keys().contains(&leaf.payload_id))
+                            || branches_below.iter().any(|b| b.extra.force_keep)
+                        {
                             add_self_flag = true;
-                            dive_recursive(node, &mut current, new_payloads, best);
+                            dive_recursive(sub_node, &mut current, new_payloads, best);
                         }
-                        leaves.clear();
+                        leaves_below.clear();
+                        branches_below.clear();
                     }
                     if add_self_flag {
                         above.push(Node::new_branch(
@@ -356,8 +364,10 @@ impl TaxTreeResults {
                     }
                 }
                 Node::Leaf(leaf) => {
-                    above.push(Node::new_leaf(leaf.name.clone(), new_payloads.len()));
-                    new_payloads.push(*best.get(leaf.payload_id).unwrap());
+                    if let Some(simscore) = best.get(leaf.payload_id) {
+                        above.push(Node::new_leaf(leaf.name.clone(), new_payloads.len()));
+                        new_payloads.push(*simscore);
+                    }
                 }
             }
         }

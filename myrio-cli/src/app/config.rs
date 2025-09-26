@@ -70,7 +70,7 @@ impl Config {
 
         [fingerprint]
         # Rank for which the local fingerprints will be computed, available: ["Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus"]
-        local_rank = "Phylum"
+        local_rank = "Class"
         # Same explanation as `cluster.similarity` seen above
         similarity = "Cosine"
         # The number of subsamples (i.e., leaves) used to compute the local fingerprint (representative k-mer counts) of a tree

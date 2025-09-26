@@ -13,6 +13,9 @@ rundbgcli +ARGS:
 runmaxexp:
     RUSTFLAGS="-C target-cpu=native -Awarnings" cargo run -p myrio-exp --release
 
+rundbgexp:
+    RUSTFLAGS="-Awarnings" RUST_BACKTRACE=1 cargo run -p myrio-exp
+
 test:
     #RUSTFLAGS="-Awarnings" cargo test -p myrio-cli --no-default-features
     #RUSTFLAGS="-Awarnings" cargo test -p myrio-exp --no-default-features

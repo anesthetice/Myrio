@@ -113,9 +113,31 @@ impl Generator {
         id: &str,
         rng: &mut impl rand::Rng,
     ) -> Vec<MyrSeq> {
-        // We generate our core DNA forward amplicon sequence, and its reverse complement
+        // We generate our core DNA forward amplicon sequence
         let core_seq: Seq<Dna> = Self::generate_core_sequence(length, rng);
+        self.generate_pseudo_amplicon_core(core_seq, amount, id, rng)
+    }
+
+    pub fn generate_pseudo_amplicon_from_core_seq(
+        &self,
+        core_seq: &str,
+        amount: usize,
+        id: &str,
+        rng: &mut impl rand::Rng,
+    ) -> Vec<MyrSeq> {
+        let core_seq: Seq<Dna> = Seq::from_str(core_seq).unwrap();
+        self.generate_pseudo_amplicon_core(core_seq, amount, id, rng)
+    }
+
+    fn generate_pseudo_amplicon_core(
+        &self,
+        core_seq: Seq<Dna>,
+        amount: usize,
+        id: &str,
+        rng: &mut impl rand::Rng,
+    ) -> Vec<MyrSeq> {
         let core_seq_rc = core_seq.to_revcomp();
+        let length = core_seq.len();
 
         // We generate the ratio of sequences corresponding to the coding strand and the template (reverse complement) strand
         let forward_seq_ratio = rand::distr::uniform::Uniform::new(
@@ -133,9 +155,8 @@ impl Generator {
         sample_multiple(amount, &rand::distr::Bernoulli::new(forward_seq_ratio).unwrap(), rng)
             .into_iter()
             .map(|is_forward| {
+                let window_size = w_size_distr.sample_single(rng).clamp(self.min_window_size, length);
                 let window_range: std::ops::Range<usize> = {
-                    // generate window size
-                    let window_size = w_size_distr.sample_single(rng).clamp(self.min_window_size, length);
                     // generate window starting index
                     let idx = rng.random_range(0..=length - window_size);
                     idx..idx + window_size
@@ -150,12 +171,12 @@ impl Generator {
                 // generate the block sizes of the quality scores
                 let mut sum: usize = 0;
                 let mut block_sizes: Vec<usize> = Vec::new();
-                while sum < length {
+                while sum < window_size {
                     let block_size = self.q_score_block_size_distr.sample_single(rng);
                     sum += block_size;
                     block_sizes.push(block_size);
                 }
-                block_sizes.last_mut().unwrap().sub_assign(sum - length);
+                block_sizes.last_mut().unwrap().sub_assign(sum - window_size);
 
                 let mut q_scores: Vec<u8> = Vec::new();
                 for block_size in block_sizes.into_iter() {
@@ -232,6 +253,11 @@ impl Generator {
                     }
                     idx += 1;
                 }
+
+                debug_assert_eq!(
+                    seq.len(),
+                    q_scores.len(),
+                );
 
                 MyrSeq::new(
                     id.to_string(),

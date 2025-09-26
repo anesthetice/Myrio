@@ -36,8 +36,31 @@ After installing (or downloading) `myrio`, head to the [`releases`](https://gith
 
 Then, open a terminal, `cd` into the directory where these files were downloaded and run the following:
 ``` sh
-# TODO
+# If you downloaded a pre-built binary, call that binary instead of calling `myrio`
+myrio run -i Hedera_Helix_Fulvia_matk_rbcL_psbA-trnH_ITS.fastq.zst -t ./ --cache-counts
 ```
+
+Now sit back, wait a little while for the k-mer counts to be computed (don't worry, they will be cached, subsequent runs will take substantially less time; note that the `.myrtree` files will increase a lot in size)
+
+<img src="/assets/quickstart-1.png" width="60%"/>
+
+Once the counts have finished being computed, `myrio` will perform clustering, then finally compute and display the results per tree.
+
+The first tree (for the ITS gene) shows very positive results:
+
+<img src="/assets/quickstart-2.png" width="70%"/>
+
+The `◎` (bullseye) symbol represents the application's confidence in this clade being correctly identified, confidence scores range from 0.0 to 1.0, but all you really have to keep in mind is that "green or cyan = good". Note that the bullseye symbol appearing without a score next to it means that no other clade remained for the analysis (as these did not contain a sequence in the top 'x' of scores).
+
+Here are the remaining results:
+
+<img src="/assets/quickstart-3.png" width="50%"/>
+<img src="/assets/quickstart-4.png" width="50%"/>
+<img src="/assets/quickstart-5.png" width="50%"/>
+
+I recommend looking at all the available options for the run subcommand by using `myrio run --help`, as well as the configuration file, which can be located by using: `myrio misc get-config-location`.
+
+Currently, it is somewhat difficult to estimate whether or not the sample you are running might correspond to a new species (or at least one not in the specified databases). We are planning to make that process easier in the future.
 
 ## Usage
 

@@ -439,7 +439,7 @@ mod test {
                 seq: iupac!("ACTG").to_owned(),
                 kmer_store_counts_vec: vec![
                     (
-                        unsafe { SparseVec::<u16>::new_unchecked(vec![1, 10, 200], vec![2, 5, 3], 100, x) },
+                        unsafe { SparseVec::<u16>::new_unchecked(vec![1, 10, 200], vec![2 * x, 5, 3]) },
                         0.1
                     );
                     4
@@ -460,7 +460,7 @@ mod test {
         let tree_reconstructed = {
             let bytes = tree_original.to_bytes(3).unwrap();
             let (core, k_precomputed) = TaxTreeStore::from_bytes(bytes.as_slice()).unwrap();
-            TaxTreeStore { core, filepath: PathBuf::from("./notimportant.myrtree"), k_precomputed }
+            TaxTreeStore { core, filepath: PathBuf::default(), k_precomputed }
         };
 
         // Sanity checks

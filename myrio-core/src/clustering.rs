@@ -47,8 +47,8 @@ where
 {
     members
         .par_iter()
-        .fold(|| SFVec::new(0), |a, b| a + b.as_ref())
-        .reduce(|| SFVec::new(0), |a, b| a + b)
+        .fold(|| SFVec::new(), |a, b| a + b.as_ref())
+        .reduce(|| SFVec::new(), |a, b| a + b)
         .into_normalized_l2()
 }
 

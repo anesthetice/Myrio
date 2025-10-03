@@ -101,7 +101,6 @@ pub fn impl_ops_for_svec(input: TokenStream) -> TokenStream {
 
             fn #method(mut self, rhs: #ty) -> Self::Output {
                 self.values_mut().for_each(|v| v.#method_assign(rhs));
-                self.sval.#method_assign(rhs);
                 self
             }
         }
@@ -114,8 +113,6 @@ pub fn impl_ops_for_svec(input: TokenStream) -> TokenStream {
                     SparseVec::<#ty>::new_unchecked(
                         self.keys.clone(),
                         self.values.iter().map(|v| v.#method(rhs)).collect(),
-                        self.dim,
-                        self.sval.#method(rhs),
                     )
                 }
             }
@@ -124,7 +121,6 @@ pub fn impl_ops_for_svec(input: TokenStream) -> TokenStream {
         impl core::ops::#op_assign<#ty> for SparseVec<#ty> {
             fn #method_assign(&mut self, rhs: #ty) {
                 self.values_mut().for_each(|v| v.#method_assign(rhs));
-                self.sval.#method_assign(rhs);
             }
         }
     };

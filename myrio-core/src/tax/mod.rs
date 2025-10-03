@@ -99,7 +99,7 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
     let base_nucleotides = seq.iter().filter(|nc| !matches!(nc, Iupac::X)).collect_vec();
     if base_nucleotides.len() < k {
         // Not completely ideal, but trimming empty sfvec entries from the compute tree is even more annoying
-        return unsafe { (SparseVec::new_unchecked(vec![0], vec![1], 1, 0), 1.0) };
+        return unsafe { (SparseVec::new_unchecked(vec![0], vec![1]), 1.0) };
     }
 
     let nb_kmers_per_seq = 2 * (base_nucleotides.len() - k + 1);
@@ -126,7 +126,7 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
     }
     gen_match_k_sparse!(_);
 
-    let temp_svec = SparseVec::from_unsorted_singles(singles, 1_u16, usize::MAX, 0_u16);
+    let temp_svec = SparseVec::from_unsorted_singles(singles, 1_u16);
     let cutoff = ((nb_resamples + 5) >> 3) as u16; // Equivalent to `(nb_boostraps + 5) / 8` then floor but much more efficient
 
     // We strip out any k-mer that was encountered less or equal times to the cutoff
@@ -135,10 +135,10 @@ pub fn compute_kmer_store_counts_for_fasta_seq(
 
     if keys.is_empty() {
         // Not completely ideal, but trimming empty sfvec entries from the compute tree is even more annoying
-        return unsafe { (SparseVec::new_unchecked(vec![0], vec![1], 1, 0), 1.0) };
+        return unsafe { (SparseVec::new_unchecked(vec![0], vec![1]), 1.0) };
     }
 
-    let svec = unsafe { SparseVec::new_unchecked(keys, values, 4_usize.pow(k as u32), 0_u16) };
+    let svec = unsafe { SparseVec::new_unchecked(keys, values) };
 
     // Later multiplying each value by the `rescale_factor` yields the properly scaled k-mer count map
     let rescale_factor: Float =
@@ -202,9 +202,9 @@ pub fn compute_sparse_kmer_counts_for_fasta_seq_old(
     gen_match_k_sparse!(expanded);
     if pairs.is_empty() {
         // Not completely ideal, but trimming empty sfvec entries from the compute tree is even more annoying
-        return unsafe { SFVec::new_unchecked(vec![0], vec![1.0], 1, 0.0) };
+        return unsafe { SFVec::new_unchecked(vec![0], vec![1.0]) };
     }
-    SFVec::from_unsorted_pairs(pairs, 4_usize.pow(k as u32), 0.0)
+    SFVec::from_unsorted_pairs(pairs)
 }
 
 #[cfg(test)]

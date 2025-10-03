@@ -325,7 +325,7 @@ impl TaxTreeResults {
             .map(|&leaf| (leaf.payload_id, unsafe { self.core.payloads.get_unchecked(leaf.payload_id) }))
             .sorted_by_key(|&(_, score)| unsafe { SimScore::new_unchecked(score.neg()) })
             .take(nb_best)
-            .fold(SparseVec::new(usize::MAX), |mut acc, (pid, score)| {
+            .fold(SparseVec::new(), |mut acc, (pid, score)| {
                 acc.insert(pid, *score);
                 acc
             });

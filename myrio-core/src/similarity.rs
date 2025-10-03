@@ -62,7 +62,7 @@ fn cosine(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    (a.dot_zero(b) / (a.norm_l2() * b.norm_l2())).try_into().unwrap_or_default()
+    (a.dot(b) / (a.norm_l2() * b.norm_l2())).try_into().unwrap_or_default()
 }
 
 #[cfg(debug_assertions)]
@@ -70,7 +70,7 @@ fn cosine(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    (a.dot_zero(b) / (a.norm_l2() * b.norm_l2()))
+    (a.dot(b) / (a.norm_l2() * b.norm_l2()))
         .try_into()
         .inspect_err(|e| {
             eprintln!(
@@ -89,7 +89,7 @@ fn cosine_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    unsafe { SimScore::new_unchecked(a.dot_zero(b)) }
+    unsafe { SimScore::new_unchecked(a.dot(b)) }
 }
 
 #[cfg(debug_assertions)]
@@ -97,7 +97,7 @@ fn cosine_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    a.dot_zero(b)
+    a.dot(b)
         .try_into()
         .inspect_err(|e| {
             eprintln!(
@@ -116,7 +116,7 @@ fn jacard_tanimoto(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.dot_zero(b);
+    let dot = a.dot(b);
     (dot / (a.norm_l2_squared() + b.norm_l2_squared() - dot)).try_into().unwrap_or_default()
 }
 
@@ -125,7 +125,7 @@ fn jacard_tanimoto(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.dot_zero(b);
+    let dot = a.dot(b);
     (dot / (a.norm_l2_squared() + b.norm_l2_squared() - dot))
         .try_into()
         .inspect_err(|e| {
@@ -145,7 +145,7 @@ fn jacard_tanimoto_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.dot_zero(b);
+    let dot = a.dot(b);
     (dot / (2.0 - dot)).try_into().unwrap_or_default()
 }
 
@@ -154,7 +154,7 @@ fn jacard_tanimoto_pre_normalized(
     a: &SFVec,
     b: &SFVec,
 ) -> SimScore {
-    let dot = a.dot_zero(b);
+    let dot = a.dot(b);
     (dot / (2.0 - dot))
         .try_into()
         .inspect_err(|e| {
@@ -175,11 +175,9 @@ fn overlap(
     b: &SFVec,
 ) -> SimScore {
     let min_max = a.merge_and_apply(b, |x, y| (x.min(y), x.max(y)));
-    let (min_s, max_s) = min_max.sval();
 
-    let nb_sparse = min_max.count() as Float;
-    let sum_min = min_max.values().map(|(min, _)| min).sum1().unwrap_or(0.0) + min_s * nb_sparse;
-    let sum_max = min_max.values().map(|(_, max)| max).sum1().unwrap_or(0.0) + max_s * nb_sparse;
+    let sum_min: Float = min_max.values().map(|(min, _)| min).sum();
+    let sum_max: Float = min_max.values().map(|(_, max)| max).sum();
 
     (sum_min / sum_max).try_into().unwrap_or_default()
 }
@@ -190,11 +188,9 @@ fn overlap(
     b: &SFVec,
 ) -> SimScore {
     let min_max = a.merge_and_apply(b, |x, y| (x.min(y), x.max(y)));
-    let (min_s, max_s) = min_max.sval();
 
-    let nb_sparse = min_max.count() as Float;
-    let sum_min = min_max.values().map(|(min, _)| min).sum1().unwrap_or(0.0) + min_s * nb_sparse;
-    let sum_max = min_max.values().map(|(_, max)| max).sum1().unwrap_or(0.0) + max_s * nb_sparse;
+    let sum_min: Float = min_max.values().map(|(min, _)| min).sum();
+    let sum_max: Float = min_max.values().map(|(_, max)| max).sum();
 
     (sum_min / sum_max)
         .try_into()

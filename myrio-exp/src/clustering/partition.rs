@@ -139,25 +139,21 @@ impl Clusterer {
             }
 
             // TODO: rename
-            fn reincarnate(
-                self,
-                countmap_size: usize,
-            ) -> Self {
+            fn reincarnate(self) -> Self {
                 if self.elements.is_empty() {
                     return Self { centroid_seeds: self.centroid_seeds, elements: Vec::new() };
                 }
 
                 let n = self.elements.len() as Float;
-                let new_centroid_seeds: SFVec =
-                    self.elements.into_iter().fold::<SFVec, _>(SFVec::new(countmap_size), |acc, x| {
-                        acc.merge_and_apply(x, |a, b| a + b)
-                    }) / n;
+                let new_centroid_seeds: SFVec = self
+                    .elements
+                    .into_iter()
+                    .fold::<SFVec, _>(SFVec::new(), |acc, x| acc.merge_and_apply(x, |a, b| a + b))
+                    / n;
 
                 Self { centroid_seeds: new_centroid_seeds, elements: Vec::new() }
             }
         }
-
-        let countmap_size = 4_usize.pow(k as u32);
 
         // Step 1, compute the k-mer counts for each myrseq
         let (myrseqs, kcounts, nb_hcks): (Vec<MyrSeq>, Vec<SFVec>, Vec<usize>) = myrseqs
@@ -204,7 +200,7 @@ impl Clusterer {
                     .push(kcount);
             }
 
-            clusters = clusters.into_iter().map(|cluster| cluster.reincarnate(countmap_size)).collect_vec();
+            clusters = clusters.into_iter().map(Cluster::reincarnate).collect_vec();
         }
         clusters.into_iter().map(|cl| cl.centroid_seeds).collect()
         /*

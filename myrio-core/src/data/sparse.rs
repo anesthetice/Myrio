@@ -13,30 +13,21 @@ use myrio_proc::impl_ops_for_svec;
 pub type Float = f32;
 pub type SFVec = SparseVec<Float>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SparseVec<T>
 where
     T: Debug + Clone + Copy + Default + PartialOrd,
 {
     keys: Vec<usize>,
     values: Vec<T>,
-    dim: usize,
-    sval: T,
 }
 
 impl<T> SparseVec<T>
 where
     T: Debug + Clone + Copy + Default + PartialOrd,
 {
-    pub fn new(dim: usize) -> Self {
-        Self { keys: Vec::new(), values: Vec::new(), dim, sval: T::default() }
-    }
-
-    pub fn new_with_sparse_value(
-        dim: usize,
-        sval: T,
-    ) -> Self {
-        Self { keys: Vec::new(), values: Vec::new(), dim, sval }
+    pub fn new() -> Self {
+        Self { keys: Vec::new(), values: Vec::new() }
     }
 
     /// # Safety
@@ -44,28 +35,13 @@ where
     pub unsafe fn new_unchecked(
         keys: Vec<usize>,
         values: Vec<T>,
-        dim: usize,
-        sval: T,
     ) -> Self {
-        Self { keys, values, dim, sval }
-    }
-
-    /// Returns the theoretical length of the array
-    pub fn dim(&self) -> usize {
-        self.dim
-    }
-
-    pub fn sval(&self) -> T {
-        self.sval
+        Self { keys, values }
     }
 
     /// Returns the number of non-sparse values held
     pub fn count(&self) -> usize {
         self.keys.len()
-    }
-
-    pub fn nb_sparse(&self) -> usize {
-        self.dim - self.count()
     }
 
     pub fn get(
@@ -82,14 +58,11 @@ where
         &mut self,
         idx: usize,
     ) -> &mut T {
-        if idx >= self.dim() {
-            panic!("Specified index of {idx} exceeds SFVec dimension of {}", self.dim)
-        }
         match self.keys.binary_search(&idx) {
             Ok(inner_idx) => unsafe { self.values.get_unchecked_mut(inner_idx) },
             Err(inner_idx) => {
                 self.keys.insert(inner_idx, idx);
-                self.values.insert(inner_idx, self.sval);
+                self.values.insert(inner_idx, T::default());
                 unsafe { self.values.get_unchecked_mut(inner_idx) }
             }
         }
@@ -100,9 +73,6 @@ where
         idx: usize,
         val: T,
     ) -> Option<T> {
-        if idx >= self.dim() {
-            panic!("Specified index of {idx} exceeds SFVec dimension of {}", self.dim)
-        }
         match self.keys.binary_search(&idx) {
             Ok(inner_idx) => {
                 self.values.push(val);
@@ -149,7 +119,6 @@ where
     ) where
         F: Fn(&mut T),
     {
-        op(&mut self.sval);
         self.values.iter_mut().for_each(op);
     }
 
@@ -161,27 +130,25 @@ where
         F: Fn(T) -> O,
         O: Debug + Clone + Copy + Default + PartialOrd,
     {
-        let sval = op(self.sval);
-        unsafe {
-            SparseVec::new_unchecked(self.keys, self.values.into_iter().map(op).collect_vec(), self.dim, sval)
-        }
+        unsafe { SparseVec::new_unchecked(self.keys, self.values.into_iter().map(op).collect_vec()) }
     }
 
-    pub fn merge_and_apply<F, O>(
+    pub fn merge_and_apply<F, U, O>(
         &self,
-        other: &Self,
+        other: &SparseVec<U>,
         op: F,
     ) -> SparseVec<O>
     where
-        F: Fn(T, T) -> O,
+        F: Fn(T, U) -> O,
+        U: Debug + Clone + Copy + Default + PartialOrd,
         O: Debug + Clone + Copy + Default + PartialOrd,
     {
         let ak: &[usize] = &self.keys;
         let av: &[T] = &self.values;
-        let asval: T = self.sval;
+        let asval: T = T::default();
         let bk: &[usize] = &other.keys;
-        let bv: &[T] = &other.values;
-        let bsval: T = other.sval;
+        let bv: &[U] = &other.values;
+        let bsval: U = U::default();
 
         let capacity: usize = ak.len() + bk.len();
         let mut ck: Vec<usize> = Vec::with_capacity(capacity);
@@ -208,7 +175,7 @@ where
                     }
                     Ordering::Greater => {
                         j += 1;
-                        (*bk_j, op(*bv_j, asval))
+                        (*bk_j, op(asval, *bv_j))
                     }
                     Ordering::Equal => {
                         i += 1;
@@ -231,7 +198,7 @@ where
             }
             while j < bk.len() {
                 *ck_ptr.add(written) = *bk.get_unchecked(j);
-                *cv_ptr.add(written) = op(*bv.get_unchecked(j), asval);
+                *cv_ptr.add(written) = op(asval, *bv.get_unchecked(j));
                 written += 1;
                 j += 1;
             }
@@ -242,10 +209,8 @@ where
             cv.set_len(written);
             cv.shrink_to_fit();
         }
-        let dim = self.dim.max(other.dim);
-        let sval = op(asval, bsval);
 
-        unsafe { SparseVec::<O>::new_unchecked(ck, cv, dim, sval) }
+        unsafe { SparseVec::<O>::new_unchecked(ck, cv) }
     }
 }
 
@@ -257,18 +222,16 @@ where
     pub fn from_unsorted_singles(
         mut singles: Vec<usize>,
         value: T,
-        dim: usize,
-        sval: T,
     ) -> Self {
-        singles.sort_unstable();
         let capacity = singles.len();
-
         let mut keys: Vec<usize> = Vec::with_capacity(capacity);
         let mut values: Vec<T> = Vec::with_capacity(capacity);
 
         if capacity == 0 {
-            return Self { keys, values, dim, sval };
+            return Self { keys, values };
         }
+
+        singles.sort_unstable();
 
         unsafe {
             let k_ptr: *mut usize = keys.as_mut_ptr();
@@ -298,23 +261,19 @@ where
             values.shrink_to_fit();
         }
 
-        Self { keys, values, dim, sval }
+        Self { keys, values }
     }
 
-    pub fn from_unsorted_pairs(
-        mut pairs: Vec<(usize, T)>,
-        dim: usize,
-        sval: T,
-    ) -> Self {
-        pairs.sort_unstable_by_key(|(key, _)| *key);
+    pub fn from_unsorted_pairs(mut pairs: Vec<(usize, T)>) -> Self {
         let capacity = pairs.len();
-
         let mut keys: Vec<usize> = Vec::with_capacity(capacity);
         let mut values: Vec<T> = Vec::with_capacity(capacity);
 
         if capacity == 0 {
-            return Self { keys, values, dim, sval };
+            return Self { keys, values };
         }
+
+        pairs.sort_unstable_by_key(|(key, _)| *key);
 
         unsafe {
             let k_ptr: *mut usize = keys.as_mut_ptr();
@@ -343,12 +302,12 @@ where
             values.shrink_to_fit();
         }
 
-        Self { keys, values, dim, sval }
+        Self { keys, values }
     }
 }
 
 impl SparseVec<Float> {
-    pub fn dot_zero(
+    pub fn dot(
         &self,
         rhs: &Self,
     ) -> Float {
@@ -394,15 +353,11 @@ impl SparseVec<Float> {
     }
 
     pub fn sum(&self) -> Float {
-        self.values.iter().sum1::<Float>().unwrap_or_default() + self.sval * self.nb_sparse() as Float
-    }
-
-    pub fn mean(&self) -> Float {
-        self.sum() / self.dim as Float
+        self.values.iter().sum::<Float>()
     }
 
     pub fn norm_l2_squared(&self) -> Float {
-        self.values().map(|v| v.powi(2)).sum1().unwrap_or(0.0) + self.sval.powi(2) * self.nb_sparse() as Float
+        self.values().map(|v| v.powi(2)).sum()
     }
 
     pub fn norm_l2(&self) -> Float {
@@ -458,8 +413,6 @@ where
     ) -> Result<(), bincode::error::EncodeError> {
         bincode::Encode::encode(&self.keys, encoder)?;
         bincode::Encode::encode(&self.values, encoder)?;
-        bincode::Encode::encode(&self.dim, encoder)?;
-        bincode::Encode::encode(&self.sval, encoder)?;
         Ok(())
     }
 }
@@ -471,12 +424,7 @@ where
     fn decode<D: bincode::de::Decoder<Context = Context>>(
         decoder: &mut D
     ) -> Result<Self, bincode::error::DecodeError> {
-        Ok(Self {
-            keys: bincode::Decode::decode(decoder)?,
-            values: bincode::Decode::decode(decoder)?,
-            dim: bincode::Decode::decode(decoder)?,
-            sval: bincode::Decode::decode(decoder)?,
-        })
+        Ok(Self { keys: bincode::Decode::decode(decoder)?, values: bincode::Decode::decode(decoder)? })
     }
 }
 
@@ -490,8 +438,6 @@ where
         Ok(Self {
             keys: bincode::BorrowDecode::borrow_decode(decoder)?,
             values: bincode::BorrowDecode::borrow_decode(decoder)?,
-            dim: bincode::BorrowDecode::borrow_decode(decoder)?,
-            sval: bincode::BorrowDecode::borrow_decode(decoder)?,
         })
     }
 }
@@ -506,7 +452,7 @@ where
         &self,
         index: usize,
     ) -> &Self::Output {
-        self.get(index).unwrap_or(&self.sval)
+        self.get(index).unwrap()
     }
 }
 
@@ -518,7 +464,6 @@ where
 
     fn neg(mut self) -> Self::Output {
         self.values_mut().for_each(|v| *v = v.neg());
-        self.sval = self.sval.neg();
         self
     }
 }
@@ -572,7 +517,7 @@ where
 {
     fn sum<I: Iterator<Item = T>>(iter: I) -> Self {
         iter.fold(
-            unsafe { SparseVec::new_unchecked(Vec::with_capacity(0), Vec::with_capacity(0), 0, 0.0) },
+            unsafe { SparseVec::new_unchecked(Vec::with_capacity(0), Vec::with_capacity(0)) },
             |acc, x| acc + x.as_ref(),
         )
     }
@@ -651,61 +596,58 @@ mod test {
 
     #[test]
     fn apply_in_place_method_test() {
-        let mut sfvec = unsafe { SFVec::new_unchecked(vec![1, 2], vec![1.0, E], 2, 0.0) };
+        let mut sfvec = unsafe { SFVec::new_unchecked(vec![1, 2], vec![1.0, E]) };
         sfvec.apply_in_place(|v| *v = v.ln());
         assert_float_eq!(sfvec[1], 0.0);
         assert_float_eq!(sfvec[2], 1.0);
-        assert_eq!(sfvec.sval, Float::NEG_INFINITY)
     }
 
     #[test]
     fn merge_and_apply_method_test() {
-        let a = unsafe { SFVec::new_unchecked(vec![1, 2, 3], vec![1.0, 2.0, 3.0], 3, 1.0) };
-        let b = unsafe { SFVec::new_unchecked(vec![2, 3, 4], vec![2.0, 3.0, 4.0], 3, 2.0) };
+        let a = unsafe { SFVec::new_unchecked(vec![1, 2, 3], vec![1.0, 2.0, 3.0]) };
+        let b = unsafe { SFVec::new_unchecked(vec![2, 3, 4], vec![2.0, 3.0, 4.0]) };
 
         let c = a.merge_and_apply(&b, |a, b| a + b);
 
-        assert_float_eq!(c[1], 3.0);
+        assert_float_eq!(c[1], 1.0);
         assert_float_eq!(c[2], 4.0);
         assert_float_eq!(c[3], 6.0);
-        assert_float_eq!(c[4], 5.0);
+        assert_float_eq!(c[4], 4.0);
     }
 
     #[test]
     fn from_unsorted_test() {
         let pairs: Vec<(usize, i32)> = vec![(10, 1), (2, 4), (1, 1), (10, 7), (10, 2), (3, 9)];
-        let sfvec = SparseVec::from_unsorted_pairs(pairs, 100, 0);
-        let sfvec_expected =
-            unsafe { SparseVec::new_unchecked(vec![1, 2, 3, 10], vec![1, 4, 9, 10], 100, 0) };
+        let sfvec = SparseVec::from_unsorted_pairs(pairs);
+        let sfvec_expected = unsafe { SparseVec::new_unchecked(vec![1, 2, 3, 10], vec![1, 4, 9, 10]) };
         assert_eq!(sfvec, sfvec_expected);
 
         let singles: Vec<usize> = vec![5, 5, 3, 1, 5, 3, 3, 2, 1, 2, 2];
-        let sfvec = SparseVec::from_unsorted_singles(singles, 1, 100, 0);
-        let sfvec_expected = unsafe { SparseVec::new_unchecked(vec![1, 2, 3, 5], vec![2, 3, 3, 3], 100, 0) };
+        let sfvec = SparseVec::from_unsorted_singles(singles, 1);
+        let sfvec_expected = unsafe { SparseVec::new_unchecked(vec![1, 2, 3, 5], vec![2, 3, 3, 3]) };
         assert_eq!(sfvec, sfvec_expected);
     }
 
     #[test]
     fn misc_method_tests() {
-        let sfvec = unsafe { SFVec::new_unchecked(vec![1, 2], vec![1.0, 2.0], 5, 5.0) };
+        let sfvec = unsafe { SFVec::new_unchecked(vec![1, 2, 6], vec![1.0, 2.0, 5.0]) };
 
-        assert_float_eq!(sfvec.sum(), 18.0);
-        assert_float_eq!(sfvec.mean(), 18.0 / 5.0);
-        assert_float_eq!(sfvec.norm_l2(), 80_f32.sqrt())
+        assert_float_eq!(sfvec.sum(), 8.0);
+        assert_float_eq!(sfvec.norm_l2(), 30_f32.sqrt())
     }
 
     #[test]
-    fn dot_zero_test() {
-        let lhs = unsafe { SFVec::new_unchecked(vec![1, 3, 5], vec![1.0; 3], 0, 0.0) };
-        let rhs = unsafe { SFVec::new_unchecked(vec![1, 2, 3, 4, 5], vec![1.0; 5], 0, 0.0) };
-        assert_eq!(lhs.dot_zero(&rhs), 3.0);
+    fn dot_method_test() {
+        let lhs = unsafe { SFVec::new_unchecked(vec![1, 3, 5], vec![1.0; 3]) };
+        let rhs = unsafe { SFVec::new_unchecked(vec![1, 2, 3, 4, 5], vec![1.0; 5]) };
+        assert_eq!(lhs.dot(&rhs), 3.0);
 
-        let lhs = unsafe { SFVec::new_unchecked(vec![10], vec![1.0], 0, 0.0) };
-        let rhs = unsafe { SFVec::new_unchecked(vec![1, 2, 3, 4, 5], vec![1.0; 5], 0, 0.0) };
-        assert_eq!(lhs.dot_zero(&rhs), 0.0);
+        let lhs = unsafe { SFVec::new_unchecked(vec![10], vec![1.0]) };
+        let rhs = unsafe { SFVec::new_unchecked(vec![1, 2, 3, 4, 5], vec![1.0; 5]) };
+        assert_eq!(lhs.dot(&rhs), 0.0);
 
-        let lhs = unsafe { SFVec::new_unchecked(vec![4, 8], vec![1.0; 2], 0, 0.0) };
-        let rhs = unsafe { SFVec::new_unchecked(vec![1, 6, 8], vec![1.0; 3], 0, 0.0) };
-        assert_eq!(lhs.dot_zero(&rhs), 1.0);
+        let lhs = unsafe { SFVec::new_unchecked(vec![4, 8], vec![1.0; 2]) };
+        let rhs = unsafe { SFVec::new_unchecked(vec![1, 6, 8], vec![1.0; 3]) };
+        assert_eq!(lhs.dot(&rhs), 1.0);
     }
 }

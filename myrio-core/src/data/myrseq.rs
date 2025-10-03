@@ -107,7 +107,7 @@ impl MyrSeq {
             }};
         }
         gen_match_k_sparse!(self.sequence);
-        (SFVec::from_unsorted_singles(singles, 1.0, 4_usize.pow(k as u32), 0.0), nb_hck)
+        (SFVec::from_unsorted_singles(singles, 1.0), nb_hck)
     }
 
     pub fn pre_process(

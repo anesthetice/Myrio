@@ -1,6 +1,5 @@
 // Imports
 use bincode::{BorrowDecode, Decode, Encode};
-use itertools::Itertools;
 
 use crate::tax::clade::Rank;
 

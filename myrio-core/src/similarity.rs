@@ -1,5 +1,4 @@
 // Imports
-use itertools::Itertools;
 use nutype::nutype;
 
 use crate::data::{Float, SFVec};

@@ -33,8 +33,6 @@ impl Default for Config {
 }
 
 impl Config {
-    pub const FILENAME: &str = "myrio.conf.toml";
-
     pub const DEFAULT_WITH_COMMENTS: &'static str = indoc::indoc! {r#"
         # The compression level used by zstd, levels currently range from 1 to 22
         zstd_compression_level = 6
@@ -109,6 +107,7 @@ impl Config {
         # Decides how many of the best leaves are displayed at the end
         nb_best_display = 7
     "#};
+    pub const FILENAME: &str = "myrio.conf.toml";
 
     pub fn load(filepath: &std::path::Path) -> Self {
         match Self::from_file(filepath) {

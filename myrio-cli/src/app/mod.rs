@@ -18,7 +18,6 @@ impl App {
     const NAME: &'static str = "myrio";
     #[cfg(debug_assertions)]
     const NAME: &'static str = "myrio-dev";
-
     const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
     pub fn load() -> anyhow::Result<Self> {

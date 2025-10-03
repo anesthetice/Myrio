@@ -1,5 +1,26 @@
 use super::*;
 
+pub fn subcommand() -> Command {
+    let misc_generate_shell_completions_subcommand = Command::new("generate-shell-completions")
+        .about("Generate completions for your desired shell")
+        .long_about(
+            "This subcommand is used to generate shell completions for the selected shell, outputs to stdout",
+        )
+        .arg(
+            Arg::new("shell")
+                .index(1)
+                .required(true)
+                .help("The shell to target")
+                .action(ArgAction::Set)
+                .value_parser(vparser!(clap_complete::Shell)),
+        );
+
+    let misc_get_config_location =
+        Command::new("get-config-location").about("Display the filepath of the configuration");
+
+    Command::new("misc").subcommands([misc_generate_shell_completions_subcommand, misc_get_config_location])
+}
+
 pub fn process_misc(
     mut mat: ArgMatches,
     _config: &Config,

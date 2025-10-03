@@ -13,6 +13,8 @@ use myrio_proc::impl_ops_for_svec;
 pub type Float = f32;
 pub type SFVec = SparseVec<Float>;
 
+/// A sparse vector, generic over `T`
+/// note: sparse value is assumed to be `T::default()`
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SparseVec<T>
 where

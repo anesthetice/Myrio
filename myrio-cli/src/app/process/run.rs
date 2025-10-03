@@ -4,18 +4,11 @@ use std::{
     time::SystemTime,
 };
 
-use anyhow::Context;
-use clap::ColorChoice;
-use console::style;
-use indicatif::MultiProgress;
-use indoc::printdoc;
-use itertools::Itertools;
 use myrio_core::{
     clustering::ClusteringParameters,
     data::Float,
     similarity::{SimFunc, Similarity},
     tax::{
-        clade::Rank,
         compute::{CacheOptions, TaxTreeCompute},
         results::TaxTreeResults,
     },
@@ -23,7 +16,91 @@ use myrio_core::{
 
 use super::*;
 
-pub fn process_run(
+pub fn subcommand() -> Command {
+    Command::new("run")
+        .arg(
+            Arg::new("input")
+                .help("The `.fastq` file to use as input")
+                .required(true)
+                //.num_args(1..101)
+                .short('i')
+                .visible_short_alias('q')
+                .long("input")
+                .visible_alias("query")
+                .value_parser(vparser!(PathBuf))
+                .action(ArgAction::Set),
+        )
+        .arg(
+            Arg::new("trees")
+                .help("The one or more `.myrtree` reference databases")
+                .long_help("The one or more `.myrtree` reference databases, also accepts directories")
+                .required(true)
+                .num_args(1..101)
+                .short('t')
+                .visible_short_alias('r')
+                .long("trees")
+                .visible_aliases(["refs", "references", "db"])
+                .value_parser(vparser!(PathBuf))
+                .action(ArgAction::Set),
+        )
+        .arg(
+            Arg::new("k-search")
+                .help("The length of each k-mer (i.e., `k` itself) used for sequence comparison")
+                .required(false)
+                .short('k')
+                .long("k-search")
+                .value_parser(vparser!(usize))
+                .action(ArgAction::Set)
+        )
+        .arg(
+            Arg::new("save-clusters")
+                .help("Save clusters to the specified path")
+                .required(false)
+                .short('s')
+                .long("save-clusters")
+                .value_parser(vparser!(PathBuf))
+                .action(ArgAction::Set)
+        )
+        .arg(
+            Arg::new("output-csv")
+                .help("Write results to a `.csv` file")
+                .long_help("Write results to a `.csv` file (e.g., `--csv .` will write to a timestamped file in the current directory)")
+                .required(false)
+                .long("output-csv")
+                .visible_aliases(["csv", "csv-output"])
+                .value_parser(vparser!(PathBuf))
+                .action(ArgAction::Set)
+        )
+        .arg(
+            Arg::new("output-txt")
+                .help("Write results to a `.txt` file")
+                .long_help("Write results to a `.txt` file (e.g., `--txt .` will write to a timestamped file in the current directory)")
+                .required(false)
+                .long("output-txt")
+                .visible_aliases(["txt", "txt-output"])
+                .value_parser(vparser!(PathBuf))
+                .action(ArgAction::Set)
+        )
+        .arg(
+            Arg::new("cache-counts")
+                .help("Flag that decides if newly-computed kmer counts are then cached")
+                .required(false)
+                .long("cache-counts")
+                .action(ArgAction::SetTrue)
+        )
+        .arg(
+            Arg::new("nb-clusters")
+                .help("The number of clusters to expect")
+                .long_help("The number of clusters to expect, defaults to the number of `.myrtree` files found")
+                .required(false)
+                .short('n')
+                .long("nb-clusters")
+                .value_parser(vparser!(usize))
+                .action(ArgAction::Set)
+        )
+}
+
+pub fn process(
     mut mat: ArgMatches,
     config: &Config,
     color_choice: ColorChoice,

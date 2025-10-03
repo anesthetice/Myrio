@@ -1,5 +1,6 @@
 // Imports
 use bincode::{BorrowDecode, Decode, Encode};
+use itertools::Itertools;
 
 use crate::tax::clade::Rank;
 
@@ -19,7 +20,7 @@ impl<B> Branch<B> {
     }
 }
 
-#[derive(Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct Leaf {
     pub name: Box<str>,
     pub payload_id: usize,
@@ -46,6 +47,13 @@ impl<B> Node<B> {
         Self::Leaf(Leaf { name, payload_id })
     }
 
+    pub fn get_name(&self) -> &str {
+        match self {
+            Self::Branch(branch) => &branch.name,
+            Self::Leaf(leaf) => &leaf.name,
+        }
+    }
+
     pub fn gather_leaves<'a>(
         &'a self,
         output: &mut Vec<&'a Leaf>,
@@ -54,6 +62,20 @@ impl<B> Node<B> {
             Self::Branch(branch) => {
                 for node in &branch.children {
                     node.gather_leaves(output);
+                }
+            }
+            Self::Leaf(leaf) => output.push(leaf),
+        }
+    }
+
+    pub fn gather_leaves_mut<'a>(
+        &'a mut self,
+        output: &mut Vec<&'a mut Leaf>,
+    ) {
+        match self {
+            Self::Branch(branch) => {
+                for node in branch.children.iter_mut() {
+                    node.gather_leaves_mut(output);
                 }
             }
             Self::Leaf(leaf) => output.push(leaf),
@@ -145,8 +167,14 @@ impl<B, L> TaxTreeCore<B, L> {
     }
 
     pub fn gather_leaves(&self) -> Vec<&Leaf> {
-        let mut output = Vec::new();
+        let mut output = Vec::with_capacity(self.payloads.len());
         self.root.gather_leaves(&mut output);
+        output
+    }
+
+    pub fn gather_leaves_mut(&mut self) -> Vec<&mut Leaf> {
+        let mut output = Vec::with_capacity(self.payloads.len());
+        self.root.gather_leaves_mut(&mut output);
         output
     }
 
@@ -208,6 +236,82 @@ impl<B, L> TaxTreeCore<B, L> {
         let mut output = Vec::new();
         dive_recursive(&mut self.root, self.root_rank as usize, rank as usize, &mut output);
         output
+    }
+
+    pub fn excise(
+        &mut self,
+        name: &str,
+        rank: Rank,
+    ) {
+        // rename to target_name for clarity
+        let target_name = name;
+
+        let mut payload_ids_to_excise: Vec<usize> = Vec::new();
+
+        let branches_above = self.gather_branches_mut_at_rank(rank.above().unwrap());
+        for branch in branches_above {
+            if branch.children.iter().all(|node| node.get_name() != target_name) {
+                continue;
+            }
+            let mut children = std::mem::take(&mut branch.children).into_vec();
+
+            children.retain(|node| {
+                if node.get_name() != target_name {
+                    true
+                } else {
+                    let mut leaves = Vec::new();
+                    node.gather_leaves(&mut leaves);
+                    payload_ids_to_excise.extend(leaves.iter().map(|leaf| leaf.payload_id));
+                    false
+                }
+            });
+
+            branch.children = children.into_boxed_slice();
+        }
+
+        self.remove_payloads(&payload_ids_to_excise);
+
+        #[cfg(debug_assertions)]
+        println!("Excision for the {} tree affected {} leaves", self.gene, payload_ids_to_excise.len());
+    }
+
+    /// Method used to remove multiple payloads by their associated id, assumes associated leaves/branches have already been removed, will panic if such leaves are encountered
+    fn remove_payloads(
+        &mut self,
+        payload_ids: &[usize],
+    ) {
+        if payload_ids.is_empty() {
+            return;
+        }
+
+        // Extract payloads from self
+        let mut payloads = std::mem::take(&mut self.payloads).into_vec();
+
+        // Sort and dedup `payload_ids` (important for step 2)
+        let mut payload_ids = payload_ids.to_vec();
+        payload_ids.sort_unstable();
+        payload_ids.dedup();
+
+        // Step 1, remove all payloads whose index matches one specified in `payload_ids`
+        {
+            let mut should_be_retained_vec: Vec<bool> = vec![true; payloads.len()];
+            for pid in payload_ids.iter().copied() {
+                should_be_retained_vec[pid] = false;
+            }
+            let mut should_be_retained_iter = should_be_retained_vec.into_iter();
+            payloads.retain(|_| should_be_retained_iter.next().unwrap());
+        }
+
+        // Step 2, adjust the `payload_id` of every leaf
+        for leaf in self.gather_leaves_mut() {
+            let Err(left_shift) = payload_ids.binary_search(&leaf.payload_id) else {
+                std::panic!("Found an unexpected leaf: {leaf:?}");
+            };
+            leaf.payload_id -= left_shift;
+        }
+
+        // Inject payloads back into self
+        self.payloads = payloads.into_boxed_slice()
     }
 }
 

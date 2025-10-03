@@ -15,6 +15,7 @@ use myrio_core::{
     data::Float,
     similarity::{SimFunc, Similarity},
     tax::{
+        clade::Rank,
         compute::{CacheOptions, TaxTreeCompute},
         results::TaxTreeResults,
     },
@@ -97,7 +98,7 @@ pub fn process_run(
 
             let ttstore = TaxTreeStore::load_from_file(filepath)?;
 
-            let ttcompute = TaxTreeCompute::from_store_tree(
+            let mut ttcompute = TaxTreeCompute::from_store_tree(
                 ttstore,
                 cluster_k,
                 fingerprint_local_rank,
@@ -109,6 +110,17 @@ pub fn process_run(
                 Some(&multi),
             );
             spinner.finish();
+
+            // start of temporary stuff
+
+            /*
+            if let Ok(ref mut ttc) = ttcompute {
+                ttc.core.excise("Rosaceae", Rank::Family);
+            }
+            */
+
+            // end of temporary stuff
+
             ttcompute
         })
         .collect::<Result<Vec<TaxTreeCompute>, myrio_core::tax::Error>>()?;

@@ -546,7 +546,7 @@ dependencies = [
 
 [[package]]
 name = "myrio-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -564,7 +564,7 @@ dependencies = [
 
 [[package]]
 name = "myrio-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bincode",
  "bio-seq",
@@ -586,7 +586,7 @@ dependencies = [
 
 [[package]]
 name = "myrio-exp"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "bio-seq",
@@ -603,7 +603,7 @@ dependencies = [
 
 [[package]]
 name = "myrio-proc"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "quote",
  "syn",

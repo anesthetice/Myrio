@@ -4,7 +4,6 @@ use std::{
     time::SystemTime,
 };
 
-use console::StyledObject;
 use myrio_core::{
     clustering::ClusteringParameters,
     data::Float,

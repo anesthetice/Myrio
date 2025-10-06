@@ -1,7 +1,7 @@
 // Imports
 use std::ops::Neg;
 
-use console::{StyledObject, style};
+use console::style;
 use indicatif::{MultiProgress, ParallelProgressIterator};
 use itertools::Itertools;
 use rayon::iter::{
@@ -48,16 +48,7 @@ impl std::fmt::Display for BRes {
         #[allow(clippy::print_in_format_impl)]
         let confidence_string = confidence
             .map(|conf| {
-                let colorizer = match conf {
-                    0.0..0.25 => StyledObject::<&String>::red,
-                    0.25..0.5 => StyledObject::<&String>::yellow,
-                    0.5..0.75 => StyledObject::<&String>::green,
-                    0.75..1.0 => StyledObject::<&String>::cyan,
-                    _ => {
-                        eprintln!("Warning: got unexpected confidence score of {conf}");
-                        StyledObject::<&String>::black
-                    }
-                };
+                let colorizer = crate::utils::colorizer_from_confidence_score(conf);
                 colorizer(style(&confidence_string))
             })
             .unwrap_or(style(&confidence_string).green().dim());
@@ -221,9 +212,11 @@ impl TaxTreeResults {
             let pool_scores = rank_branch_vec.iter().map(|branch| branch.extra.pool_score).collect_vec();
 
             let pool_score_mean = pool_scores.iter().sum::<Float>() / n;
-            #[rustfmt::skip]
-            let pool_score_std =
-                (n.powi(-1) * pool_scores.into_iter().map(|x| (x - pool_score_mean).powi(2)).sum::<Float>()).sqrt().max(1E-8);
+
+            let pool_score_std = (n.powi(-1)
+                * pool_scores.into_iter().map(|x| (x - pool_score_mean).powi(2)).sum::<Float>())
+            .sqrt()
+            .max(1E-3);
 
             let (first, second) = rank_branch_vec
                 .into_iter()
@@ -325,7 +318,7 @@ impl TaxTreeResults {
             .map(|&leaf| (leaf.payload_id, unsafe { self.core.payloads.get_unchecked(leaf.payload_id) }))
             .sorted_by_key(|&(_, score)| unsafe { SimScore::new_unchecked(score.neg()) })
             .take(nb_best)
-            .fold(SparseVec::new(), |mut acc, (pid, score)| {
+            .fold(SparseVec::new_identity(), |mut acc, (pid, score)| {
                 acc.insert(pid, *score);
                 acc
             });

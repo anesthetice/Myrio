@@ -41,6 +41,10 @@ where
         Self { keys, values }
     }
 
+    pub(crate) fn new_identity() -> Self {
+        Self { keys: Vec::with_capacity(0), values: Vec::with_capacity(0) }
+    }
+
     /// Returns the number of non-sparse values held
     pub fn count(&self) -> usize {
         self.keys.len()
@@ -518,10 +522,7 @@ where
     T: AsRef<SparseVec<Float>>,
 {
     fn sum<I: Iterator<Item = T>>(iter: I) -> Self {
-        iter.fold(
-            unsafe { SparseVec::new_unchecked(Vec::with_capacity(0), Vec::with_capacity(0)) },
-            |acc, x| acc + x.as_ref(),
-        )
+        iter.fold(SparseVec::new_identity(), |acc, x| acc + x.as_ref())
     }
 }
 

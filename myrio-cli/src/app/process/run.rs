@@ -4,11 +4,13 @@ use std::{
     time::SystemTime,
 };
 
+use console::StyledObject;
 use myrio_core::{
     clustering::ClusteringParameters,
     data::Float,
-    similarity::{SimFunc, Similarity},
+    similarity::{SimFunc, SimScore, Similarity},
     tax::{
+        clade::Rank,
         compute::{CacheOptions, TaxTreeCompute},
         results::TaxTreeResults,
     },
@@ -175,7 +177,7 @@ pub fn process(
 
             let ttstore = TaxTreeStore::load_from_file(filepath)?;
 
-            let mut ttcompute = TaxTreeCompute::from_store_tree(
+            let ttcompute = TaxTreeCompute::from_store_tree(
                 ttstore,
                 cluster_k,
                 fingerprint_local_rank,
@@ -188,16 +190,12 @@ pub fn process(
             );
             spinner.finish();
 
-            // start of temporary stuff
-
             /*
+            // For debugging/testing purposes
             if let Ok(ref mut ttc) = ttcompute {
-                ttc.core.excise("Rosaceae", Rank::Family);
+                ttc.core.excise("Ficus", Rank::Genus);
             }
             */
-
-            // end of temporary stuff
-
             ttcompute
         })
         .collect::<Result<Vec<TaxTreeCompute>, myrio_core::tax::Error>>()?;
@@ -348,6 +346,9 @@ pub fn process(
         })
         .map_or(Ok(None), |v| v.map(Some))?;
 
+    // Not the clearest name, represents for each gene, a vector of genuses (name, pool_score, conf_opt) sorted in descending order by pool_score.
+    let mut ranked_genus_vec_per_gene = Vec::new();
+
     for (ttcompute, query) in ttcompute_vec.into_iter().zip(queries) {
         let ttresults_full = TaxTreeResults::from_compute_tree(
             query,
@@ -363,6 +364,16 @@ pub fn process(
             config.search.epsilon,
             None,
         )?;
+
+        let genus_name_pool_score_conf_opt_vec = ttresults_full
+            .core
+            .gather_branches_at_rank(Rank::Genus)
+            .into_iter()
+            .map(|branch| (branch.name.clone(), branch.extra.pool_score, branch.extra.confidence))
+            .sorted_unstable_by_key(|(_, score, _)| SimScore::try_new(-*score).unwrap())
+            .collect_vec();
+
+        ranked_genus_vec_per_gene.push(genus_name_pool_score_conf_opt_vec);
 
         if let Some(ref mut csv_file) = csv_file_opt {
             csv_file.write_all(ttresults_full.generate_csv_records().as_bytes())?;
@@ -390,6 +401,69 @@ pub fn process(
 
     if let Some(ref mut txt_file) = txt_file_opt {
         txt_file.sync_all()?;
+    }
+
+    #[inline]
+    fn softmax_pooling(
+        scores: Vec<Float>,
+        lambda: Float,
+    ) -> Float {
+        let mut numerator: Float = 0.0;
+        let mut denominator: Float = 0.0;
+
+        for s in scores.into_iter() {
+            numerator += s * (lambda * s).exp();
+            denominator += (lambda * s).exp();
+        }
+
+        numerator / denominator
+    }
+
+    let mut top_genus_mismatch_score: Float = 0.0;
+    let mut top_genus_conf_vec: Vec<Float> = Vec::new();
+    for i in 0..ranked_genus_vec_per_gene.len() {
+        let top_genus_name = &ranked_genus_vec_per_gene[i][0].0;
+        let top_genus_conf = ranked_genus_vec_per_gene[i][0].2.unwrap().unwrap_or_else(|| {
+            eprintln!("Warning, got single genus unexpectedly, assuming confidence score of 0.5");
+            0.5
+        });
+        top_genus_conf_vec.push(top_genus_conf);
+        static TAKE: usize = 8;
+        for other in ranked_genus_vec_per_gene.iter().skip(i + 1) {
+            let penalty = other
+                .iter()
+                .take(TAKE)
+                .position(|(genus_name, ..)| genus_name == top_genus_name)
+                .unwrap_or(TAKE) as Float
+                / TAKE as Float;
+            top_genus_mismatch_score += penalty * top_genus_conf.powf(0.7).max(0.12);
+        }
+    }
+
+    top_genus_mismatch_score /= ranked_genus_vec_per_gene.len() as Float;
+
+    let lambda = 0.5 + 2.0 * top_genus_conf_vec.iter().sum::<Float>();
+    let top_genus_conf_score = 1.0 - softmax_pooling(top_genus_conf_vec, lambda);
+
+    {
+        let x = top_genus_mismatch_score;
+        let y = top_genus_conf_score.powf(0.8);
+
+        // Ranges from 0.0 to 1.0, a higher value indicates the sample is more likely not in the database
+        // https://www.desmos.com/3d/htoedxqubn
+        let unknown_score: Float = (1.0 + Float::exp(-8.0 * ((x + y) / 2.0 - 0.45))).powi(-1);
+
+        let in_database_confidence_score = 1.0 - unknown_score;
+
+        let colorizer = myrio_core::utils::colorizer_from_confidence_score(in_database_confidence_score);
+
+        printdoc! {"
+            In-database-confidence-score = {}
+            {}
+        ",
+        colorizer(style(format!("{in_database_confidence_score:.3}"))),
+        style("Note: experimental confidence metric, not a probability value; results are currently limited to a genus-level evaluation and may be unreliable.").dim(),
+        };
     }
 
     Ok(())

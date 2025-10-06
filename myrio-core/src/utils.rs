@@ -1,5 +1,8 @@
 // Imports
+use console::StyledObject;
 use indicatif::{MultiProgress, ProgressBar};
+
+use crate::data::Float;
 
 pub fn greenify(s: &str) -> String {
     console::style(s).green().to_string()
@@ -68,5 +71,20 @@ pub fn extract_singlevec<T>(vec: Vec<T>) -> T {
         val
     } else {
         panic!("Expected vector containing a single element");
+    }
+}
+
+pub fn colorizer_from_confidence_score<T>(
+    conf: Float
+) -> fn(console::StyledObject<T>) -> console::StyledObject<T> {
+    match conf {
+        0.0..0.25 => StyledObject::<T>::red,
+        0.25..0.5 => StyledObject::<T>::yellow,
+        0.5..0.75 => StyledObject::<T>::green,
+        0.75..1.0 => StyledObject::<T>::cyan,
+        _ => {
+            eprintln!("Warning: got unexpected confidence score of {conf}");
+            StyledObject::<T>::bold
+        }
     }
 }

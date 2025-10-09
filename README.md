@@ -4,7 +4,12 @@
 
 # Myrio
 
-Myrio is a command-line application designed to identify the taxonomy of plants (and potentially other organisms) using amplified sequences (potentially mixed) of barcode genes.
+Myrio is a command-line application designed to identify the taxonomy of plants, and potentially other organisms, from amplified DNA barcode sequences.
+
+It is tailored to handle _mixed reads_ specifically, wherein multiple barcode regions (e.g. _matK_, _rbcL_, _ITS_, _trnH-psbA_, etc.) are amplified and sequenced together.
+
+In addition to taxonomic identification, Myrio also estimates whether a given sample corresponds to an organism that is already represented in 
+the provided reference databases, or if it may represent a unrecorded lineage. (Still experimental, will most likely not work for an unrecorded species in a known genus)
 
 The name Myrio is inspired by the scientific name of the plant _Myriophyllum Spicatum_, commonly known as Eurasian Watermilfoil, an aquatic plant found in the [Léman](https://en.wikipedia.org/wiki/Lake_Geneva).
 
@@ -60,7 +65,9 @@ Here are the remaining results:
 
 I recommend looking at all the available options for the run subcommand by running `myrio run --help`, as well as the configuration file, which can be located by running `myrio misc get-config-location`.
 
-Currently, it is somewhat difficult to estimate whether or not the sample you are running might correspond to a new species (or at least one not in the specified databases). We are planning to make that process easier in the future.
+> [!IMPORTANT]
+> As of version `0.3.0`, a confidence score is displayed at the end, indicating how confident the program is that the sample
+> analyzed exists in one of the databases, please note that this feature is still experimental and in need of improvement.
 
 ## Usage
 
@@ -96,7 +103,6 @@ myrio tree new --input BOLD_Plantae_20250831_ITS.fasta --gene "ITS" -k 18
 This will create a file called `BOLD_Plantae_20250831_ITS.myrtree`.
 
 If errors are encountered, they will be reported and the problematic entries skipped. For example:
-
 ```
 Failed to parse taxonomic identity of the record starting on line 356021, Failed to parse string into a list of clade: cannot have rank gaps, expected 6 elements, got 5; string: '>BOLD_PROCESS_ID=MHPAF950-11|tax={p:Tracheophyta, c:Liliopsida, o:Poales, f:Poaceae, s:Poaceae A.guadamuz275}'
 
@@ -108,6 +114,52 @@ See [myrio-py/db_gen.py](/myrio-py/db_gen.py) for an example of how to generate 
 Pre-built databases are also available on the [`releases`](https://github.com/anesthetice/Myrio/releases) page.
 
 ### Running
+
+The main entry point for analysis is the `run` subcommand. At this stage, you should have:  
+- One or more `.myrtree` databases corresponding to the barcode genes you wish to target (e.g., one database each for _matK_, _rbcL_, _ITS_, etc.).
+- A `.fastq` file containing sequencing reads from your sample. These reads should originate from mixed amplifications of the barcode genes you are targeting.
+
+Usage of the `run` subcommand:
+```
+Usage: myrio run [OPTIONS] --input <input> --trees <trees>...
+
+Options:
+  -i, --input <input>
+          The `.fastq` file to use as input
+
+          [aliases: -q, --query]
+
+  -t, --trees <trees>...
+          The one or more `.myrtree` reference databases, also accepts directories
+
+          [aliases: -r, --refs, --references, --db]
+
+  -k, --k-search <k-search>
+          The length of each k-mer (i.e., `k` itself) used for sequence comparison
+
+  -s, --save-clusters <save-clusters>
+          Save clusters to the specified path
+
+      --output-csv <output-csv>
+          Write results to a `.csv` file (e.g., `--csv .` will write to a timestamped file in the current directory)
+
+          [aliases: --csv, --csv-output]
+
+      --output-txt <output-txt>
+          Write results to a `.txt` file (e.g., `--txt .` will write to a timestamped file in the current directory)
+
+          [aliases: --txt, --txt-output]
+
+      --cache-counts
+          Flag that decides if newly-computed kmer counts are then cached
+
+  -n, --nb-clusters <nb-clusters>
+          The number of clusters to expect, defaults to the number of `.myrtree` files found
+
+  -h, --help
+          Print help (see a summary with '-h')
+```
+
 Example runs:
 ``` sh
 # Input must be a single `.fastq` file.
@@ -124,15 +176,14 @@ myrio run --input Berberis_Julianae_matK_rbcL_psbA-trnH_ITS.fastq --trees myrio-
 
 ## Features
 * Cross-platform (windows, macOS, and linux are all supported)
-* Built with Rust (free from the hassle of installing/using Python code)
-* Zero external dependencies, `myrio` won't crash if you haven't installed another binary or library
+* Single binary, doesn't depend on any external libraries
+* Developed in Rust (free from the hassle of installing/using Python code)
 * Optimized codebase, including but not limited to:
     * Custom sparse vector implementation with efficient operations
     * Parallelism via [`Rayon`](https://github.com/rayon-rs/rayon)
     * Specialized database format able to store pre-computed k-mer counts efficiently
 * Flexible output, results can be exported as `.csv` or visualized as a tree in `.txt` format
-* Computation over heuristics, relies more on raw parallel computation and memory-efficient design rather than heuristics. For example, Myrio uses full k-mer counts (not just sets, and no minimizers).
 
 ## Acknowledgments
-* Special thanks to the [Paoli Lab](https://www.epfl.ch/labs/gr-paoli/) for hosting this project.
+* Special thanks to the [Paoli Lab](https://www.epfl.ch/labs/gr-paoli/) for hosting this project, as well as for all the encouragement, feedback, and support they provided along the way.
 * Special thanks to [GenoRobotics](https://www.genorobotics.org/), and especially our team for the 2025 Lemanic Life Sciences Hackathon, which built the [proof-of-concept](https://github.com/GenoRobotics-EPFL/Myrio-Hackathon) for this application.

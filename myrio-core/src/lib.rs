@@ -3,6 +3,7 @@ pub mod clustering;
 pub mod constants;
 pub mod data;
 pub mod io;
+pub mod prelude;
 pub mod similarity;
 pub mod tax;
 pub mod utils;

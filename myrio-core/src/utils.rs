@@ -88,3 +88,45 @@ pub fn colorizer_from_confidence_score<T>(
         }
     }
 }
+
+/// Simple cursor struct specialized for bytes, somewhat similar to `std::io::Cursor` but with better methods (no read/write abstraction pain)
+pub struct BCursor<'a> {
+    inner: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> BCursor<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self { inner: bytes, pos: 0 }
+    }
+
+    pub fn try_capture(
+        &mut self,
+        by: usize,
+    ) -> std::io::Result<&'a [u8]> {
+        self.inner.get(self.pos..self.pos + by).inspect(|_| self.pos += by).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Failed to capture {by} bytes, out of bounds"),
+            )
+        })
+    }
+
+    pub fn try_seek(
+        &mut self,
+        by: usize,
+    ) -> std::io::Result<&'a [u8]> {
+        self.inner.get(self.pos..self.pos + by).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Failed to seek {by} bytes, out of bounds"),
+            )
+        })
+    }
+
+    pub fn try_capture_exact<const BY: usize>(&mut self) -> std::io::Result<[u8; BY]> {
+        let mut bytes_exact: [u8; BY] = [0; BY];
+        bytes_exact.copy_from_slice(self.try_capture(BY)?);
+        Ok(bytes_exact)
+    }
+}

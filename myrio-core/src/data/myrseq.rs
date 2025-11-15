@@ -18,7 +18,7 @@ use crate::{
     data::{SFVec, sparse::Float},
 };
 
-/// The main data structure used by Myrio, an efficient representation of an FASTQ record
+/// The main data structure used by Myrio, an efficient representation of a FASTQ record
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Clone, bincode::Encode, bincode::Decode)]
 pub struct MyrSeq {
